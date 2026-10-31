@@ -42,6 +42,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusProperties
 import androidx.compose.ui.focus.FocusRequester
@@ -434,6 +435,7 @@ private fun Detail(text: String) {
 }
 
 /** Explicit D-pad edges from [FocusGraph]. A missing neighbour traps focus inside the panel. */
+@OptIn(ExperimentalComposeUiApi::class)
 private fun focusPropsFor(
     id: TileId,
     hasNowPlaying: Boolean,
