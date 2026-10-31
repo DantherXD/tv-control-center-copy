@@ -1,0 +1,203 @@
+package com.example.tvcontrolcenter.ui.panel
+
+import app.cash.turbine.test
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
+import com.example.tvcontrolcenter.domain.model.ActionResult
+import com.example.tvcontrolcenter.domain.model.Capability
+import com.example.tvcontrolcenter.domain.model.NetworkKind
+import com.example.tvcontrolcenter.domain.model.NowPlaying
+import com.example.tvcontrolcenter.domain.model.PanelEvent
+import com.example.tvcontrolcenter.domain.model.SystemStatus
+import com.example.tvcontrolcenter.domain.model.TileId
+import com.example.tvcontrolcenter.fakes.FakeActions
+import com.example.tvcontrolcenter.fakes.FakeFocusMemory
+import com.example.tvcontrolcenter.fakes.FakeNowPlaying
+import com.example.tvcontrolcenter.fakes.FakeSleepTimer
+import com.example.tvcontrolcenter.fakes.FakeStatusSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class ControlCenterViewModelTest {
+
+    private val status = FakeStatusSource()
+    private val actions = FakeActions()
+    private val nowPlaying = FakeNowPlaying()
+    private val timer = FakeSleepTimer()
+    private val memory = FakeFocusMemory()
+
+    private fun viewModel() = ControlCenterViewModel(status, actions, nowPlaying, timer, memory)
+
+    @Before fun setUp() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
+
+    @After fun tearDown() { Dispatchers.resetMain() }
+
+    private fun TestScope.collecting(vm: ControlCenterViewModel): Job {
+        val job = vm.uiState.onEach { }.launchIn(backgroundScope)
+        runCurrent()
+        return job
+    }
+
+    @Test
+    fun `tiles reflect live system status`() = runTest {
+        val vm = viewModel()
+        collecting(vm)
+        status.state.value = SystemStatus(network = NetworkKind.WIFI, dndEnabled = true, bluetoothEnabled = true)
+        val s = vm.uiState.value
+        assertTrue(s.tiles.getValue(TileId.WIFI).active)
+        assertTrue(s.tiles.getValue(TileId.DND).active)
+        assertTrue(s.tiles.getValue(TileId.BLUETOOTH).active)
+    }
+
+    @Test
+    fun `wifi tile is inactive without a network`() = runTest {
+        val vm = viewModel()
+        collecting(vm)
+        assertFalse(vm.uiState.value.tiles.getValue(TileId.WIFI).active)
+    }
+
+    @Test
+    fun `activating wifi opens settings and dismisses the panel`() = runTest {
+        val vm = viewModel()
+        vm.events.test {
+            vm.onTileActivated(TileId.WIFI)
+            assertEquals(PanelEvent.Dismiss, awaitItem())
+        }
+        assertEquals(listOf("wifi"), actions.calls)
+    }
+
+    @Test
+    fun `do not disturb without policy access asks for the capability`() = runTest {
+        actions.dndResult = ActionResult.NeedsCapability(Capability.NOTIFICATION_POLICY)
+        val vm = viewModel()
+        vm.events.test {
+            vm.onTileActivated(TileId.DND)
+            assertEquals(PanelEvent.NeedsCapability(Capability.NOTIFICATION_POLICY), awaitItem())
+        }
+    }
+
+    @Test
+    fun `do not disturb toggles without dismissing when it works`() = runTest {
+        val vm = viewModel()
+        vm.events.test {
+            vm.onTileActivated(TileId.DND)
+            expectNoEvents()
+        }
+        assertEquals(listOf("dnd:false"), actions.calls)
+    }
+
+    @Test
+    fun `unavailable settings screen reports the tile`() = runTest {
+        actions.result = ActionResult.Unavailable
+        val vm = viewModel()
+        vm.events.test {
+            vm.onTileActivated(TileId.GAMEPAD)
+            assertEquals(PanelEvent.Unavailable(TileId.GAMEPAD), awaitItem())
+        }
+    }
+
+    @Test
+    fun `power without the accessibility service asks for it`() = runTest {
+        actions.result = ActionResult.NeedsCapability(Capability.ACCESSIBILITY_SERVICE)
+        val vm = viewModel()
+        vm.events.test {
+            vm.onTileActivated(TileId.POWER)
+            assertEquals(PanelEvent.NeedsCapability(Capability.ACCESSIBILITY_SERVICE), awaitItem())
+        }
+    }
+
+    @Test
+    fun `volume steps clamp to 0 and 100 and reach the system`() = runTest {
+        status.state.value = SystemStatus(volumePercent = 98)
+        val vm = viewModel()
+        val job = collecting(vm)
+        vm.onVolumeStep(5)
+        assertEquals(100, vm.uiState.value.volumePercent)
+        assertEquals(100, actions.lastVolume)
+        vm.onVolumeStep(-150)
+        assertEquals(0, vm.uiState.value.volumePercent)
+        job.cancel()
+    }
+
+    @Test
+    fun `local volume override expires and polling takes over`() = runTest {
+        // StandardTestDispatcher so the 2.5 s override timer runs on virtual time.
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        status.state.value = SystemStatus(volumePercent = 40)
+        val vm = viewModel()
+        val job = collecting(vm)
+        vm.onVolumeStep(10)
+        testScheduler.runCurrent()
+        assertEquals(50, vm.uiState.value.volumePercent)
+        advanceTimeBy(3_000)
+        testScheduler.runCurrent()
+        assertEquals(40, vm.uiState.value.volumePercent)
+        job.cancel()
+    }
+
+    @Test
+    fun `focus is remembered and restored`() {
+        val vm = viewModel()
+        vm.onFocused(TileId.SLEEP_TIMER)
+        assertEquals(TileId.SLEEP_TIMER, memory.last)
+        assertEquals(TileId.SLEEP_TIMER, vm.restoredFocus())
+    }
+
+    @Test
+    fun `remembered now playing tile falls back to power when nothing plays`() {
+        memory.last = TileId.NOW_PLAYING
+        val vm = viewModel()
+        assertEquals(TileId.POWER, vm.restoredFocus())
+    }
+
+    @Test
+    fun `now playing tile without listener access asks for it`() = runTest {
+        nowPlaying.access = false
+        val vm = viewModel()
+        vm.events.test {
+            vm.onTileActivated(TileId.NOW_PLAYING)
+            assertEquals(PanelEvent.NeedsCapability(Capability.NOTIFICATION_LISTENER), awaitItem())
+        }
+        assertTrue(nowPlaying.calls.none { it == "toggle" })
+    }
+
+    @Test
+    fun `now playing tile toggles playback when access is granted`() {
+        nowPlaying.state.value = NowPlaying("Song", "Artist", "pkg", isPlaying = true)
+        val vm = viewModel()
+        vm.onTileActivated(TileId.NOW_PLAYING)
+        vm.onSkipNext()
+        vm.onSkipPrevious()
+        assertEquals(listOf("toggle", "next", "previous"), nowPlaying.calls)
+    }
+
+    @Test
+    fun `sleep timer tile cycles the timer`() {
+        val vm = viewModel()
+        vm.onTileActivated(TileId.SLEEP_TIMER)
+        vm.onTileActivated(TileId.SLEEP_TIMER)
+        assertEquals(2, timer.cycles)
+    }
+
+    @Test
+    fun `opening the panel refreshes now playing`() {
+        viewModel().onOpened()
+        assertEquals(listOf("refresh"), nowPlaying.calls)
+    }
+}
