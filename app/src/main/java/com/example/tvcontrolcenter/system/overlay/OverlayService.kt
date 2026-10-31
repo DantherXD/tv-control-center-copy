@@ -36,6 +36,7 @@ class OverlayService : Service() {
     override fun onDestroy() {
         controller?.hide()
         controller = null
+        super.onDestroy()
     }
 
     companion object {

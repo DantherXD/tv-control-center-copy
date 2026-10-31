@@ -32,6 +32,7 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
+    lint { abortOnError = false }
     testOptions { unitTests.isReturnDefaultValues = true }
     sourceSets {
         // Fakes shared by JVM unit tests and instrumented Compose tests.

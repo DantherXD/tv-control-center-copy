@@ -77,8 +77,8 @@ class MediaSessionNowPlayingSource @Inject constructor(
         val title = meta?.getString(MediaMetadata.METADATA_KEY_TITLE)
         _nowPlaying.value = if (c == null || title.isNullOrBlank()) null else NowPlaying(
             title = title,
-            artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)
-                ?: meta.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST),
+            artist = meta?.getString(MediaMetadata.METADATA_KEY_ARTIST)
+                ?: meta?.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST),
             packageName = c.packageName,
             isPlaying = c.playbackState?.state == PlaybackState.STATE_PLAYING,
         )

@@ -23,6 +23,9 @@ jobs:
     name: Build, unit tests, lint
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
@@ -36,14 +39,25 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
+      # Output is also saved to build.log so errors can be summarised below.
       - name: Unit tests
-        run: ./gradlew testDebugUnitTest --stacktrace
+        run: ./gradlew testDebugUnitTest --console=plain --stacktrace 2>&1 | tee -a build.log
 
       - name: Lint
-        run: ./gradlew lintDebug --stacktrace
+        run: ./gradlew lintDebug --console=plain 2>&1 | tee -a build.log
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --console=plain 2>&1 | tee -a build.log
+
+      - name: Show Kotlin and Hilt errors
+        if: failure()
+        run: |
+          {
+            echo '### Compile errors'
+            echo '```'
+            grep -E '^(e: |error: |.*\[Hilt\]|.*\[ksp\])' build.log | sed 's#file://##' | head -80
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -52,12 +66,13 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Upload test and lint reports
+      - name: Upload logs and reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: reports
           path: |
+            build.log
             app/build/reports/tests/
             app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
