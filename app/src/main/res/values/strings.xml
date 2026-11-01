@@ -20,6 +20,7 @@
     <string name="state_off">Off</string>
     <string name="state_unavailable">Not available</string>
     <string name="demo_hint">Press and hold Menu, or press OK to open Control Center</string>
+    <string name="demo_edit">Edit Control Center</string>
     <string name="grant_overlay">Grant overlay permission</string>
     <string name="grant_listener">Grant media access</string>
     <string name="enable_a11y">Enable key trigger</string>
@@ -35,4 +36,22 @@
     <string name="tile_screenshot">Screenshot</string>
     <string name="tile_notifications">Notifications</string>
     <string name="open_control_center">Open Control Center</string>
+    <string name="tile_edit">Edit</string>
+
+    <string name="edit_title">Edit Control Center</string>
+    <string name="edit_hint_pick">Pick a control on the right with OK to resize, move or hide it.</string>
+    <string name="edit_move_earlier">Move earlier</string>
+    <string name="edit_move_later">Move later</string>
+    <string name="edit_hide">Hide</string>
+    <string name="edit_add">Add controls</string>
+    <string name="edit_nothing_hidden">Every control is already on the panel.</string>
+    <string name="edit_panel_size">Panel size</string>
+    <string name="edit_blur">Blur behind</string>
+    <string name="edit_reset">Reset layout</string>
+    <string name="edit_done">Done</string>
+    <string name="size_small">Small</string>
+    <string name="size_wide">Wide</string>
+    <string name="size_tall">Tall</string>
+    <string name="size_large">Large</string>
+    <string name="size_full">Full row</string>
 </resources>

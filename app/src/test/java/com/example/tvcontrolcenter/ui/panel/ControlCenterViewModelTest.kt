@@ -11,8 +11,10 @@ import com.example.tvcontrolcenter.domain.model.NowPlaying
 import com.example.tvcontrolcenter.domain.model.PanelEvent
 import com.example.tvcontrolcenter.domain.model.SystemStatus
 import com.example.tvcontrolcenter.domain.model.TileId
+import com.example.tvcontrolcenter.domain.model.TileSize
 import com.example.tvcontrolcenter.fakes.FakeActions
 import com.example.tvcontrolcenter.fakes.FakeFocusMemory
+import com.example.tvcontrolcenter.fakes.FakeLayoutRepository
 import com.example.tvcontrolcenter.fakes.FakeNowPlaying
 import com.example.tvcontrolcenter.fakes.FakeSleepTimer
 import com.example.tvcontrolcenter.fakes.FakeStatusSource
@@ -41,8 +43,9 @@ class ControlCenterViewModelTest {
     private val nowPlaying = FakeNowPlaying()
     private val timer = FakeSleepTimer()
     private val memory = FakeFocusMemory()
+    private val layouts = FakeLayoutRepository()
 
-    private fun viewModel() = ControlCenterViewModel(status, actions, nowPlaying, timer, memory)
+    private fun viewModel() = ControlCenterViewModel(status, actions, nowPlaying, timer, memory, layouts)
 
     @Before fun setUp() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
 
@@ -156,14 +159,44 @@ class ControlCenterViewModelTest {
         val vm = viewModel()
         vm.onFocused(TileId.SLEEP_TIMER)
         assertEquals(TileId.SLEEP_TIMER, memory.last)
-        assertEquals(TileId.SLEEP_TIMER, vm.restoredFocus())
+        assertEquals(TileId.SLEEP_TIMER, vm.rememberedFocus())
     }
 
     @Test
-    fun `remembered now playing tile falls back to power when nothing plays`() {
-        memory.last = TileId.NOW_PLAYING
+    fun `edit tile asks the host to open the editor`() = runTest {
         val vm = viewModel()
-        assertEquals(TileId.POWER, vm.restoredFocus())
+        vm.events.test {
+            vm.onTileActivated(TileId.EDIT)
+            assertEquals(PanelEvent.OpenEditor, awaitItem())
+        }
+    }
+
+    @Test
+    fun `layout edits reach the state and the repository`() = runTest {
+        val vm = viewModel()
+        collecting(vm)
+        vm.setTileSize(TileId.WIFI, TileSize.LARGE)
+        assertEquals(TileSize.LARGE, vm.uiState.value.layout.item(TileId.WIFI)?.size)
+        vm.setTileVisible(TileId.DND, false)
+        assertFalse(vm.uiState.value.layout.item(TileId.DND)?.visible == true)
+        vm.setTileVisible(TileId.SCREENSHOT, true)
+        assertEquals(TileId.SCREENSHOT, vm.uiState.value.layout.items.last().id)
+        vm.moveTile(TileId.POWER, 1)
+        assertEquals(TileId.WIFI, vm.uiState.value.layout.items.first().id)
+        vm.resizeTileBy(TileId.HOME, 1)
+        assertEquals(TileSize.WIDE, vm.uiState.value.layout.item(TileId.HOME)?.size)
+        vm.resetLayout()
+        assertEquals(com.example.tvcontrolcenter.domain.model.PanelLayout.Default, vm.uiState.value.layout)
+    }
+
+    @Test
+    fun `panel settings flow into the state`() = runTest {
+        val vm = viewModel()
+        collecting(vm)
+        vm.setUiScale(1.5f)
+        vm.setBlurBehind(false)
+        assertEquals(1.5f, vm.uiState.value.settings.uiScale)
+        assertFalse(vm.uiState.value.settings.blurBehind)
     }
 
     @Test

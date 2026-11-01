@@ -14,68 +14,59 @@ import androidx.tv.material3.darkColorScheme
 import com.example.tvcontrolcenter.R
 
 /**
- * Design tokens. Sizes were measured from the reference screenshot (1144x644)
- * and scaled by 1.25 for 10-foot reading distance and 48dp minimum targets.
- * Re-tune these after comparing with a screen recording.
+ * Design tokens, in dp at a 960 x 540 dp reference screen. [ProvideUiScale] stretches
+ * everything to the real screen, so these stay the same on 1080p and 4K.
  */
 object PanelDimens {
-    val gap = 12.dp
-    val tallTile = 132.dp          // POWER: two capsules plus one gap
-    val capsuleWidth = 132.dp
-    val extraWidth = 176.dp        // quick-action capsules: wide enough for "Notifications"
-    val capsuleHeight = 60.dp      // (132 - 12) / 2
-    val circle = 60.dp
-    val panelWidth = capsuleWidth * 2 + gap   // 276dp, equals four circles plus three gaps
-    val wideHeight = 60.dp
-    val capsuleRadius = 30.dp
-    val powerRadius = 44.dp
-    val contentPadding = 14.dp
-    val iconSize = 26.dp
-    val powerIconSize = 48.dp
-    val statusBarHeight = 48.dp
-    val screenInsetH = 48.dp       // TV overscan-safe margins
-    val screenInsetV = 27.dp
-    val parallaxMax = 24.dp
+    /** Side of a 1x1 control. Bigger controls are whole multiples plus the gaps between. */
+    val cell = 52.dp
+    val gap = 8.dp
+    val sheetPadding = 12.dp
+    val sheetRadius = 34.dp
+    val largeRadius = 34.dp
+
+    val iconSmall = 22.dp
+    val iconLarge = 34.dp
+
+    /** Room above the panel for the clock, and the safe margin from the screen edges. */
+    val topInset = 56.dp
+    val edgeInset = 32.dp
+
+    /** Width of the 4-column grid, without the sheet padding. */
+    val gridWidth = cell * 4 + gap * 3
 }
 
 object GlassTokens {
-    const val focusScale = 1.08f
+    const val focusScale = 1.07f
     /** Short system sound on focus move and select. Set false to silence. */
     const val soundCues = true
-    val rimBase = 0.28f
-    val rimFocused = 0.65f
-    val shadowElevation = 14.dp
-    val shadowAmbient = Color.Black.copy(alpha = 0.14f)
-    val shadowSpot = Color.Black.copy(alpha = 0.22f)
-
-    // Adaptive tint: dark glass over bright content, light glass over dark content.
-    val tintOnDark = Color(0xFFEFF6F1)
-    val tintOnLight = Color(0xFF16201B)
-    const val tintAmountRest = 0.20f
-    const val tintAmountFocused = 0.09f
-    const val luminanceSwitch = 0.55f
-
-    // Focus brightening and refraction strength, read by the shader.
-    const val lensStrengthPx = 30f
-    const val chromaPx = 5f
 
     val textPrimary = Color.White
-    val textSecondary = Color(0xFFE3EBE6)
-    val activeIcon = Color(0xFF5FE3D3)
+    val textSecondary = Color(0xFFDDE3EC)
+
+    // Frosted glass layers. All plain fills and gradients, no shader and no blur pass.
+    const val sheetBaseAlpha = 0.40f
+    const val sheetVeilTop = 0.20f
+    const val sheetVeilBottom = 0.06f
+    const val tileBaseAlpha = 0.22f
+    const val tileVeilTop = 0.22f
+    const val tileVeilBottom = 0.10f
+    const val tileActiveBoost = 0.14f
+    const val tileFocusBoost = 0.26f
+    const val grainAlpha = 0.055f
+    const val rimTop = 0.62f
+    const val rimBottom = 0.12f
 }
 
 object Motion {
-    /** Open/close of the whole panel. */
-    fun <T> panelSpring() = spring<T>(dampingRatio = 0.78f, stiffness = 260f)
-    /** Per-tile pop-in; staggered by index. */
-    fun <T> tileSpring() = spring<T>(dampingRatio = 0.72f, stiffness = 340f)
+    /** Open and close of the whole sheet. Settles in about 250 ms. */
+    fun <T> panelSpring() = spring<T>(dampingRatio = 0.86f, stiffness = 720f)
+    /** Per-row pop-in. */
+    fun <T> tileSpring() = spring<T>(dampingRatio = 0.82f, stiffness = 900f)
     /** Focus lift, scale and brightness. */
-    fun <T> focusSpring() = spring<T>(dampingRatio = 0.7f, stiffness = 520f)
-    /** Background parallax follows focus, slowly. */
-    fun <T> parallaxSpring() = spring<T>(dampingRatio = 1f, stiffness = 90f)
-    const val staggerMillis = 28L
-    const val openFromScale = 0.28f
-    const val shimmerPeriodMillis = 5200
+    fun <T> focusSpring() = spring<T>(dampingRatio = 0.8f, stiffness = 1000f)
+    const val staggerMillis = 22L
+    const val openFromScale = 0.82f
 }
 
 val InterFamily = FontFamily(
@@ -85,10 +76,12 @@ val InterFamily = FontFamily(
 )
 
 object PanelType {
-    val label = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 17.sp)
-    val detail = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 17.sp)
-    val clock = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
-    val hint = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+    val label = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp, lineHeight = 15.sp)
+    val labelSmall = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 10.5.sp, lineHeight = 12.sp)
+    val detail = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Medium, fontSize = 11.5.sp, lineHeight = 14.sp)
+    val clock = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+    val hint = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+    val title = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 22.sp)
 }
 
 @Composable

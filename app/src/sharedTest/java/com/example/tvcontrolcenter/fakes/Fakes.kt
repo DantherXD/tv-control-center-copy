@@ -2,9 +2,12 @@ package com.example.tvcontrolcenter.fakes
 
 import com.example.tvcontrolcenter.domain.model.ActionResult
 import com.example.tvcontrolcenter.domain.model.NowPlaying
+import com.example.tvcontrolcenter.domain.model.PanelLayout
+import com.example.tvcontrolcenter.domain.model.PanelSettings
 import com.example.tvcontrolcenter.domain.model.SystemStatus
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.repository.FocusMemory
+import com.example.tvcontrolcenter.domain.repository.LayoutRepository
 import com.example.tvcontrolcenter.domain.repository.NowPlayingSource
 import com.example.tvcontrolcenter.domain.repository.SleepTimerRepository
 import com.example.tvcontrolcenter.domain.repository.SystemActions
@@ -75,4 +78,15 @@ class FakeSleepTimer : SleepTimerRepository {
 class FakeFocusMemory(var last: TileId = TileId.POWER) : FocusMemory {
     override fun get() = last
     override fun set(id: TileId) { last = id }
+}
+
+class FakeLayoutRepository(initial: PanelLayout = PanelLayout.Default) : LayoutRepository {
+    val layoutState = MutableStateFlow(initial)
+    val settingsState = MutableStateFlow(PanelSettings())
+    override val layout: StateFlow<PanelLayout> = layoutState
+    override val settings: StateFlow<PanelSettings> = settingsState
+    override fun update(transform: (PanelLayout) -> PanelLayout) { layoutState.value = transform(layoutState.value) }
+    override fun resetLayout() { layoutState.value = PanelLayout.Default }
+    override fun setUiScale(scale: Float) { settingsState.value = settingsState.value.copy(uiScale = scale) }
+    override fun setBlurBehind(enabled: Boolean) { settingsState.value = settingsState.value.copy(blurBehind = enabled) }
 }

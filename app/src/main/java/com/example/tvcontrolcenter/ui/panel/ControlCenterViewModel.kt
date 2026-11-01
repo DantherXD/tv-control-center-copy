@@ -7,10 +7,14 @@ import com.example.tvcontrolcenter.domain.model.Capability
 import com.example.tvcontrolcenter.domain.model.NetworkKind
 import com.example.tvcontrolcenter.domain.model.NowPlaying
 import com.example.tvcontrolcenter.domain.model.PanelEvent
+import com.example.tvcontrolcenter.domain.model.PanelLayout
+import com.example.tvcontrolcenter.domain.model.PanelSettings
 import com.example.tvcontrolcenter.domain.model.SystemStatus
 import com.example.tvcontrolcenter.domain.model.TileId
+import com.example.tvcontrolcenter.domain.model.TileSize
 import com.example.tvcontrolcenter.domain.model.TileState
 import com.example.tvcontrolcenter.domain.repository.FocusMemory
+import com.example.tvcontrolcenter.domain.repository.LayoutRepository
 import com.example.tvcontrolcenter.domain.repository.NowPlayingSource
 import com.example.tvcontrolcenter.domain.repository.SleepTimerRepository
 import com.example.tvcontrolcenter.domain.repository.SystemActions
@@ -35,6 +39,8 @@ data class ControlCenterUiState(
     val volumePercent: Int = 0,
     val muted: Boolean = false,
     val timerMinutes: Int? = null,
+    val layout: PanelLayout = PanelLayout.Default,
+    val settings: PanelSettings = PanelSettings(),
 ) {
     val hasNowPlaying: Boolean get() = nowPlaying != null
 }
@@ -49,6 +55,7 @@ class ControlCenterViewModel @Inject constructor(
     private val nowPlayingSource: NowPlayingSource,
     private val sleepTimer: SleepTimerRepository,
     private val focusMemory: FocusMemory,
+    private val layoutRepository: LayoutRepository,
 ) : ViewModel() {
 
     // Volume and mute show the user's change at once; polling takes over after a moment.
@@ -59,7 +66,7 @@ class ControlCenterViewModel @Inject constructor(
     private val _events = MutableSharedFlow<PanelEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<PanelEvent> = _events.asSharedFlow()
 
-    val uiState: StateFlow<ControlCenterUiState> = combine(
+    private val live = combine(
         statusSource.status,
         nowPlayingSource.nowPlaying,
         sleepTimer.remainingMinutes,
@@ -85,6 +92,14 @@ class ControlCenterViewModel @Inject constructor(
             muted = overrideMute ?: status.muted,
             timerMinutes = timer,
         )
+    }
+
+    val uiState: StateFlow<ControlCenterUiState> = combine(
+        live,
+        layoutRepository.layout,
+        layoutRepository.settings,
+    ) { base, layout, settings ->
+        base.copy(layout = layout, settings = settings)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ControlCenterUiState())
 
     /** Called each time the panel appears. */
@@ -92,8 +107,8 @@ class ControlCenterViewModel @Inject constructor(
         nowPlayingSource.refresh()
     }
 
-    /** Tile that should hold focus when the panel appears. Reads live memory, never a cached value. */
-    fun restoredFocus(): TileId = FocusGraph.restore(focusMemory.get(), uiState.value.hasNowPlaying)
+    /** Tile that held focus last time. The panel falls back to its first tile if it is not shown. */
+    fun rememberedFocus(): TileId = focusMemory.get()
 
     fun onFocused(id: TileId) {
         focusMemory.set(id)
@@ -127,8 +142,24 @@ class ControlCenterViewModel @Inject constructor(
             TileId.RECENTS -> handle(actions.showRecents(), dismissOnDone = true, tile = id)
             TileId.SCREENSHOT -> handle(actions.takeScreenshot(), dismissOnDone = true, tile = id)
             TileId.NOTIFICATIONS -> handle(actions.showNotifications(), dismissOnDone = true, tile = id)
+            TileId.EDIT -> _events.tryEmit(PanelEvent.OpenEditor)
         }
     }
+
+    // Layout editing. The repository persists and every open panel updates at once.
+    fun resizeTileBy(id: TileId, delta: Int) = layoutRepository.update { it.resizeBy(id, delta) }
+
+    fun setTileSize(id: TileId, size: TileSize) = layoutRepository.update { it.resize(id, size) }
+
+    fun moveTile(id: TileId, delta: Int) = layoutRepository.update { it.move(id, delta) }
+
+    fun setTileVisible(id: TileId, visible: Boolean) = layoutRepository.update { it.setVisible(id, visible) }
+
+    fun resetLayout() = layoutRepository.resetLayout()
+
+    fun setUiScale(scale: Float) = layoutRepository.setUiScale(scale)
+
+    fun setBlurBehind(enabled: Boolean) = layoutRepository.setBlurBehind(enabled)
 
     /** Positive steps raise the volume. Shows the new value at once, then lets polling take over. */
     fun onVolumeStep(deltaPercent: Int) {

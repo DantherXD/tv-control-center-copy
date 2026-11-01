@@ -2,6 +2,8 @@ package com.example.tvcontrolcenter.domain.repository
 
 import com.example.tvcontrolcenter.domain.model.ActionResult
 import com.example.tvcontrolcenter.domain.model.NowPlaying
+import com.example.tvcontrolcenter.domain.model.PanelLayout
+import com.example.tvcontrolcenter.domain.model.PanelSettings
 import com.example.tvcontrolcenter.domain.model.SystemStatus
 import com.example.tvcontrolcenter.domain.model.TileId
 import kotlinx.coroutines.flow.Flow
@@ -67,4 +69,14 @@ interface SleepTimerRepository {
 interface FocusMemory {
     fun get(): TileId
     fun set(id: TileId)
+}
+
+/** The user's arrangement of controls plus look-and-feel settings. Survives restarts. */
+interface LayoutRepository {
+    val layout: StateFlow<PanelLayout>
+    val settings: StateFlow<PanelSettings>
+    fun update(transform: (PanelLayout) -> PanelLayout)
+    fun resetLayout()
+    fun setUiScale(scale: Float)
+    fun setBlurBehind(enabled: Boolean)
 }

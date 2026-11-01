@@ -1,8 +1,8 @@
 package com.example.tvcontrolcenter.system.overlay
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.PixelFormat
-import android.os.Build
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -23,7 +23,9 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.example.tvcontrolcenter.MainActivity
 import com.example.tvcontrolcenter.di.ControlCenterEntryPoint
+import com.example.tvcontrolcenter.system.applyBackdrop
 import com.example.tvcontrolcenter.system.openCapabilitySettings
 import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
@@ -61,10 +63,10 @@ internal class OverlayHost : LifecycleOwner, SavedStateRegistryOwner, ViewModelS
  * [windowType] is TYPE_ACCESSIBILITY_OVERLAY from the accessibility service (no extra
  * permission) or TYPE_APPLICATION_OVERLAY from [OverlayService] (needs SYSTEM_ALERT_WINDOW).
  *
- * On Android 12+ the window asks for blur-behind. Devices with cross-window blur enabled
- * then show a real blurred view of the running app behind the glass; others show the
- * tinted fallback. Android does not let an overlay read the pixels behind it, so the
- * AGSL refraction path is only used inside this app. See README.
+ * On Android 12+ the window asks for blur-behind (the "Blur behind" setting). Devices with
+ * cross-window blur enabled then show a real blurred view of the running app behind the
+ * frosted panel; others get a stronger dim. Android does not let an overlay read the pixels
+ * behind it, so refraction of the running app is not possible. See README.
  */
 class OverlayController(
     private val context: Context,
@@ -100,6 +102,13 @@ class OverlayController(
                         onDismissRequest = { visible = false },
                         onClosed = { remove() },
                         onCapability = { context.openCapabilitySettings(it) },
+                        onOpenEditor = {
+                            context.startActivity(
+                                Intent(context, MainActivity::class.java)
+                                    .putExtra(MainActivity.EXTRA_EDIT, true)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        },
                     )
                 }
             }
@@ -114,12 +123,8 @@ class OverlayController(
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                flags = flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
-                blurBehindRadius = 48
-            }
-            flags = flags or WindowManager.LayoutParams.FLAG_DIM_BEHIND
-            dimAmount = 0.22f
+            val blur = ControlCenterEntryPoint.from(context).layoutRepository().settings.value.blurBehind
+            applyBackdrop(windowManager, blur)
         }
 
         view = composeView

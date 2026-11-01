@@ -1,9 +1,12 @@
 package com.example.tvcontrolcenter.data
 
 import android.content.Context
+import com.example.tvcontrolcenter.domain.model.PanelLayout
+import com.example.tvcontrolcenter.domain.model.PanelSettings
 import com.example.tvcontrolcenter.domain.model.SleepTimerPresets
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.repository.FocusMemory
+import com.example.tvcontrolcenter.domain.repository.LayoutRepository
 import com.example.tvcontrolcenter.domain.repository.SleepTimerRepository
 import com.example.tvcontrolcenter.domain.repository.SystemActions
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -78,5 +81,55 @@ class SleepTimerRepositoryImpl(
             actions.sleepScreen()
             _remaining.value = null
         }
+    }
+}
+
+/**
+ * Stores the layout as one short string and the settings as plain preference values.
+ * Singleton, so an edit made in the app shows up in the overlay at once.
+ */
+@Singleton
+class PreferencesLayoutRepository @Inject constructor(
+    @ApplicationContext context: Context,
+) : LayoutRepository {
+    private val prefs = context.getSharedPreferences("control_center_layout", Context.MODE_PRIVATE)
+
+    private val _layout = MutableStateFlow(PanelLayout.decode(prefs.getString(KEY_LAYOUT, null)))
+    override val layout: StateFlow<PanelLayout> = _layout.asStateFlow()
+
+    private val _settings = MutableStateFlow(
+        PanelSettings(
+            uiScale = prefs.getFloat(KEY_SCALE, 1f),
+            blurBehind = prefs.getBoolean(KEY_BLUR, true),
+        ),
+    )
+    override val settings: StateFlow<PanelSettings> = _settings.asStateFlow()
+
+    override fun update(transform: (PanelLayout) -> PanelLayout) {
+        val next = transform(_layout.value)
+        if (next == _layout.value) return
+        _layout.value = next
+        prefs.edit().putString(KEY_LAYOUT, next.encode()).apply()
+    }
+
+    override fun resetLayout() {
+        _layout.value = PanelLayout.Default
+        prefs.edit().remove(KEY_LAYOUT).apply()
+    }
+
+    override fun setUiScale(scale: Float) {
+        _settings.value = _settings.value.copy(uiScale = scale)
+        prefs.edit().putFloat(KEY_SCALE, scale).apply()
+    }
+
+    override fun setBlurBehind(enabled: Boolean) {
+        _settings.value = _settings.value.copy(blurBehind = enabled)
+        prefs.edit().putBoolean(KEY_BLUR, enabled).apply()
+    }
+
+    private companion object {
+        const val KEY_LAYOUT = "layout"
+        const val KEY_SCALE = "ui_scale"
+        const val KEY_BLUR = "blur_behind"
     }
 }

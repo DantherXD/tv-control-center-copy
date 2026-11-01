@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.tvcontrolcenter.data.PreferencesFocusMemory
+import com.example.tvcontrolcenter.data.PreferencesLayoutRepository
 import com.example.tvcontrolcenter.data.SleepTimerRepositoryImpl
 import com.example.tvcontrolcenter.domain.repository.FocusMemory
+import com.example.tvcontrolcenter.domain.repository.LayoutRepository
 import com.example.tvcontrolcenter.domain.repository.NowPlayingSource
 import com.example.tvcontrolcenter.domain.repository.SleepTimerRepository
 import com.example.tvcontrolcenter.domain.repository.SystemActions
@@ -35,6 +37,7 @@ abstract class BindingsModule {
     @Binds abstract fun status(impl: AndroidSystemStatusSource): SystemStatusSource
     @Binds abstract fun nowPlaying(impl: MediaSessionNowPlayingSource): NowPlayingSource
     @Binds abstract fun focusMemory(impl: PreferencesFocusMemory): FocusMemory
+    @Binds abstract fun layouts(impl: PreferencesLayoutRepository): LayoutRepository
 }
 
 @Module
@@ -64,6 +67,7 @@ class ControlCenterViewModelFactory @Inject constructor(
 @InstallIn(SingletonComponent::class)
 interface ControlCenterEntryPoint {
     fun viewModelFactory(): ControlCenterViewModelFactory
+    fun layoutRepository(): LayoutRepository
 
     companion object {
         fun from(context: Context): ControlCenterEntryPoint =

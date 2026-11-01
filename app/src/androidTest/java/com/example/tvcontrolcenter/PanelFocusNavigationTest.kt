@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.fakes.FakeActions
 import com.example.tvcontrolcenter.fakes.FakeFocusMemory
+import com.example.tvcontrolcenter.fakes.FakeLayoutRepository
 import com.example.tvcontrolcenter.fakes.FakeNowPlaying
 import com.example.tvcontrolcenter.fakes.FakeSleepTimer
 import com.example.tvcontrolcenter.fakes.FakeStatusSource
@@ -29,9 +30,12 @@ class PanelFocusNavigationTest {
 
     private val memory = FakeFocusMemory()
     private val actions = FakeActions()
+    private val layouts = FakeLayoutRepository()
 
     private fun launch(visible: Boolean = true) {
-        val vm = ControlCenterViewModel(FakeStatusSource(), actions, FakeNowPlaying(), FakeSleepTimer(), memory)
+        val vm = ControlCenterViewModel(
+            FakeStatusSource(), actions, FakeNowPlaying(), FakeSleepTimer(), memory, layouts,
+        )
         rule.setContent {
             ControlCenterTheme {
                 ControlCenterHost(vm, visible, onDismissRequest = {}, onClosed = {}, onCapability = {})
@@ -62,30 +66,12 @@ class PanelFocusNavigationTest {
         rule.onNodeWithContentDescription("Bluetooth").assertIsFocused()
     }
 
-    @Test fun focusIsTrappedAtTheTopEdge() {
+    @Test fun focusIsTrappedAtTheEdges() {
         launch()
         press(Key.DirectionUp)
         rule.onNodeWithContentDescription("Power Off").assertIsFocused()
-    }
-
-    @Test fun leftFromPowerEntersTheQuickActions() {
-        launch()
         press(Key.DirectionLeft)
-        rule.onNodeWithContentDescription("Display").assertIsFocused()
-        press(Key.DirectionLeft)
-        rule.onNodeWithContentDescription("Settings").assertIsFocused()
-        press(Key.DirectionLeft)
-        rule.onNodeWithContentDescription("Settings").assertIsFocused()
-        press(Key.DirectionDown)
-        rule.onNodeWithContentDescription("Sound").assertIsFocused()
-    }
-
-    @Test fun quickActionRunsItsSystemAction() {
-        launch()
-        press(Key.DirectionLeft)
-        press(Key.DirectionLeft)
-        press(Key.DirectionCenter)
-        assert(actions.calls.contains("settings"))
+        rule.onNodeWithContentDescription("Power Off").assertIsFocused()
     }
 
     @Test fun reachesTheBottomRowAndVolume() {
@@ -96,6 +82,15 @@ class PanelFocusNavigationTest {
         rule.onNodeWithContentDescription("Accessibility").assertIsFocused()
         press(Key.DirectionDown)
         rule.onNodeWithContentDescription("Volume").assertIsFocused()
+    }
+
+    @Test fun quickActionRunsItsSystemAction() {
+        launch()
+        repeat(3) { press(Key.DirectionDown) }
+        press(Key.DirectionDown)
+        rule.onNodeWithContentDescription("Home").assertIsFocused()
+        press(Key.DirectionCenter)
+        assert(actions.calls.contains("home"))
     }
 
     @Test fun restoresTheLastFocusedTileOnOpen() {
@@ -117,12 +112,20 @@ class PanelFocusNavigationTest {
         assert(actions.calls.contains("wifi"))
     }
 
-    @Test fun everyTileMeetsTheMinimumTargetSize() {
+    @Test fun aControlAddedInTheEditorAppearsAndCanBeFocused() {
+        layouts.update { it.setVisible(TileId.SCREENSHOT, true) }
+        memory.last = TileId.SCREENSHOT
         launch()
-        listOf("Power Off", "Wi-Fi", "Do Not Disturb", "Bluetooth", "Sleep Timer",
+        rule.onNodeWithContentDescription("Screenshot").assertIsFocused()
+    }
+
+    @Test fun everyShownControlMeetsTheMinimumTargetSize() {
+        launch()
+        listOf(
+            "Power Off", "Wi-Fi", "Do Not Disturb", "Bluetooth", "Sleep Timer",
             "Game controllers", "Accessibility", "Lock screen", "Search", "Volume",
-            "Settings", "Display", "Sound", "Captions", "Screen saver", "Apps",
-            "Home", "Recent apps", "Screenshot", "Notifications").forEach {
+            "Settings", "Home", "Recent apps", "Edit",
+        ).forEach {
             rule.onNodeWithContentDescription(it).assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
         }
     }

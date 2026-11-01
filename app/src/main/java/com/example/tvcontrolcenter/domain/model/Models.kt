@@ -1,6 +1,6 @@
 package com.example.tvcontrolcenter.domain.model
 
-/** Every focusable control in the panel. Order here is the default focus order. */
+/** Every control the panel can show. Which ones appear, and how big, is a [PanelLayout]. */
 enum class TileId {
     POWER, WIFI, DND, BLUETOOTH, SLEEP_TIMER,
     GAMEPAD, ACCESSIBILITY, LOCK, SEARCH,
@@ -8,6 +8,8 @@ enum class TileId {
     // Quick actions column, Google TV style.
     SETTINGS, DISPLAY, SOUND, CAPTIONS, SCREENSAVER, APPS,
     HOME, RECENTS, SCREENSHOT, NOTIFICATIONS,
+    // Opens the layout editor.
+    EDIT,
 }
 
 enum class NetworkKind { WIFI, ETHERNET, NONE }
@@ -49,6 +51,8 @@ sealed interface PanelEvent {
     data object Dismiss : PanelEvent
     data class NeedsCapability(val capability: Capability) : PanelEvent
     data class Unavailable(val tile: TileId) : PanelEvent
+    /** The Edit tile was activated. The host decides where the editor lives. */
+    data object OpenEditor : PanelEvent
 }
 
 /** Sleep timer presets in minutes. 0 means off. */

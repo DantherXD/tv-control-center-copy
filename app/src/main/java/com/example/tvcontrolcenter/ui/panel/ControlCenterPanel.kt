@@ -2,115 +2,57 @@ package com.example.tvcontrolcenter.ui.panel
 
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.background
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Accessibility
-import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.ClosedCaption
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Speaker
-import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Headphones
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.PowerSettingsNew
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.WifiOff
-import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusProperties
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.Icon
 import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.Capability
-import com.example.tvcontrolcenter.domain.model.NetworkKind
+import com.example.tvcontrolcenter.domain.model.GridPacker
 import com.example.tvcontrolcenter.domain.model.PanelEvent
+import com.example.tvcontrolcenter.domain.model.Placed
 import com.example.tvcontrolcenter.domain.model.TileId
-import com.example.tvcontrolcenter.ui.glass.LocalGlassBackdrop
-import com.example.tvcontrolcenter.ui.theme.GlassTokens
+import com.example.tvcontrolcenter.ui.glass.frostedSheet
 import com.example.tvcontrolcenter.ui.theme.Motion
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
-import com.example.tvcontrolcenter.ui.theme.PanelType
+import com.example.tvcontrolcenter.ui.theme.ProvideUiScale
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-private const val VOLUME_STEP = 5
-
-/** Tiles are staggered in groups, so the 21 tiles do not take 21 steps to settle. */
-private const val STAGGER_GROUP = 11
+/** Open/close animates per grid row. More rows than this share the last slot's progress. */
+private const val ROW_SLOTS = 24
+private const val STAGGER_ROWS = 8
 
 /**
  * The Control Center panel plus its open/close choreography.
  *
- * On open the whole glass cluster grows out of the top-right corner (where the toggle
- * lives in tvOS) on a spring, and tiles settle one after another. On close the same
- * springs run backwards, so the tiles merge into one blob and shrink into the corner.
- *
- * Nothing is composed while closed, so hidden tiles can never take focus.
+ * The frosted sheet grows out of the top-right corner on a short spring and the rows settle
+ * one after another. Closing runs the same springs backwards. Nothing is composed while
+ * closed, so hidden controls can never take focus.
  *
  * @param visible desired state. Animations run to completion, then [onClosed] fires.
+ * @param scrimAlpha darkens everything behind the panel; windows use their own dim instead.
  */
 @Composable
 fun ControlCenterHost(
@@ -120,36 +62,73 @@ fun ControlCenterHost(
     onClosed: () -> Unit,
     onCapability: (Capability) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenEditor: () -> Unit = {},
+    scrimAlpha: Float = 0f,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val backdrop = LocalGlassBackdrop.current
-    val density = LocalDensity.current
-    val scope = rememberCoroutineScope()
+    val placed = remember(state.layout, state.hasNowPlaying) {
+        GridPacker.pack(
+            state.layout.visibleItems().filter { it.id != TileId.NOW_PLAYING || state.hasNowPlaying },
+        )
+    }
+    val needed = PanelDimens.topInset + PanelDimens.sheetPadding * 2 +
+        gridHeight(GridPacker.rowCount(placed)) + PanelDimens.edgeInset
+    ProvideUiScale(state.settings.uiScale, neededHeight = needed) {
+        HostBody(
+            state = state,
+            placed = placed,
+            viewModel = viewModel,
+            visible = visible,
+            onDismissRequest = onDismissRequest,
+            onClosed = onClosed,
+            onCapability = onCapability,
+            onOpenEditor = onOpenEditor,
+            scrimAlpha = scrimAlpha,
+            modifier = modifier,
+        )
+    }
+}
 
+@Composable
+private fun HostBody(
+    state: ControlCenterUiState,
+    placed: List<Placed>,
+    viewModel: ControlCenterViewModel,
+    visible: Boolean,
+    onDismissRequest: () -> Unit,
+    onClosed: () -> Unit,
+    onCapability: (Capability) -> Unit,
+    onOpenEditor: () -> Unit,
+    scrimAlpha: Float,
+    modifier: Modifier,
+) {
+    val context = LocalContext.current
     val progress = remember { Animatable(0f) }
-    val tileProgress = remember { TileId.entries.associateWith { Animatable(0f) } }
+    val rowProgress = remember { List(ROW_SLOTS) { Animatable(0f) } }
     val requesters = remember { TileId.entries.associateWith { FocusRequester() } }
 
+    val currentPlaced by rememberUpdatedState(placed)
     val currentVisible by rememberUpdatedState(visible)
+    val dismiss by rememberUpdatedState(onDismissRequest)
+    val capability by rememberUpdatedState(onCapability)
+    val editor by rememberUpdatedState(onOpenEditor)
     val shown by remember { derivedStateOf { currentVisible || progress.value > 0.001f } }
 
     LaunchedEffect(visible) {
         if (visible) {
             viewModel.onOpened()
             launch {
-                TileId.entries.forEachIndexed { index, id ->
+                for (row in 0 until ROW_SLOTS) {
                     launch {
-                        delay((index % STAGGER_GROUP) * Motion.staggerMillis)
-                        tileProgress.getValue(id).animateTo(1f, Motion.tileSpring())
+                        delay(minOf(row, STAGGER_ROWS) * Motion.staggerMillis)
+                        rowProgress[row].animateTo(1f, Motion.tileSpring())
                     }
                 }
             }
             progress.animateTo(1f, Motion.panelSpring())
         } else {
             coroutineScope {
-                tileProgress.values.forEach { launch { it.animateTo(0f, Motion.panelSpring()) } }
-                launch { backdrop?.parallax?.animateTo(Offset.Zero, Motion.parallaxSpring()) }
+                rowProgress.forEach { launch { it.animateTo(0f, Motion.panelSpring()) } }
                 progress.animateTo(0f, Motion.panelSpring())
             }
             onClosed()
@@ -159,391 +138,76 @@ fun ControlCenterHost(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                PanelEvent.Dismiss -> onDismissRequest()
+                PanelEvent.Dismiss -> dismiss()
                 is PanelEvent.NeedsCapability -> {
-                    onCapability(event.capability)
-                    onDismissRequest()
+                    capability(event.capability)
+                    dismiss()
                 }
                 is PanelEvent.Unavailable ->
                     Toast.makeText(context, R.string.state_unavailable, Toast.LENGTH_SHORT).show()
+                PanelEvent.OpenEditor -> {
+                    editor()
+                    dismiss()
+                }
             }
         }
     }
 
     if (!shown) return
 
-    // Wait for the first status emission, then give the remembered tile focus.
+    // Wait for the first status emission, then give the remembered control focus.
     LaunchedEffect(Unit) {
-        snapshotFlow { viewModel.uiState.value.tiles.isNotEmpty() }.first { it }
+        viewModel.uiState.first { it.tiles.isNotEmpty() }
         withFrameNanos { }
-        runCatching { requesters.getValue(viewModel.restoredFocus()).requestFocus() }
+        val remembered = viewModel.rememberedFocus()
+        val target = currentPlaced.firstOrNull { it.id == remembered }?.id ?: currentPlaced.firstOrNull()?.id
+        if (target != null) runCatching { requesters.getValue(target).requestFocus() }
     }
-
-    val parallaxMax = with(density) { PanelDimens.parallaxMax.toPx() }
 
     Box(
         modifier = modifier
+            .drawBehind {
+                val a = scrimAlpha * progress.value
+                if (a > 0.001f) drawRect(Color.Black.copy(alpha = a))
+            }
             .onPreviewKeyEvent { event ->
                 if (event.key == Key.Back || event.key == Key.Escape) {
-                    if (event.type == KeyEventType.KeyUp) onDismissRequest()
+                    if (event.type == KeyEventType.KeyUp) dismiss()
                     true
                 } else false
             },
         contentAlignment = Alignment.TopEnd,
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .padding(
-                    top = PanelDimens.screenInsetV + PanelDimens.statusBarHeight,
-                    end = PanelDimens.screenInsetH,
-                )
+                .padding(top = PanelDimens.topInset, end = PanelDimens.edgeInset)
                 .graphicsLayer {
                     val p = progress.value
                     val s = Motion.openFromScale + (1f - Motion.openFromScale) * p
                     scaleX = s
                     scaleY = s
-                    alpha = (p * 1.6f).coerceIn(0f, 1f)
+                    alpha = (p * 1.5f).coerceIn(0f, 1f)
                     transformOrigin = TransformOrigin(1f, 0f)
-                },
-            verticalArrangement = Arrangement.spacedBy(PanelDimens.gap),
+                }
+                .frostedSheet(PanelDimens.sheetRadius)
+                .padding(PanelDimens.sheetPadding),
         ) {
-            PanelContent(
+            TileGrid(
+                placed = placed,
                 state = state,
                 requesters = requesters,
-                appear = { id -> { tileProgress.getValue(id).value } },
-                onFocused = { id ->
-                    viewModel.onFocused(id)
-                    val v = parallaxVector(id)
-                    scope.launch {
-                        backdrop?.parallax?.animateTo(
-                            Offset(-v.x * parallaxMax, -v.y * parallaxMax),
-                            Motion.parallaxSpring(),
-                        )
-                    }
-                },
+                interactive = true,
+                trapEdges = true,
+                selected = null,
+                appear = { p -> { rowProgress[minOf(p.row, ROW_SLOTS - 1)].value } },
+                onFocused = viewModel::onFocused,
                 onActivate = viewModel::onTileActivated,
-                onVolumeStep = viewModel::onVolumeStep,
-                onSkipNext = viewModel::onSkipNext,
-                onSkipPrevious = viewModel::onSkipPrevious,
+                actions = TileActions(
+                    onVolumeStep = viewModel::onVolumeStep,
+                    onSkipNext = viewModel::onSkipNext,
+                    onSkipPrevious = viewModel::onSkipPrevious,
+                ),
             )
         }
     }
-}
-
-@Composable
-private fun PanelContent(
-    state: ControlCenterUiState,
-    requesters: Map<TileId, FocusRequester>,
-    appear: (TileId) -> () -> Float,
-    onFocused: (TileId) -> Unit,
-    onActivate: (TileId) -> Unit,
-    onVolumeStep: (Int) -> Unit,
-    onSkipNext: () -> Unit,
-    onSkipPrevious: () -> Unit,
-) {
-    val env = TileEnv(requesters, state.hasNowPlaying, appear, onFocused, onActivate)
-    Row(horizontalArrangement = Arrangement.spacedBy(PanelDimens.gap)) {
-        Column(verticalArrangement = Arrangement.spacedBy(PanelDimens.gap)) {
-            env.QuickActions()
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(PanelDimens.gap)) {
-            env.MainTiles(state, onVolumeStep, onSkipNext, onSkipPrevious)
-        }
-    }
-}
-
-private class QuickAction(val id: TileId, val icon: ImageVector, @StringRes val label: Int)
-
-/** Two columns, five rows. Rows line up with the main cluster so D-pad moves feel straight. */
-private val QuickActionRows: List<List<QuickAction>> = listOf(
-    listOf(
-        QuickAction(TileId.SETTINGS, Icons.Filled.Settings, R.string.tile_settings),
-        QuickAction(TileId.DISPLAY, Icons.Filled.Tv, R.string.tile_display),
-    ),
-    listOf(
-        QuickAction(TileId.SOUND, Icons.Filled.Speaker, R.string.tile_sound),
-        QuickAction(TileId.CAPTIONS, Icons.Filled.ClosedCaption, R.string.tile_captions),
-    ),
-    listOf(
-        QuickAction(TileId.SCREENSAVER, Icons.Filled.PhotoLibrary, R.string.tile_screensaver),
-        QuickAction(TileId.APPS, Icons.Filled.Apps, R.string.tile_apps),
-    ),
-    listOf(
-        QuickAction(TileId.HOME, Icons.Filled.Home, R.string.tile_home),
-        QuickAction(TileId.RECENTS, Icons.Filled.Layers, R.string.tile_recents),
-    ),
-    listOf(
-        QuickAction(TileId.SCREENSHOT, Icons.Filled.CameraAlt, R.string.tile_screenshot),
-        QuickAction(TileId.NOTIFICATIONS, Icons.Filled.Notifications, R.string.tile_notifications),
-    ),
-)
-
-/** Google TV-style quick actions: labelled capsules for the settings people reach for most. */
-@Composable
-private fun TileEnv.QuickActions() {
-    val size = Modifier.size(PanelDimens.extraWidth, PanelDimens.capsuleHeight)
-    QuickActionRows.forEach { row ->
-        Row(horizontalArrangement = Arrangement.spacedBy(PanelDimens.gap)) {
-            row.forEach { action ->
-                val label = stringResource(action.label)
-                Tile(action.id, label, PanelDimens.capsuleRadius, size) {
-                    CapsuleContent(action.icon, false, label, null)
-                }
-            }
-        }
-    }
-}
-
-/** The tvOS-style cluster: power, network, Bluetooth, shortcuts, now playing and volume. */
-@Composable
-private fun TileEnv.MainTiles(
-    state: ControlCenterUiState,
-    onVolumeStep: (Int) -> Unit,
-    onSkipNext: () -> Unit,
-    onSkipPrevious: () -> Unit,
-) {
-    val gap = PanelDimens.gap
-    val on = stringResource(R.string.state_on)
-    val off = stringResource(R.string.state_off)
-    val capsule = Modifier.size(PanelDimens.capsuleWidth, PanelDimens.capsuleHeight)
-
-    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-        Tile(
-            TileId.POWER, stringResource(R.string.tile_power), PanelDimens.powerRadius,
-            Modifier.size(PanelDimens.capsuleWidth, PanelDimens.tallTile),
-        ) {
-            Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                TileIcon(Icons.Filled.PowerSettingsNew, PanelDimens.powerIconSize, tint = Color.White)
-                Label(stringResource(R.string.tile_power), Modifier.padding(top = 8.dp))
-            }
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-            val net = state.status.network
-            val wifiDetail = when (net) {
-                NetworkKind.WIFI -> stringResource(R.string.state_on)
-                NetworkKind.ETHERNET -> "Ethernet"
-                NetworkKind.NONE -> stringResource(R.string.state_off)
-            }
-            Tile(TileId.WIFI, stringResource(R.string.tile_wifi), PanelDimens.capsuleRadius, capsule, wifiDetail) {
-                CapsuleContent(
-                    icon = if (net == NetworkKind.NONE) Icons.Filled.WifiOff else Icons.Filled.Wifi,
-                    active = net != NetworkKind.NONE,
-                    title = stringResource(R.string.tile_wifi),
-                    detail = wifiDetail,
-                )
-            }
-            val dnd = state.status.dndEnabled
-            Tile(TileId.DND, stringResource(R.string.tile_dnd), PanelDimens.capsuleRadius, capsule, if (dnd) on else off) {
-                CapsuleContent(Icons.Filled.DarkMode, dnd, stringResource(R.string.tile_dnd), null)
-            }
-        }
-    }
-
-    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-        val bt = state.tiles[TileId.BLUETOOTH]
-        val btDetail = bt?.detail ?: if (bt?.active == true) on else off
-        Tile(TileId.BLUETOOTH, stringResource(R.string.tile_bluetooth), PanelDimens.capsuleRadius, capsule, btDetail) {
-            CapsuleContent(
-                Icons.Filled.Headphones, bt?.active == true,
-                bt?.detail ?: stringResource(R.string.tile_bluetooth),
-                if (bt?.detail == null) btDetail else null,
-            )
-        }
-        val sleep = state.tiles[TileId.SLEEP_TIMER]
-        val sleepDetail = sleep?.detail ?: off
-        Tile(TileId.SLEEP_TIMER, stringResource(R.string.tile_sleep_timer), PanelDimens.capsuleRadius, capsule, sleepDetail) {
-            CapsuleContent(Icons.Filled.Timer, sleep?.active == true, stringResource(R.string.tile_sleep_timer), sleepDetail)
-        }
-    }
-
-    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-        val circle = Modifier.size(PanelDimens.circle)
-        CircleTile(TileId.GAMEPAD, Icons.Filled.SportsEsports, R.string.tile_gamepad, circle)
-        CircleTile(TileId.ACCESSIBILITY, Icons.Filled.Accessibility, R.string.tile_accessibility, circle)
-        CircleTile(TileId.LOCK, Icons.Filled.Lock, R.string.tile_lock, circle)
-        CircleTile(TileId.SEARCH, Icons.Filled.Search, R.string.tile_search, circle)
-    }
-
-    val wide = Modifier.size(PanelDimens.panelWidth, PanelDimens.wideHeight)
-
-    state.nowPlaying?.let { np ->
-        Tile(
-            TileId.NOW_PLAYING, stringResource(R.string.now_playing) + ", " + np.title,
-            PanelDimens.capsuleRadius, wide,
-            onKey = { e ->
-                if (e.type == KeyEventType.KeyDown) when (e.key) {
-                    Key.DirectionRight -> { onSkipNext(); true }
-                    Key.DirectionLeft -> { onSkipPrevious(); true }
-                    else -> false
-                } else e.key == Key.DirectionRight || e.key == Key.DirectionLeft
-            },
-        ) {
-            Row(
-                Modifier.align(Alignment.CenterStart).padding(horizontal = 18.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                TileIcon(Icons.Filled.MusicNote, PanelDimens.iconSize)
-                Column(Modifier.weight(1f)) {
-                    Label(np.title)
-                    np.artist?.let { Detail(it) }
-                }
-                TileIcon(if (np.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, PanelDimens.iconSize)
-            }
-        }
-    }
-
-    val volume = state.volumePercent
-    val muted = state.muted
-    val mutedText = stringResource(R.string.state_muted)
-    Tile(
-        TileId.VOLUME, stringResource(R.string.tile_volume), PanelDimens.capsuleRadius, wide, if (muted) mutedText else "$volume%",
-        onKey = { e ->
-            when (e.key) {
-                Key.DirectionRight -> { if (e.type == KeyEventType.KeyDown) onVolumeStep(VOLUME_STEP); true }
-                Key.DirectionLeft -> { if (e.type == KeyEventType.KeyDown) onVolumeStep(-VOLUME_STEP); true }
-                else -> false
-            }
-        },
-    ) {
-        Row(
-            Modifier.align(Alignment.CenterStart).padding(horizontal = 18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            TileIcon(if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp, PanelDimens.iconSize)
-            Box(
-                Modifier
-                    .weight(1f)
-                    .height(8.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.28f))
-                    .drawBehind {
-                        drawRoundRect(
-                            color = Color.White,
-                            size = Size(size.width * (if (muted) 0 else volume) / 100f, size.height),
-                            cornerRadius = CornerRadius(size.height / 2f),
-                        )
-                    },
-            )
-        }
-    }
-}
-
-/** Everything a tile needs from the panel, bundled so tile call sites stay short. */
-private class TileEnv(
-    val requesters: Map<TileId, FocusRequester>,
-    val hasNowPlaying: Boolean,
-    val appear: (TileId) -> () -> Float,
-    val onFocused: (TileId) -> Unit,
-    val onActivate: (TileId) -> Unit,
-)
-
-@Composable
-private fun TileEnv.Tile(
-    id: TileId,
-    label: String,
-    radius: Dp,
-    modifier: Modifier,
-    stateText: String? = null,
-    onKey: (KeyEvent) -> Boolean = { false },
-    content: @Composable BoxScope.() -> Unit,
-) = GlassTile(
-    label = label,
-    cornerRadius = radius,
-    focusRequester = requesters.getValue(id),
-    focusProps = focusPropsFor(id, hasNowPlaying, requesters),
-    onActivate = { onActivate(id) },
-    modifier = modifier,
-    stateText = stateText,
-    appear = appear(id),
-    onFocused = { onFocused(id) },
-    onKey = onKey,
-    content = content,
-)
-
-@Composable
-private fun TileEnv.CircleTile(id: TileId, icon: ImageVector, labelRes: Int, modifier: Modifier) {
-    Tile(id, stringResource(labelRes), PanelDimens.circle / 2, modifier) {
-        TileIcon(icon, PanelDimens.iconSize, Modifier.align(Alignment.Center))
-    }
-}
-
-@Composable
-private fun BoxScope.CapsuleContent(icon: ImageVector, active: Boolean, title: String, detail: String?) {
-    Row(
-        Modifier.align(Alignment.CenterStart).padding(horizontal = PanelDimens.contentPadding),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        TileIcon(icon, PanelDimens.iconSize, tint = if (active) GlassTokens.activeIcon else Color.White)
-        Column {
-            Label(title)
-            detail?.let { Detail(it) }
-        }
-    }
-}
-
-@Composable
-private fun TileIcon(icon: ImageVector, size: Dp, modifier: Modifier = Modifier, tint: Color = Color.White) {
-    // Decorative: the tile itself carries the spoken label.
-    Icon(icon, contentDescription = null, modifier = modifier.size(size), tint = tint)
-}
-
-@Composable
-private fun Label(text: String, modifier: Modifier = Modifier) {
-    BasicText(
-        text, modifier.clearAndSetSemantics { },
-        style = PanelType.label.copy(color = GlassTokens.textPrimary),
-        maxLines = 2, overflow = TextOverflow.Ellipsis,
-    )
-}
-
-@Composable
-private fun Detail(text: String) {
-    BasicText(
-        text, Modifier.clearAndSetSemantics { },
-        style = PanelType.detail.copy(color = GlassTokens.textSecondary),
-        maxLines = 1, overflow = TextOverflow.Ellipsis,
-    )
-}
-
-/** Explicit D-pad edges from [FocusGraph]. A missing neighbour traps focus inside the panel. */
-@OptIn(ExperimentalComposeUiApi::class)
-private fun focusPropsFor(
-    id: TileId,
-    hasNowPlaying: Boolean,
-    requesters: Map<TileId, FocusRequester>,
-): FocusProperties.() -> Unit = {
-    fun target(dir: Dir): FocusRequester =
-        FocusGraph.neighbour(id, dir, hasNowPlaying)?.let(requesters::get) ?: FocusRequester.Cancel
-    up = target(Dir.UP)
-    down = target(Dir.DOWN)
-    left = target(Dir.LEFT)
-    right = target(Dir.RIGHT)
-}
-
-/** Normalised tile position, -1..1 on both axes. The wallpaper drifts the opposite way. */
-internal fun parallaxVector(id: TileId): Offset = when (id) {
-    TileId.POWER -> Offset(-0.5f, -0.8f)
-    TileId.WIFI -> Offset(0.5f, -0.9f)
-    TileId.DND -> Offset(0.5f, -0.5f)
-    TileId.BLUETOOTH -> Offset(-0.5f, -0.1f)
-    TileId.SLEEP_TIMER -> Offset(0.5f, -0.1f)
-    TileId.GAMEPAD -> Offset(-0.75f, 0.3f)
-    TileId.ACCESSIBILITY -> Offset(-0.25f, 0.3f)
-    TileId.LOCK -> Offset(0.25f, 0.3f)
-    TileId.SEARCH -> Offset(0.75f, 0.3f)
-    TileId.NOW_PLAYING -> Offset(0f, 0.7f)
-    TileId.VOLUME -> Offset(0f, 1f)
-    TileId.SETTINGS -> Offset(-1f, -0.9f)
-    TileId.DISPLAY -> Offset(-0.7f, -0.9f)
-    TileId.SOUND -> Offset(-1f, -0.5f)
-    TileId.CAPTIONS -> Offset(-0.7f, -0.5f)
-    TileId.SCREENSAVER -> Offset(-1f, -0.1f)
-    TileId.APPS -> Offset(-0.7f, -0.1f)
-    TileId.HOME -> Offset(-1f, 0.3f)
-    TileId.RECENTS -> Offset(-0.7f, 0.3f)
-    TileId.SCREENSHOT -> Offset(-1f, 0.7f)
-    TileId.NOTIFICATIONS -> Offset(-0.7f, 0.7f)
 }
