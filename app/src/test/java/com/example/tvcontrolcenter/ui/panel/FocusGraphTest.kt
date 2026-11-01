@@ -45,11 +45,54 @@ class FocusGraphTest {
         }
     }
 
-    @Test fun `focus is trapped at the panel edges`() {
-        assertNull(FocusGraph.neighbour(TileId.POWER, Dir.LEFT, false))
+    @Test fun `focus is trapped at the outer edges`() {
         assertNull(FocusGraph.neighbour(TileId.POWER, Dir.UP, false))
+        assertNull(FocusGraph.neighbour(TileId.SETTINGS, Dir.UP, false))
+        assertNull(FocusGraph.neighbour(TileId.SETTINGS, Dir.LEFT, false))
+        assertNull(FocusGraph.neighbour(TileId.SCREENSHOT, Dir.DOWN, false))
         assertNull(FocusGraph.neighbour(TileId.SEARCH, Dir.RIGHT, false))
         assertNull(FocusGraph.neighbour(TileId.VOLUME, Dir.DOWN, false))
+    }
+
+    @Test fun `power opens onto the quick actions on its left and back`() {
+        assertEquals(TileId.DISPLAY, FocusGraph.neighbour(TileId.POWER, Dir.LEFT, false))
+        assertEquals(TileId.POWER, FocusGraph.neighbour(TileId.DISPLAY, Dir.RIGHT, false))
+        assertEquals(TileId.POWER, FocusGraph.neighbour(TileId.CAPTIONS, Dir.RIGHT, false))
+    }
+
+    @Test fun `quick actions form a two column grid`() {
+        assertEquals(TileId.DISPLAY, FocusGraph.neighbour(TileId.SETTINGS, Dir.RIGHT, false))
+        assertEquals(TileId.SOUND, FocusGraph.neighbour(TileId.SETTINGS, Dir.DOWN, false))
+        assertEquals(TileId.SCREENSHOT, FocusGraph.neighbour(TileId.HOME, Dir.DOWN, false))
+        assertEquals(TileId.NOTIFICATIONS, FocusGraph.neighbour(TileId.SCREENSHOT, Dir.RIGHT, false))
+    }
+
+    @Test fun `quick action rows connect to the matching main rows`() {
+        assertEquals(TileId.BLUETOOTH, FocusGraph.neighbour(TileId.APPS, Dir.RIGHT, false))
+        assertEquals(TileId.GAMEPAD, FocusGraph.neighbour(TileId.RECENTS, Dir.RIGHT, false))
+        assertEquals(TileId.APPS, FocusGraph.neighbour(TileId.BLUETOOTH, Dir.LEFT, false))
+        assertEquals(TileId.RECENTS, FocusGraph.neighbour(TileId.GAMEPAD, Dir.LEFT, false))
+    }
+
+    @Test fun `notifications lead to now playing only when it is shown`() {
+        assertEquals(TileId.VOLUME, FocusGraph.neighbour(TileId.NOTIFICATIONS, Dir.RIGHT, false))
+        assertEquals(TileId.NOW_PLAYING, FocusGraph.neighbour(TileId.NOTIFICATIONS, Dir.RIGHT, true))
+    }
+
+    @Test fun `quick action links are reciprocal within the grid`() {
+        val grid = listOf(
+            listOf(TileId.SETTINGS, TileId.DISPLAY), listOf(TileId.SOUND, TileId.CAPTIONS),
+            listOf(TileId.SCREENSAVER, TileId.APPS), listOf(TileId.HOME, TileId.RECENTS),
+            listOf(TileId.SCREENSHOT, TileId.NOTIFICATIONS),
+        )
+        for (row in grid) {
+            assertEquals(row[1], FocusGraph.neighbour(row[0], Dir.RIGHT, false))
+            assertEquals(row[0], FocusGraph.neighbour(row[1], Dir.LEFT, false))
+        }
+        for (col in 0..1) for (r in 0 until grid.size - 1) {
+            assertEquals(grid[r + 1][col], FocusGraph.neighbour(grid[r][col], Dir.DOWN, false))
+            assertEquals(grid[r][col], FocusGraph.neighbour(grid[r + 1][col], Dir.UP, false))
+        }
     }
 
     @Test fun `top block order matches the reference layout`() {

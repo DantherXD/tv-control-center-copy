@@ -56,6 +56,7 @@ class AndroidSystemStatusSource @Inject constructor(
             dndEnabled = nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE ||
                 nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALARMS,
             volumePercent = volume,
+            muted = audio.isStreamMute(AudioManager.STREAM_MUSIC),
         )
     }
 

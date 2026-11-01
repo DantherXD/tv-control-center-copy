@@ -33,6 +33,7 @@ data class ControlCenterUiState(
     val status: SystemStatus = SystemStatus(),
     val nowPlaying: NowPlaying? = null,
     val volumePercent: Int = 0,
+    val muted: Boolean = false,
     val timerMinutes: Int? = null,
 ) {
     val hasNowPlaying: Boolean get() = nowPlaying != null
@@ -50,8 +51,10 @@ class ControlCenterViewModel @Inject constructor(
     private val focusMemory: FocusMemory,
 ) : ViewModel() {
 
+    // Volume and mute show the user's change at once; polling takes over after a moment.
     private val localVolume = MutableStateFlow<Int?>(null)
-    private var volumeJob: Job? = null
+    private val localMute = MutableStateFlow<Boolean?>(null)
+    private var overrideJob: Job? = null
 
     private val _events = MutableSharedFlow<PanelEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<PanelEvent> = _events.asSharedFlow()
@@ -61,7 +64,8 @@ class ControlCenterViewModel @Inject constructor(
         nowPlayingSource.nowPlaying,
         sleepTimer.remainingMinutes,
         localVolume,
-    ) { status, playing, timer, overrideVolume ->
+        localMute,
+    ) { status, playing, timer, overrideVolume, overrideMute ->
         val tiles = listOf(
             TileState(TileId.POWER),
             TileState(TileId.WIFI, active = status.network != NetworkKind.NONE),
@@ -78,6 +82,7 @@ class ControlCenterViewModel @Inject constructor(
             status = status,
             nowPlaying = playing,
             volumePercent = overrideVolume ?: status.volumePercent,
+            muted = overrideMute ?: status.muted,
             timerMinutes = timer,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ControlCenterUiState())
@@ -110,7 +115,18 @@ class ControlCenterViewModel @Inject constructor(
                 if (nowPlayingSource.hasAccess()) nowPlayingSource.togglePlayPause()
                 else _events.tryEmit(PanelEvent.NeedsCapability(Capability.NOTIFICATION_LISTENER))
             }
-            TileId.VOLUME -> Unit // adjusted with left/right, see onVolumeStep
+            TileId.VOLUME -> toggleMute(state.muted)
+
+            TileId.SETTINGS -> handle(actions.openSettings(), dismissOnDone = true, tile = id)
+            TileId.DISPLAY -> handle(actions.openDisplaySettings(), dismissOnDone = true, tile = id)
+            TileId.SOUND -> handle(actions.openSoundSettings(), dismissOnDone = true, tile = id)
+            TileId.CAPTIONS -> handle(actions.openCaptionSettings(), dismissOnDone = true, tile = id)
+            TileId.SCREENSAVER -> handle(actions.openScreensaverSettings(), dismissOnDone = true, tile = id)
+            TileId.APPS -> handle(actions.openAppsSettings(), dismissOnDone = true, tile = id)
+            TileId.HOME -> handle(actions.goHome(), dismissOnDone = true, tile = id)
+            TileId.RECENTS -> handle(actions.showRecents(), dismissOnDone = true, tile = id)
+            TileId.SCREENSHOT -> handle(actions.takeScreenshot(), dismissOnDone = true, tile = id)
+            TileId.NOTIFICATIONS -> handle(actions.showNotifications(), dismissOnDone = true, tile = id)
         }
     }
 
@@ -118,17 +134,33 @@ class ControlCenterViewModel @Inject constructor(
     fun onVolumeStep(deltaPercent: Int) {
         val next = (uiState.value.volumePercent + deltaPercent).coerceIn(0, 100)
         localVolume.value = next
+        if (next > 0) localMute.value = false // raising the volume unmutes the stream
         actions.setVolumePercent(next)
-        volumeJob?.cancel()
-        volumeJob = viewModelScope.launch {
-            delay(VOLUME_OVERRIDE_MS)
-            localVolume.value = null
-        }
+        scheduleOverrideReset()
     }
 
     fun onSkipNext() = nowPlayingSource.skipNext()
 
     fun onSkipPrevious() = nowPlayingSource.skipPrevious()
+
+    private fun toggleMute(currentlyMuted: Boolean) {
+        val result = actions.toggleMute()
+        if (result == ActionResult.Done) {
+            localMute.value = !currentlyMuted
+            scheduleOverrideReset()
+        } else {
+            handle(result, tile = TileId.VOLUME)
+        }
+    }
+
+    private fun scheduleOverrideReset() {
+        overrideJob?.cancel()
+        overrideJob = viewModelScope.launch {
+            delay(OVERRIDE_MS)
+            localVolume.value = null
+            localMute.value = null
+        }
+    }
 
     private fun handle(result: ActionResult, dismissOnDone: Boolean = false, tile: TileId = TileId.POWER) {
         when (result) {
@@ -140,6 +172,6 @@ class ControlCenterViewModel @Inject constructor(
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
-        const val VOLUME_OVERRIDE_MS = 2_500L
+        const val OVERRIDE_MS = 2_500L
     }
 }

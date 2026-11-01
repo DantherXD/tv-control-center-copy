@@ -38,6 +38,17 @@ class FakeActions : SystemActions {
     }
     override fun powerOff() = record("power")
     override fun sleepScreen() = record("sleep")
+    override fun toggleMute() = record("mute")
+    override fun openSettings() = record("settings")
+    override fun openDisplaySettings() = record("display")
+    override fun openSoundSettings() = record("sound")
+    override fun openCaptionSettings() = record("captions")
+    override fun openScreensaverSettings() = record("screensaver")
+    override fun openAppsSettings() = record("apps")
+    override fun goHome() = record("home")
+    override fun showRecents() = record("recents")
+    override fun takeScreenshot() = record("screenshot")
+    override fun showNotifications() = record("notifications")
 
     private fun record(name: String): ActionResult { calls += name; return result }
 }

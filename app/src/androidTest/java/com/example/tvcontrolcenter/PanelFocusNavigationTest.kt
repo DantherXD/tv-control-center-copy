@@ -62,12 +62,30 @@ class PanelFocusNavigationTest {
         rule.onNodeWithContentDescription("Bluetooth").assertIsFocused()
     }
 
-    @Test fun focusIsTrappedAtTheEdges() {
+    @Test fun focusIsTrappedAtTheTopEdge() {
         launch()
-        press(Key.DirectionLeft)
-        rule.onNodeWithContentDescription("Power Off").assertIsFocused()
         press(Key.DirectionUp)
         rule.onNodeWithContentDescription("Power Off").assertIsFocused()
+    }
+
+    @Test fun leftFromPowerEntersTheQuickActions() {
+        launch()
+        press(Key.DirectionLeft)
+        rule.onNodeWithContentDescription("Display").assertIsFocused()
+        press(Key.DirectionLeft)
+        rule.onNodeWithContentDescription("Settings").assertIsFocused()
+        press(Key.DirectionLeft)
+        rule.onNodeWithContentDescription("Settings").assertIsFocused()
+        press(Key.DirectionDown)
+        rule.onNodeWithContentDescription("Sound").assertIsFocused()
+    }
+
+    @Test fun quickActionRunsItsSystemAction() {
+        launch()
+        press(Key.DirectionLeft)
+        press(Key.DirectionLeft)
+        press(Key.DirectionCenter)
+        assert(actions.calls.contains("settings"))
     }
 
     @Test fun reachesTheBottomRowAndVolume() {
@@ -102,7 +120,9 @@ class PanelFocusNavigationTest {
     @Test fun everyTileMeetsTheMinimumTargetSize() {
         launch()
         listOf("Power Off", "Wi-Fi", "Do Not Disturb", "Bluetooth", "Sleep Timer",
-            "Game controllers", "Accessibility", "Lock screen", "Search", "Volume").forEach {
+            "Game controllers", "Accessibility", "Lock screen", "Search", "Volume",
+            "Settings", "Display", "Sound", "Captions", "Screen saver", "Apps",
+            "Home", "Recent apps", "Screenshot", "Notifications").forEach {
             rule.onNodeWithContentDescription(it).assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
         }
     }

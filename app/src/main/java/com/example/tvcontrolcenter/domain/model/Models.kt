@@ -5,6 +5,9 @@ enum class TileId {
     POWER, WIFI, DND, BLUETOOTH, SLEEP_TIMER,
     GAMEPAD, ACCESSIBILITY, LOCK, SEARCH,
     NOW_PLAYING, VOLUME,
+    // Quick actions column, Google TV style.
+    SETTINGS, DISPLAY, SOUND, CAPTIONS, SCREENSAVER, APPS,
+    HOME, RECENTS, SCREENSHOT, NOTIFICATIONS,
 }
 
 enum class NetworkKind { WIFI, ETHERNET, NONE }
@@ -16,6 +19,7 @@ data class SystemStatus(
     val audioDeviceName: String? = null,
     val dndEnabled: Boolean = false,
     val volumePercent: Int = 0,
+    val muted: Boolean = false,
 )
 
 data class NowPlaying(

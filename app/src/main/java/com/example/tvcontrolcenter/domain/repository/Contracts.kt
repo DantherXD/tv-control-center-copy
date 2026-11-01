@@ -26,6 +26,24 @@ interface SystemActions {
     fun powerOff(): ActionResult
     /** Turns the screen off / locks via the accessibility service. */
     fun sleepScreen(): ActionResult
+
+    fun toggleMute(): ActionResult
+    fun openSettings(): ActionResult
+    fun openDisplaySettings(): ActionResult
+    fun openSoundSettings(): ActionResult
+    fun openCaptionSettings(): ActionResult
+    fun openScreensaverSettings(): ActionResult
+    fun openAppsSettings(): ActionResult
+
+    /**
+     * Home, recents, screenshot and notifications use the accessibility service and run a moment
+     * after the panel closes, so the panel is not in the screenshot or on top of recents.
+     * Without the service they return [ActionResult.NeedsCapability] (Home has an intent fallback).
+     */
+    fun goHome(): ActionResult
+    fun showRecents(): ActionResult
+    fun takeScreenshot(): ActionResult
+    fun showNotifications(): ActionResult
 }
 
 interface NowPlayingSource {

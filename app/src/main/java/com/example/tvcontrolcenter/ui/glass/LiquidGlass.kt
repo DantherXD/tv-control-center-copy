@@ -104,7 +104,7 @@ internal class FallbackGlassPainter(private val backdrop: GlassBackdrop?) : Glas
                 )
                 drawRect(frame.tint.copy(alpha = frame.tintAmount))
             } else {
-                drawRect(frame.tint.copy(alpha = 0.30f + 0.5f * frame.tintAmount))
+                drawRect(frame.tint.copy(alpha = 0.46f + 0.5f * frame.tintAmount))
             }
             drawRect(
                 Brush.verticalGradient(
@@ -165,8 +165,9 @@ fun Modifier.liquidGlass(
         .drawBehind {
             val f = focus().coerceIn(0f, 1f)
             val center = origin + Offset(size.width / 2f, size.height / 2f)
-            val bright = backdrop?.luminanceAt(center) ?: 0f
-            val lightBehind = bright > GlassTokens.luminanceSwitch
+            // Without our own wallpaper (overlay mode) the content behind is unknown, so assume it
+            // can be bright and use dark glass: white text stays readable over anything.
+            val lightBehind = backdrop?.let { it.luminanceAt(center) > GlassTokens.luminanceSwitch } ?: true
             painter.draw(
                 this,
                 GlassFrame(

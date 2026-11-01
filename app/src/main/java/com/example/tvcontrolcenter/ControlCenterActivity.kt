@@ -1,0 +1,92 @@
+package com.example.tvcontrolcenter
+
+import android.content.Intent
+import android.os.Build
+import android.os.Bundle
+import android.view.WindowManager
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import com.example.tvcontrolcenter.di.ControlCenterEntryPoint
+import com.example.tvcontrolcenter.system.openCapabilitySettings
+import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
+import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
+import com.example.tvcontrolcenter.ui.theme.ControlCenterTheme
+
+/**
+ * Opens the Control Center on top of whatever app is in front.
+ *
+ * The window is transparent, so the app underneath stays visible behind the glass (blurred
+ * on Android 12+ devices that allow window blur). Start it from anywhere: a remote-button
+ * remapper, the launcher row, or
+ *
+ *     adb shell am start -a com.example.tvcontrolcenter.action.OPEN
+ *
+ * Starting it again while it is open closes it. It finishes by itself when it loses the
+ * screen, so it never lingers in recents.
+ *
+ * Trade-off: unlike the accessibility overlay, the app underneath receives onPause, so some
+ * players pause while the panel is open. The overlay path (long-press Menu with the
+ * accessibility service on) does not pause anything.
+ */
+class ControlCenterActivity : ComponentActivity() {
+
+    private val viewModel: ControlCenterViewModel by viewModels {
+        ControlCenterEntryPoint.from(this).viewModelFactory()
+    }
+
+    private var visible by mutableStateOf(false)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        configureWindow()
+        setContent {
+            ControlCenterTheme {
+                ControlCenterHost(
+                    viewModel = viewModel,
+                    visible = visible,
+                    onDismissRequest = { visible = false },
+                    onClosed = { if (!visible) finish() },
+                    onCapability = { openCapabilitySettings(it) },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        visible = true
+    }
+
+    /** singleTask re-launch: a second start closes the panel, a start while closing reopens it. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        visible = !visible
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) finish()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun configureWindow() {
+        window.setBackgroundDrawableResource(android.R.color.transparent)
+        val params = window.attributes
+        params.dimAmount = DIM_AMOUNT
+        window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Real blur of the app underneath, where the device allows cross-window blur.
+            window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+            params.blurBehindRadius = BLUR_RADIUS_PX
+        }
+        window.attributes = params
+    }
+
+    private companion object {
+        const val DIM_AMOUNT = 0.22f
+        const val BLUR_RADIUS_PX = 48
+    }
+}

@@ -17,6 +17,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Accessibility
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.ClosedCaption
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Speaker
+import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Headphones
@@ -31,6 +42,7 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -86,6 +98,9 @@ import kotlinx.coroutines.launch
 
 private const val VOLUME_STEP = 5
 
+/** Tiles are staggered in groups, so the 21 tiles do not take 21 steps to settle. */
+private const val STAGGER_GROUP = 11
+
 /**
  * The Control Center panel plus its open/close choreography.
  *
@@ -125,7 +140,7 @@ fun ControlCenterHost(
             launch {
                 TileId.entries.forEachIndexed { index, id ->
                     launch {
-                        delay(index * Motion.staggerMillis)
+                        delay((index % STAGGER_GROUP) * Motion.staggerMillis)
                         tileProgress.getValue(id).animateTo(1f, Motion.tileSpring())
                     }
                 }
@@ -226,17 +241,74 @@ private fun PanelContent(
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit,
 ) {
-    val hasNowPlaying = state.hasNowPlaying
+    val env = TileEnv(requesters, state.hasNowPlaying, appear, onFocused, onActivate)
+    Row(horizontalArrangement = Arrangement.spacedBy(PanelDimens.gap)) {
+        Column(verticalArrangement = Arrangement.spacedBy(PanelDimens.gap)) {
+            env.QuickActions()
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(PanelDimens.gap)) {
+            env.MainTiles(state, onVolumeStep, onSkipNext, onSkipPrevious)
+        }
+    }
+}
+
+private class QuickAction(val id: TileId, val icon: ImageVector, @StringRes val label: Int)
+
+/** Two columns, five rows. Rows line up with the main cluster so D-pad moves feel straight. */
+private val QuickActionRows: List<List<QuickAction>> = listOf(
+    listOf(
+        QuickAction(TileId.SETTINGS, Icons.Filled.Settings, R.string.tile_settings),
+        QuickAction(TileId.DISPLAY, Icons.Filled.Tv, R.string.tile_display),
+    ),
+    listOf(
+        QuickAction(TileId.SOUND, Icons.Filled.Speaker, R.string.tile_sound),
+        QuickAction(TileId.CAPTIONS, Icons.Filled.ClosedCaption, R.string.tile_captions),
+    ),
+    listOf(
+        QuickAction(TileId.SCREENSAVER, Icons.Filled.PhotoLibrary, R.string.tile_screensaver),
+        QuickAction(TileId.APPS, Icons.Filled.Apps, R.string.tile_apps),
+    ),
+    listOf(
+        QuickAction(TileId.HOME, Icons.Filled.Home, R.string.tile_home),
+        QuickAction(TileId.RECENTS, Icons.Filled.Layers, R.string.tile_recents),
+    ),
+    listOf(
+        QuickAction(TileId.SCREENSHOT, Icons.Filled.CameraAlt, R.string.tile_screenshot),
+        QuickAction(TileId.NOTIFICATIONS, Icons.Filled.Notifications, R.string.tile_notifications),
+    ),
+)
+
+/** Google TV-style quick actions: labelled capsules for the settings people reach for most. */
+@Composable
+private fun TileEnv.QuickActions() {
+    val size = Modifier.size(PanelDimens.extraWidth, PanelDimens.capsuleHeight)
+    QuickActionRows.forEach { row ->
+        Row(horizontalArrangement = Arrangement.spacedBy(PanelDimens.gap)) {
+            row.forEach { action ->
+                val label = stringResource(action.label)
+                Tile(action.id, label, PanelDimens.capsuleRadius, size) {
+                    CapsuleContent(action.icon, false, label, null)
+                }
+            }
+        }
+    }
+}
+
+/** The tvOS-style cluster: power, network, Bluetooth, shortcuts, now playing and volume. */
+@Composable
+private fun TileEnv.MainTiles(
+    state: ControlCenterUiState,
+    onVolumeStep: (Int) -> Unit,
+    onSkipNext: () -> Unit,
+    onSkipPrevious: () -> Unit,
+) {
     val gap = PanelDimens.gap
-
-    val env = TileEnv(requesters, hasNowPlaying, appear, onFocused, onActivate)
-
     val on = stringResource(R.string.state_on)
     val off = stringResource(R.string.state_off)
     val capsule = Modifier.size(PanelDimens.capsuleWidth, PanelDimens.capsuleHeight)
 
     Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-        env.Tile(
+        Tile(
             TileId.POWER, stringResource(R.string.tile_power), PanelDimens.powerRadius,
             Modifier.size(PanelDimens.capsuleWidth, PanelDimens.tallTile),
         ) {
@@ -252,7 +324,7 @@ private fun PanelContent(
                 NetworkKind.ETHERNET -> "Ethernet"
                 NetworkKind.NONE -> stringResource(R.string.state_off)
             }
-            env.Tile(TileId.WIFI, stringResource(R.string.tile_wifi), PanelDimens.capsuleRadius, capsule, wifiDetail) {
+            Tile(TileId.WIFI, stringResource(R.string.tile_wifi), PanelDimens.capsuleRadius, capsule, wifiDetail) {
                 CapsuleContent(
                     icon = if (net == NetworkKind.NONE) Icons.Filled.WifiOff else Icons.Filled.Wifi,
                     active = net != NetworkKind.NONE,
@@ -261,7 +333,7 @@ private fun PanelContent(
                 )
             }
             val dnd = state.status.dndEnabled
-            env.Tile(TileId.DND, stringResource(R.string.tile_dnd), PanelDimens.capsuleRadius, capsule, if (dnd) on else off) {
+            Tile(TileId.DND, stringResource(R.string.tile_dnd), PanelDimens.capsuleRadius, capsule, if (dnd) on else off) {
                 CapsuleContent(Icons.Filled.DarkMode, dnd, stringResource(R.string.tile_dnd), null)
             }
         }
@@ -270,7 +342,7 @@ private fun PanelContent(
     Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
         val bt = state.tiles[TileId.BLUETOOTH]
         val btDetail = bt?.detail ?: if (bt?.active == true) on else off
-        env.Tile(TileId.BLUETOOTH, stringResource(R.string.tile_bluetooth), PanelDimens.capsuleRadius, capsule, btDetail) {
+        Tile(TileId.BLUETOOTH, stringResource(R.string.tile_bluetooth), PanelDimens.capsuleRadius, capsule, btDetail) {
             CapsuleContent(
                 Icons.Filled.Headphones, bt?.active == true,
                 bt?.detail ?: stringResource(R.string.tile_bluetooth),
@@ -279,23 +351,23 @@ private fun PanelContent(
         }
         val sleep = state.tiles[TileId.SLEEP_TIMER]
         val sleepDetail = sleep?.detail ?: off
-        env.Tile(TileId.SLEEP_TIMER, stringResource(R.string.tile_sleep_timer), PanelDimens.capsuleRadius, capsule, sleepDetail) {
+        Tile(TileId.SLEEP_TIMER, stringResource(R.string.tile_sleep_timer), PanelDimens.capsuleRadius, capsule, sleepDetail) {
             CapsuleContent(Icons.Filled.Timer, sleep?.active == true, stringResource(R.string.tile_sleep_timer), sleepDetail)
         }
     }
 
     Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
         val circle = Modifier.size(PanelDimens.circle)
-        env.CircleTile(TileId.GAMEPAD, Icons.Filled.SportsEsports, R.string.tile_gamepad, circle)
-        env.CircleTile(TileId.ACCESSIBILITY, Icons.Filled.Accessibility, R.string.tile_accessibility, circle)
-        env.CircleTile(TileId.LOCK, Icons.Filled.Lock, R.string.tile_lock, circle)
-        env.CircleTile(TileId.SEARCH, Icons.Filled.Search, R.string.tile_search, circle)
+        CircleTile(TileId.GAMEPAD, Icons.Filled.SportsEsports, R.string.tile_gamepad, circle)
+        CircleTile(TileId.ACCESSIBILITY, Icons.Filled.Accessibility, R.string.tile_accessibility, circle)
+        CircleTile(TileId.LOCK, Icons.Filled.Lock, R.string.tile_lock, circle)
+        CircleTile(TileId.SEARCH, Icons.Filled.Search, R.string.tile_search, circle)
     }
 
     val wide = Modifier.size(PanelDimens.panelWidth, PanelDimens.wideHeight)
 
     state.nowPlaying?.let { np ->
-        env.Tile(
+        Tile(
             TileId.NOW_PLAYING, stringResource(R.string.now_playing) + ", " + np.title,
             PanelDimens.capsuleRadius, wide,
             onKey = { e ->
@@ -322,8 +394,10 @@ private fun PanelContent(
     }
 
     val volume = state.volumePercent
-    env.Tile(
-        TileId.VOLUME, stringResource(R.string.tile_volume), PanelDimens.capsuleRadius, wide, "$volume%",
+    val muted = state.muted
+    val mutedText = stringResource(R.string.state_muted)
+    Tile(
+        TileId.VOLUME, stringResource(R.string.tile_volume), PanelDimens.capsuleRadius, wide, if (muted) mutedText else "$volume%",
         onKey = { e ->
             when (e.key) {
                 Key.DirectionRight -> { if (e.type == KeyEventType.KeyDown) onVolumeStep(VOLUME_STEP); true }
@@ -337,7 +411,7 @@ private fun PanelContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            TileIcon(Icons.Filled.VolumeUp, PanelDimens.iconSize)
+            TileIcon(if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp, PanelDimens.iconSize)
             Box(
                 Modifier
                     .weight(1f)
@@ -347,7 +421,7 @@ private fun PanelContent(
                     .drawBehind {
                         drawRoundRect(
                             color = Color.White,
-                            size = Size(size.width * volume / 100f, size.height),
+                            size = Size(size.width * (if (muted) 0 else volume) / 100f, size.height),
                             cornerRadius = CornerRadius(size.height / 2f),
                         )
                     },
@@ -462,4 +536,14 @@ internal fun parallaxVector(id: TileId): Offset = when (id) {
     TileId.SEARCH -> Offset(0.75f, 0.3f)
     TileId.NOW_PLAYING -> Offset(0f, 0.7f)
     TileId.VOLUME -> Offset(0f, 1f)
+    TileId.SETTINGS -> Offset(-1f, -0.9f)
+    TileId.DISPLAY -> Offset(-0.7f, -0.9f)
+    TileId.SOUND -> Offset(-1f, -0.5f)
+    TileId.CAPTIONS -> Offset(-0.7f, -0.5f)
+    TileId.SCREENSAVER -> Offset(-1f, -0.1f)
+    TileId.APPS -> Offset(-0.7f, -0.1f)
+    TileId.HOME -> Offset(-1f, 0.3f)
+    TileId.RECENTS -> Offset(-0.7f, 0.3f)
+    TileId.SCREENSHOT -> Offset(-1f, 0.7f)
+    TileId.NOTIFICATIONS -> Offset(-0.7f, 0.7f)
 }

@@ -16,13 +16,36 @@ and the forest wallpaper is generated procedurally.
 3. Run the `app` configuration on an Android TV emulator or device (API 26+, best on API 33+).
 4. Unit tests: `./gradlew testDebugUnitTest`. Compose D-pad tests (need a device or emulator): `./gradlew connectedDebugAndroidTest`.
 
+## Continuous integration
+
+`.github/workflows/android.yml` runs on every push to `main` and every pull request: unit tests, lint, then `assembleDebug`.
+The debug APK and the reports are uploaded as run artifacts (Actions tab, open a run, Artifacts section).
+To also run the Compose focus tests on an Android TV emulator, use **Actions > Android CI > Run workflow** and tick the option.
+Since the source has not been compiled yet, the first CI run is the first real build; fix whatever it reports.
+
 ## Using it
 
 | Where | How |
 |---|---|
 | In this app (demo) | Press **OK** on the wallpaper, or **long-press Menu**. |
-| Over any app | Enable **Control Center key trigger** under Accessibility settings (button in the demo screen). Then long-press **Menu** or **Settings** anywhere. Keys are listed in `ControlCenterAccessibilityService.TRIGGER_KEYS`. |
+| Over any app, as an activity | Launch **Open Control Center** (second entry in the launcher row), or run `adb shell am start -a com.example.tvcontrolcenter.action.OPEN`. Assign it to a remote button with any button-remapper app or a remote that can launch apps. Launching it again closes it. |
+| Over any app, as an overlay | Enable **Control Center key trigger** under Accessibility settings (button in the demo screen). Then long-press **Menu** or **Settings** anywhere. Keys are listed in `ControlCenterAccessibilityService.TRIGGER_KEYS`. |
 | Overlay without accessibility | Tap **Grant overlay permission**, then the same button toggles an overlay window (`OverlayService`, needs "display over other apps"). |
+
+### Quick actions
+
+The panel has two parts. The **main cluster** on the right is the tvOS-style layout. The **quick actions** column on its left is a
+Google TV-style grid of labelled shortcuts. From the main cluster, press Left on Power, Bluetooth or Game controllers to enter it.
+
+| Quick action | What it does | Needs |
+|---|---|---|
+| Settings, Display, Sound, Captions, Screen saver, Apps | Opens that settings screen (falls back to Settings if the TV build lacks it) | nothing |
+| Home | Goes to the launcher | Accessibility service (intent fallback without it) |
+| Recent apps, Notifications | Opens the system recents or notification shade | Accessibility service |
+| Screenshot | Closes the panel, then takes a screenshot (Android 9+) | Accessibility service |
+| Volume tile, OK | Mutes or unmutes | nothing |
+
+Home, Recent apps, Screenshot and Notifications run about 0.6 s after the panel closes, so the panel is not in the picture.
 
 D-pad: arrows move focus, **OK** activates, **Back** closes. On the Volume tile, Left/Right change volume. On Now Playing, Left/Right skip tracks and OK plays or pauses. Focus is trapped inside the panel, and the last focused tile is restored on the next open.
 
@@ -75,6 +98,10 @@ ui/demo/       demo scene hosting the panel
 * **Overlay over other apps has no refraction.** Android never lets an app read pixels of other apps, so the AGSL path works only
   where the backdrop is this app's own image. The overlay uses real window blur-behind (`FLAG_BLUR_BEHIND`, Android 12+) on
   devices with cross-window blur enabled, and the tinted fallback elsewhere.
+* **The activity pauses the app underneath.** `ControlCenterActivity` is a transparent window on top of the running app, so the app gets `onPause`
+  and some players stop. The accessibility overlay (long-press Menu with the service enabled) pauses nothing, but needs that service.
+* **No wallpaper behind the glass in the activity or overlay.** Glass assumes bright content and uses dark tint so white text stays readable. Real blur of
+  the app underneath needs Android 12+ and a device that enables cross-window blur.
 * **Long-press Menu is not guaranteed.** Many Android TV remotes never deliver Menu, and Home is never delivered. Use
   Settings or remap in `TRIGGER_KEYS`.
 * **Power Off** opens the system power dialog (Android 12+ via accessibility) or turns the screen off. Android cannot power a device off.

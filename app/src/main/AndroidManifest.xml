@@ -31,6 +31,32 @@
             </intent-filter>
         </activity>
 
+        <!--
+            Opens the panel on top of whatever app is running. Start it from a remote-button
+            remapper, a launcher shortcut or adb:
+              adb shell am start -a com.example.tvcontrolcenter.action.OPEN
+            Starting it while it is open closes it again.
+        -->
+        <activity
+            android:name=".ControlCenterActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:icon="@drawable/ic_launcher"
+            android:banner="@drawable/banner"
+            android:label="@string/open_control_center"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/Theme.TvControlCenter.Overlay">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.example.tvcontrolcenter.action.OPEN" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <!-- Opens the panel over other apps through a dedicated remote key. -->
         <service
             android:name=".system.trigger.ControlCenterAccessibilityService"

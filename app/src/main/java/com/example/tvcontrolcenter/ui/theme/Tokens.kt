@@ -22,6 +22,7 @@ object PanelDimens {
     val gap = 12.dp
     val tallTile = 132.dp          // POWER: two capsules plus one gap
     val capsuleWidth = 132.dp
+    val extraWidth = 176.dp        // quick-action capsules: wide enough for "Notifications"
     val capsuleHeight = 60.dp      // (132 - 12) / 2
     val circle = 60.dp
     val panelWidth = capsuleWidth * 2 + gap   // 276dp, equals four circles plus three gaps

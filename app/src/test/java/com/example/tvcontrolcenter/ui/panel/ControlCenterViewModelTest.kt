@@ -200,4 +200,74 @@ class ControlCenterViewModelTest {
         viewModel().onOpened()
         assertEquals(listOf("refresh"), nowPlaying.calls)
     }
+
+    @Test
+    fun `every quick action calls its system action and dismisses the panel`() = runTest {
+        val expected = mapOf(
+            TileId.SETTINGS to "settings", TileId.DISPLAY to "display", TileId.SOUND to "sound",
+            TileId.CAPTIONS to "captions", TileId.SCREENSAVER to "screensaver", TileId.APPS to "apps",
+            TileId.HOME to "home", TileId.RECENTS to "recents", TileId.SCREENSHOT to "screenshot",
+            TileId.NOTIFICATIONS to "notifications",
+        )
+        val vm = viewModel()
+        vm.events.test {
+            for ((tile, call) in expected) {
+                vm.onTileActivated(tile)
+                assertEquals(PanelEvent.Dismiss, awaitItem())
+                assertEquals(call, actions.calls.last())
+            }
+        }
+    }
+
+    @Test
+    fun `global actions without the accessibility service ask for it`() = runTest {
+        actions.result = ActionResult.NeedsCapability(Capability.ACCESSIBILITY_SERVICE)
+        val vm = viewModel()
+        vm.events.test {
+            for (tile in listOf(TileId.HOME, TileId.RECENTS, TileId.SCREENSHOT, TileId.NOTIFICATIONS)) {
+                vm.onTileActivated(tile)
+                assertEquals(PanelEvent.NeedsCapability(Capability.ACCESSIBILITY_SERVICE), awaitItem())
+            }
+        }
+    }
+
+    @Test
+    fun `volume tile toggles mute and shows it at once`() = runTest {
+        val vm = viewModel()
+        collecting(vm)
+        assertFalse(vm.uiState.value.muted)
+        vm.onTileActivated(TileId.VOLUME)
+        assertTrue(vm.uiState.value.muted)
+        assertEquals(listOf("mute"), actions.calls)
+    }
+
+    @Test
+    fun `mute state comes from the system when there is no local change`() = runTest {
+        status.state.value = SystemStatus(muted = true)
+        val vm = viewModel()
+        collecting(vm)
+        assertTrue(vm.uiState.value.muted)
+    }
+
+    @Test
+    fun `a failed mute does not flip the display`() = runTest {
+        actions.result = ActionResult.Unavailable
+        val vm = viewModel()
+        collecting(vm)
+        vm.events.test {
+            vm.onTileActivated(TileId.VOLUME)
+            assertEquals(PanelEvent.Unavailable(TileId.VOLUME), awaitItem())
+        }
+        assertFalse(vm.uiState.value.muted)
+    }
+
+    @Test
+    fun `raising the volume while muted unmutes`() = runTest {
+        status.state.value = SystemStatus(volumePercent = 20, muted = true)
+        val vm = viewModel()
+        collecting(vm)
+        vm.onVolumeStep(5)
+        assertFalse(vm.uiState.value.muted)
+        assertEquals(25, vm.uiState.value.volumePercent)
+    }
 }
