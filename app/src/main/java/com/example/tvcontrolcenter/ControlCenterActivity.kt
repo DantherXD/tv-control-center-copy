@@ -40,7 +40,7 @@ class ControlCenterActivity : ComponentActivity() {
         ControlCenterEntryPoint.from(this).viewModelFactory()
     }
 
-    private var visible by mutableStateOf(false)
+    private var panelOpen by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,21 +49,21 @@ class ControlCenterActivity : ComponentActivity() {
             ControlCenterTheme {
                 ControlCenterHost(
                     viewModel = viewModel,
-                    visible = visible,
-                    onDismissRequest = { visible = false },
-                    onClosed = { if (!visible) finish() },
+                    visible = panelOpen,
+                    onDismissRequest = { panelOpen = false },
+                    onClosed = { if (!panelOpen) finish() },
                     onCapability = { openCapabilitySettings(it) },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
         }
-        visible = true
+        panelOpen = true
     }
 
     /** singleTask re-launch: a second start closes the panel, a start while closing reopens it. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        visible = !visible
+        panelOpen = !panelOpen
     }
 
     override fun onStop() {
