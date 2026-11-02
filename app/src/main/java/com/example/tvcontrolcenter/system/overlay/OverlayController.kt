@@ -83,7 +83,7 @@ class OverlayController(
     private var host: OverlayHost? = null
     private var visible by mutableStateOf(false)
     private var backdrop by mutableStateOf<Backdrop?>(null)
-    private var layoutParams: WindowManager.LayoutParams? = null
+    private var windowParams: WindowManager.LayoutParams? = null
     private var windowBlurOn = false
 
     /** False once [hide] was called, so a screenshot that arrives late cannot reopen the panel. */
@@ -120,7 +120,7 @@ class OverlayController(
                         backdrop = if (settings.blurMethod == BlurMethod.WINDOW) null else BackdropCapture.capture(level)
                         // Auto: no picture (old Android, DRM video, slow device) -> blur the whole screen.
                         if (backdrop == null && settings.blurMethod == BlurMethod.AUTO && !windowBlurOn) {
-                            val p = layoutParams
+                            val p = windowParams
                             val v = view
                             if (p != null && v != null && p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))) {
                                 windowBlurOn = true
@@ -167,7 +167,7 @@ class OverlayController(
                 (s.blurMethod == BlurMethod.AUTO && !BackdropCapture.isSupported)
             if (wantsWindow && applyBlurFallback(windowManager, BlurLevels.windowRadius(s.effectiveBlur))) windowBlurOn = true
         }
-        layoutParams = params
+        windowParams = params
 
         view = composeView
         host = newHost
