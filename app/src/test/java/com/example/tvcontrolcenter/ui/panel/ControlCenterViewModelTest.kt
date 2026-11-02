@@ -183,8 +183,8 @@ class ControlCenterViewModelTest {
         assertEquals(TileId.SCREENSHOT, vm.uiState.value.layout.items.last().id)
         vm.moveTile(TileId.POWER, 1)
         assertEquals(TileId.WIFI, vm.uiState.value.layout.items.first().id)
-        vm.resizeTileBy(TileId.HOME, 1) // from the top bar, the last size, round to the first
-        assertEquals(TileSize.SMALL, vm.uiState.value.layout.item(TileId.HOME)?.size)
+        vm.resizeTileBy(TileId.HOME, 1) // Small steps to Wide
+        assertEquals(TileSize.WIDE, vm.uiState.value.layout.item(TileId.HOME)?.size)
         vm.resetLayout()
         assertEquals(com.example.tvcontrolcenter.domain.model.PanelLayout.Default, vm.uiState.value.layout)
     }
