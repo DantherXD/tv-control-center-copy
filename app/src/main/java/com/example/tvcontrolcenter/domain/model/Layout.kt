@@ -24,7 +24,6 @@ import com.example.tvcontrolcenter.domain.model.TileId.SLEEP_TIMER
 import com.example.tvcontrolcenter.domain.model.TileId.SOUND
 import com.example.tvcontrolcenter.domain.model.TileId.VOLUME
 import com.example.tvcontrolcenter.domain.model.TileId.WIFI
-import kotlin.math.abs
 
 /**
  * Footprint of a control on the 4-column grid. Every control can take every size.
