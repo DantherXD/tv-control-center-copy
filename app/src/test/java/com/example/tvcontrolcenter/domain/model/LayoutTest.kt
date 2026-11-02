@@ -26,8 +26,15 @@ class LayoutTest {
 
     private val default = PanelLayout.Default
 
+    private fun shown(withNowPlaying: Boolean, layout: PanelLayout = default) =
+        layout.visibleItems().filter { it.id != NOW_PLAYING || withNowPlaying }
+
     private fun packed(withNowPlaying: Boolean, layout: PanelLayout = default) =
-        GridPacker.pack(layout.visibleItems().filter { it.id != NOW_PLAYING || withNowPlaying })
+        GridPacker.pack(shown(withNowPlaying, layout))
+
+    /** What the panel navigates over: the top bar plus the grid. */
+    private fun nav(withNowPlaying: Boolean, layout: PanelLayout = default) =
+        GridPacker.pinned(shown(withNowPlaying, layout)) + packed(withNowPlaying, layout)
 
     private fun cell(placed: List<Placed>, id: TileId) = placed.first { it.id == id }.let { it.col to it.row }
 
@@ -44,21 +51,38 @@ class LayoutTest {
         assertEquals(3 to 3, cell(p, SEARCH))
         assertEquals(0 to 4, cell(p, NOW_PLAYING))
         assertEquals(0 to 5, cell(p, VOLUME))
-        assertEquals(0 to 6, cell(p, SETTINGS))
-        assertEquals(3 to 6, cell(p, EDIT))
-        assertEquals(7, GridPacker.rowCount(p))
+        assertEquals(6, GridPacker.rowCount(p))
+        assertTrue(p.none { it.id == SETTINGS || it.id == EDIT })
+    }
+
+    @Test fun `top bar buttons are right aligned above the grid`() {
+        val bar = GridPacker.pinned(shown(true))
+        assertEquals(listOf(SETTINGS, HOME, RECENTS, EDIT), bar.map { it.id })
+        assertEquals(listOf(0, 1, 2, 3), bar.map { it.col })
+        assertTrue(bar.all { it.row == GridPacker.TOP_ROW })
+        val two = PanelLayout(default.items.map { if (it.id == RECENTS || it.id == EDIT) it else it.copy(size = TileSize.SMALL) })
+        assertEquals(listOf(2, 3), GridPacker.pinned(two.visibleItems()).map { it.col })
+    }
+
+    @Test fun `the top bar holds at most four buttons`() {
+        assertEquals(4, default.pinnedItems().size)
+        assertEquals(default, default.resize(WIFI, TileSize.TOP))
+        val room = default.resize(HOME, TileSize.SMALL)
+        assertEquals(TileSize.TOP, room.resize(WIFI, TileSize.TOP).item(WIFI)?.size)
+        assertEquals(default, default.resize(EDIT, TileSize.TOP)) // already there: no change
     }
 
     @Test fun `the panel closes the gap when nothing is playing`() {
         val p = packed(withNowPlaying = false)
         assertEquals(0 to 4, cell(p, VOLUME))
-        assertEquals(6, GridPacker.rowCount(p))
+        assertEquals(5, GridPacker.rowCount(p))
     }
 
     @Test fun `hidden controls are not placed`() {
         val ids = packed(true).map { it.id }
         assertFalse(SCREENSHOT in ids)
-        assertTrue(HOME in ids)
+        assertTrue(WIFI in ids)
+        assertFalse(HOME in ids) // pinned to the top bar, not on the grid
     }
 
     @Test fun `no two controls overlap and all stay inside the columns`() {
@@ -77,7 +101,8 @@ class LayoutTest {
     @Test fun `every size can be given to every control`() {
         for (size in TileSize.entries) {
             val layout = PanelLayout(default.items.map { it.copy(size = size, visible = true) })
-            assertEquals(layout.items.size, GridPacker.pack(layout.items).size)
+            val expected = if (size == TileSize.TOP) 0 else layout.items.size
+            assertEquals(expected, GridPacker.pack(layout.items).size)
         }
     }
 
@@ -102,7 +127,7 @@ class LayoutTest {
     }
 
     @Test fun `d-pad walks the default layout`() {
-        val p = packed(true)
+        val p = nav(true)
         assertEquals(WIFI, go(p, POWER, Dir.RIGHT))
         assertEquals(DND, go(p, POWER, Dir.RIGHT, Dir.DOWN))
         assertEquals(POWER, go(p, POWER, Dir.RIGHT, Dir.DOWN, Dir.LEFT))
@@ -115,27 +140,39 @@ class LayoutTest {
         assertEquals(ACCESSIBILITY, go(p, NOW_PLAYING, Dir.UP))
     }
 
+    @Test fun `the top bar connects to the grid in both directions`() {
+        val p = nav(true)
+        assertEquals(SETTINGS, go(p, POWER, Dir.UP))
+        assertEquals(POWER, go(p, SETTINGS, Dir.DOWN))
+        assertEquals(POWER, go(p, HOME, Dir.DOWN))
+        assertEquals(WIFI, go(p, RECENTS, Dir.DOWN))
+        assertEquals(WIFI, go(p, EDIT, Dir.DOWN))
+        assertEquals(RECENTS, go(p, EDIT, Dir.LEFT))
+        assertEquals(EDIT, go(p, SETTINGS, Dir.RIGHT, Dir.RIGHT, Dir.RIGHT))
+    }
+
     @Test fun `focus steps over a hidden now playing control`() {
-        val p = packed(false)
+        val p = nav(false)
         assertEquals(VOLUME, go(p, LOCK, Dir.DOWN))
         assertEquals(ACCESSIBILITY, go(p, VOLUME, Dir.UP))
     }
 
     @Test fun `focus is trapped at the outer edges`() {
-        val p = packed(true)
-        assertNull(go(p, POWER, Dir.UP))
+        val p = nav(true)
+        assertNull(go(p, SETTINGS, Dir.UP))
+        assertNull(go(p, SETTINGS, Dir.LEFT))
+        assertNull(go(p, EDIT, Dir.RIGHT))
         assertNull(go(p, POWER, Dir.LEFT))
         assertNull(go(p, WIFI, Dir.RIGHT))
-        assertNull(go(p, EDIT, Dir.DOWN))
-        assertNull(go(p, EDIT, Dir.RIGHT))
         assertNull(go(p, NOW_PLAYING, Dir.LEFT))
+        assertNull(go(p, VOLUME, Dir.DOWN))
     }
 
     @Test fun `every shown control is reachable from the first one`() {
         val everything = PanelLayout(default.items.map { it.copy(visible = true) })
-        val shuffled = PanelLayout(everything.items.reversed().map { it.copy(size = TileSize.entries[it.id.ordinal % 5]) })
+        val shuffled = PanelLayout(everything.items.reversed().map { it.copy(size = TileSize.entries[it.id.ordinal % 6]) })
         for (layout in listOf(default, everything, shuffled)) for (np in listOf(false, true)) {
-            val p = packed(np, layout)
+            val p = nav(np, layout)
             val seen = mutableSetOf(p.first().id)
             val queue = ArrayDeque(listOf(p.first().id))
             while (queue.isNotEmpty()) {
@@ -169,14 +206,17 @@ class LayoutTest {
     }
 
     @Test fun `resize steps through the sizes and wraps`() {
-        assertEquals(TileSize.WIDE, default.resizeBy(HOME, 1).item(HOME)?.size)
-        assertEquals(TileSize.FULL, default.resizeBy(HOME, -1).item(HOME)?.size)
-        assertEquals(TileSize.SMALL, default.resizeBy(HOME, 5).item(HOME)?.size)
+        val small = default.resize(HOME, TileSize.SMALL)
+        assertEquals(TileSize.WIDE, small.resizeBy(HOME, 1).item(HOME)?.size)
+        assertEquals(TileSize.TOP, small.resizeBy(HOME, -1).item(HOME)?.size)
+        assertEquals(TileSize.SMALL, small.resizeBy(HOME, 6).item(HOME)?.size)
     }
 
     @Test fun `every control can be resized to every size`() {
-        for (item in default.items) for (size in TileSize.entries) {
-            assertEquals(size, default.resize(item.id, size).item(item.id)?.size)
+        // Start with an empty top bar so the four-button limit cannot get in the way.
+        val roomy = PanelLayout(default.items.map { if (it.size == TileSize.TOP) it.copy(size = TileSize.SMALL) else it })
+        for (item in roomy.items) for (size in TileSize.entries) {
+            assertEquals(size, roomy.resize(item.id, size).item(item.id)?.size)
         }
     }
 
@@ -206,6 +246,6 @@ class LayoutTest {
     @Test fun `the default layout lists every control exactly once`() {
         assertEquals(TileId.entries.toSet(), default.items.map { it.id }.toSet())
         assertEquals(TileId.entries.size, default.items.size)
-        assertTrue(RECENTS in default.visibleItems().map { it.id })
+        assertTrue(RECENTS in default.pinnedItems().map { it.id })
     }
 }

@@ -23,6 +23,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -44,7 +45,7 @@ import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
 import com.example.tvcontrolcenter.ui.panel.GlassTile
 import com.example.tvcontrolcenter.ui.panel.Label
 import com.example.tvcontrolcenter.ui.panel.TileActions
-import com.example.tvcontrolcenter.ui.panel.TileGrid
+import com.example.tvcontrolcenter.ui.panel.PanelContent
 import com.example.tvcontrolcenter.ui.panel.TileIcon
 import com.example.tvcontrolcenter.ui.panel.gridHeight
 import com.example.tvcontrolcenter.ui.panel.lookOf
@@ -64,7 +65,8 @@ fun EditScreen(viewModel: ControlCenterViewModel, onDone: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // Fits the screen but ignores the user's panel size, so the controls always have room.
     val rows = remember(state.layout) { GridPacker.rowCount(GridPacker.pack(state.layout.visibleItems())) }
-    val needed = gridHeight(rows) + PanelDimens.sheetPadding * 2 + 56.dp
+    val needed = gridHeight(rows) + PanelDimens.sheetPadding * 2 +
+        PanelDimens.headerHeight + PanelDimens.headerGap + 56.dp
     ProvideUiScale(1f, neededHeight = needed) {
         EditBody(state, viewModel, onDone)
     }
@@ -74,7 +76,8 @@ fun EditScreen(viewModel: ControlCenterViewModel, onDone: () -> Unit) {
 private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, onDone: () -> Unit) {
     val layout = state.layout
     val placed = remember(layout) { GridPacker.pack(layout.visibleItems()) }
-    val currentPlaced by rememberUpdatedState(placed)
+    val pinned = remember(layout) { GridPacker.pinned(layout.visibleItems()) }
+    val currentPlaced by rememberUpdatedState(pinned + placed)
     val tileRequesters = remember { TileId.entries.associateWith { FocusRequester() } }
     val firstAction = remember { FocusRequester() }
     var selected by remember { mutableStateOf<TileId?>(null) }
@@ -134,6 +137,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                             EditChip(
                                 label = stringResource(sizeLabel(size)),
                                 highlighted = item.size == size,
+                                width = 76.dp,
                                 requester = if (index == 0) firstAction else null,
                             ) { vm.setTileSize(item.id, size) }
                         }
@@ -197,8 +201,9 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                     .frostedSheet(PanelDimens.sheetRadius)
                     .padding(PanelDimens.sheetPadding),
             ) {
-                TileGrid(
-                    placed = placed,
+                PanelContent(
+                    grid = placed,
+                    pinned = pinned,
                     state = state,
                     requesters = tileRequesters,
                     interactive = false,
@@ -208,6 +213,8 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                     onFocused = {},
                     onActivate = { selected = it },
                     actions = TileActions(),
+                    backdrop = null,
+                    origin = Offset.Zero,
                 )
             }
         }
@@ -220,6 +227,7 @@ private fun sizeLabel(size: TileSize): Int = when (size) {
     TileSize.TALL -> R.string.size_tall
     TileSize.LARGE -> R.string.size_large
     TileSize.FULL -> R.string.size_full
+    TileSize.TOP -> R.string.size_top
 }
 
 @Composable

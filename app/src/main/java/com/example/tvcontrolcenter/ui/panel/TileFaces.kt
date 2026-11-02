@@ -90,7 +90,7 @@ internal fun faceOf(id: TileId, state: ControlCenterUiState): Face {
 internal fun GenericFace(id: TileId, face: Face, size: TileSize) {
     val tint = Color.White.copy(alpha = if (face.active) 1f else 0.9f)
     when (size) {
-        TileSize.SMALL -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        TileSize.SMALL, TileSize.TOP -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             TileIcon(face.icon, PanelDimens.iconSmall, tint)
         }
         TileSize.WIDE, TileSize.FULL -> Row(
@@ -143,7 +143,7 @@ internal fun VolumeFace(percent: Int, muted: Boolean, size: TileSize) {
     val icon = if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp
     val fill = if (muted) 0 else percent
     when (size) {
-        TileSize.SMALL -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        TileSize.SMALL, TileSize.TOP -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             TileIcon(icon, PanelDimens.iconSmall)
         }
         TileSize.WIDE, TileSize.FULL -> Row(
@@ -201,7 +201,7 @@ internal fun NowPlayingFace(
     val toggle = if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow
     val name = title ?: stringResource(R.string.nothing_playing)
     when (size) {
-        TileSize.SMALL -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        TileSize.SMALL, TileSize.TOP -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             TileIcon(if (title == null) note else toggle, PanelDimens.iconSmall)
         }
         TileSize.WIDE -> Row(

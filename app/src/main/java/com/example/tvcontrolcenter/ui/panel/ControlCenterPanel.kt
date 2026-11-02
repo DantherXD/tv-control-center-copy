@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -15,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -23,7 +26,10 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.Capability
@@ -31,6 +37,7 @@ import com.example.tvcontrolcenter.domain.model.GridPacker
 import com.example.tvcontrolcenter.domain.model.PanelEvent
 import com.example.tvcontrolcenter.domain.model.Placed
 import com.example.tvcontrolcenter.domain.model.TileId
+import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.frostedSheet
 import com.example.tvcontrolcenter.ui.theme.Motion
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
@@ -40,7 +47,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-/** Open/close animates per grid row. More rows than this share the last slot's progress. */
+/** Open/close animates per row: slot 0 is the header, then one per grid row. More share the last slot. */
 private const val ROW_SLOTS = 24
 private const val STAGGER_ROWS = 8
 
@@ -52,7 +59,9 @@ private const val STAGGER_ROWS = 8
  * closed, so hidden controls can never take focus.
  *
  * @param visible desired state. Animations run to completion, then [onClosed] fires.
- * @param scrimAlpha darkens everything behind the panel; windows use their own dim instead.
+ * @param backdrop blurred copy of the screen to show inside the glass. Without it the panel
+ *   draws its own frosted sheet instead.
+ * @param scrimAlpha darkens everything behind the panel.
  */
 @Composable
 fun ControlCenterHost(
@@ -63,20 +72,24 @@ fun ControlCenterHost(
     onCapability: (Capability) -> Unit,
     modifier: Modifier = Modifier,
     onOpenEditor: () -> Unit = {},
+    backdrop: Backdrop? = null,
     scrimAlpha: Float = 0f,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val placed = remember(state.layout, state.hasNowPlaying) {
-        GridPacker.pack(
-            state.layout.visibleItems().filter { it.id != TileId.NOW_PLAYING || state.hasNowPlaying },
-        )
+    val shown = remember(state.layout, state.hasNowPlaying) {
+        state.layout.visibleItems().filter { it.id != TileId.NOW_PLAYING || state.hasNowPlaying }
     }
+    val placed = remember(shown) { GridPacker.pack(shown) }
+    val pinned = remember(shown) { GridPacker.pinned(shown) }
     val needed = PanelDimens.topInset + PanelDimens.sheetPadding * 2 +
+        PanelDimens.headerHeight + PanelDimens.headerGap +
         gridHeight(GridPacker.rowCount(placed)) + PanelDimens.edgeInset
     ProvideUiScale(state.settings.uiScale, neededHeight = needed) {
         HostBody(
             state = state,
             placed = placed,
+            pinned = pinned,
+            backdrop = backdrop,
             viewModel = viewModel,
             visible = visible,
             onDismissRequest = onDismissRequest,
@@ -93,6 +106,8 @@ fun ControlCenterHost(
 private fun HostBody(
     state: ControlCenterUiState,
     placed: List<Placed>,
+    pinned: List<Placed>,
+    backdrop: Backdrop?,
     viewModel: ControlCenterViewModel,
     visible: Boolean,
     onDismissRequest: () -> Unit,
@@ -103,19 +118,26 @@ private fun HostBody(
     modifier: Modifier,
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
+    var hostSize by remember { mutableStateOf(IntSize.Zero) }
     val progress = remember { Animatable(0f) }
     val rowProgress = remember { List(ROW_SLOTS) { Animatable(0f) } }
     val requesters = remember { TileId.entries.associateWith { FocusRequester() } }
 
     val currentPlaced by rememberUpdatedState(placed)
+    val currentPinned by rememberUpdatedState(pinned)
     val currentVisible by rememberUpdatedState(visible)
     val dismiss by rememberUpdatedState(onDismissRequest)
     val capability by rememberUpdatedState(onCapability)
     val editor by rememberUpdatedState(onOpenEditor)
     val shown by remember { derivedStateOf { currentVisible || progress.value > 0.001f } }
 
+    // Closing before the first open (the owner is still preparing a backdrop) is not a close.
+    val hasOpened = remember { booleanArrayOf(false) }
+
     LaunchedEffect(visible) {
         if (visible) {
+            hasOpened[0] = true
             viewModel.onOpened()
             launch {
                 for (row in 0 until ROW_SLOTS) {
@@ -126,7 +148,7 @@ private fun HostBody(
                 }
             }
             progress.animateTo(1f, Motion.panelSpring())
-        } else {
+        } else if (hasOpened[0]) {
             coroutineScope {
                 rowProgress.forEach { launch { it.animateTo(0f, Motion.panelSpring()) } }
                 progress.animateTo(0f, Motion.panelSpring())
@@ -160,12 +182,25 @@ private fun HostBody(
         viewModel.uiState.first { it.tiles.isNotEmpty() }
         withFrameNanos { }
         val remembered = viewModel.rememberedFocus()
-        val target = currentPlaced.firstOrNull { it.id == remembered }?.id ?: currentPlaced.firstOrNull()?.id
+        val all = currentPinned + currentPlaced
+        val target = all.firstOrNull { it.id == remembered }?.id ?: all.firstOrNull()?.id
         if (target != null) runCatching { requesters.getValue(target).requestFocus() }
+    }
+
+    // Where the panel's top-left corner is, so each tile can find its piece of the backdrop.
+    val origin = with(density) {
+        Offset(
+            hostSize.width - (PanelDimens.edgeInset + PanelDimens.sheetPadding + PanelDimens.gridWidth).toPx(),
+            (PanelDimens.topInset + PanelDimens.sheetPadding).toPx(),
+        )
+    }
+    val mapped = remember(backdrop, hostSize) {
+        if (backdrop != null && hostSize.width > 0) backdrop.copy(width = hostSize.width, height = hostSize.height) else null
     }
 
     Box(
         modifier = modifier
+            .onSizeChanged { hostSize = it }
             .drawBehind {
                 val a = scrimAlpha * progress.value
                 if (a > 0.001f) drawRect(Color.Black.copy(alpha = a))
@@ -189,17 +224,18 @@ private fun HostBody(
                     alpha = (p * 1.5f).coerceIn(0f, 1f)
                     transformOrigin = TransformOrigin(1f, 0f)
                 }
-                .frostedSheet(PanelDimens.sheetRadius)
+                .then(if (mapped == null) Modifier.frostedSheet(PanelDimens.sheetRadius) else Modifier)
                 .padding(PanelDimens.sheetPadding),
         ) {
-            TileGrid(
-                placed = placed,
+            PanelContent(
+                grid = placed,
+                pinned = pinned,
                 state = state,
                 requesters = requesters,
                 interactive = true,
                 trapEdges = true,
                 selected = null,
-                appear = { p -> { rowProgress[minOf(p.row, ROW_SLOTS - 1)].value } },
+                appear = { p -> { rowProgress[(p.row + 1).coerceIn(0, ROW_SLOTS - 1)].value } },
                 onFocused = viewModel::onFocused,
                 onActivate = viewModel::onTileActivated,
                 actions = TileActions(
@@ -207,6 +243,8 @@ private fun HostBody(
                     onSkipNext = viewModel::onSkipNext,
                     onSkipPrevious = viewModel::onSkipPrevious,
                 ),
+                backdrop = mapped,
+                origin = origin,
             )
         }
     }

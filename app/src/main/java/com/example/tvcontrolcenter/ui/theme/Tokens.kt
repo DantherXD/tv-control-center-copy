@@ -21,16 +21,22 @@ object PanelDimens {
     /** Side of a 1x1 control. Bigger controls are whole multiples plus the gaps between. */
     val cell = 52.dp
     val gap = 8.dp
-    val sheetPadding = 12.dp
-    val sheetRadius = 34.dp
+    val sheetPadding = 8.dp
+    val sheetRadius = 30.dp
     val largeRadius = 34.dp
 
     val iconSmall = 22.dp
     val iconLarge = 34.dp
 
-    /** Room above the panel for the clock, and the safe margin from the screen edges. */
-    val topInset = 56.dp
+    /** Space above the panel and the safe margin from the right edge. The panel sits high. */
+    val topInset = 0.dp
     val edgeInset = 32.dp
+
+    /** Clock on the left, round shortcut buttons on the right, above the grid. */
+    val headerHeight = 44.dp
+    val headerGap = 6.dp
+    val topButton = 44.dp
+    val topButtonGap = 6.dp
 
     /** Width of the 4-column grid, without the sheet padding. */
     val gridWidth = cell * 4 + gap * 3
@@ -49,6 +55,8 @@ object GlassTokens {
     const val sheetVeilTop = 0.20f
     const val sheetVeilBottom = 0.06f
     const val tileBaseAlpha = 0.22f
+    /** White over the real blurred backdrop. Low, so the picture shows through. */
+    const val glassVeil = 0.13f
     const val tileVeilTop = 0.22f
     const val tileVeilBottom = 0.10f
     const val tileActiveBoost = 0.14f
@@ -79,7 +87,7 @@ object PanelType {
     val label = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp, lineHeight = 15.sp)
     val labelSmall = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 10.5.sp, lineHeight = 12.sp)
     val detail = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Medium, fontSize = 11.5.sp, lineHeight = 14.sp)
-    val clock = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+    val clock = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Medium, fontSize = 19.sp)
     val hint = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp)
     val title = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 22.sp)
 }

@@ -34,14 +34,15 @@ Since the source has not been compiled yet, the first CI run is the first real b
 
 ### One grid, fully customisable
 
-All controls live on one 4-column grid inside a single frosted sheet. There is no separate quick-actions column any more.
-Every control can be **Small** (1x1), **Wide** (2x1), **Tall** (1x2), **Large** (2x2) or **Full row** (4x1), moved, hidden
-and added back. The default shows Power, Wi-Fi, Do Not Disturb, Bluetooth, Sleep Timer, four shortcuts, Now Playing (only while
-something plays), Volume, and Settings / Home / Recent apps / Edit. Display, Sound, Captions, Screen saver, Apps, Screenshot and
-Notifications are available from the editor.
+The panel is a clock and a row of round buttons on top, then one 4-column grid, like the tvOS panel. Every control can be
+**Small** (1x1), **Wide** (2x1), **Tall** (1x2), **Large** (2x2), **Full row** (4x1) or **Top bar** (a round button in the row
+above the grid, at most four), and can be moved, hidden and added back. The default grid has Power, Wi-Fi, Do Not Disturb,
+Bluetooth, Sleep Timer, four shortcuts, Now Playing (only while something plays) and Volume; the top bar has Settings, Home,
+Recent apps and Edit. Display, Sound, Captions, Screen saver, Apps, Screenshot and Notifications are available from the editor.
+The clock follows the TV's 12/24 hour setting.
 
 **Edit Control Center:** open it from the **Edit** control in the panel, or from the demo screen. Pick a control with **OK**; the
-buttons on the left set its size, move it earlier or later, or hide it. "Add controls" lists hidden ones. "Panel size" scales
+buttons on the left set its size (or pin it to the top bar), move it earlier or later, or hide it. "Add controls" lists hidden ones. "Panel size" scales
 the panel (80 % to 175 %) on top of the automatic screen fit, "Blur behind" toggles the system blur, and "Reset layout" restores
 the default. Changes save immediately and every open panel follows.
 
@@ -54,7 +55,7 @@ the default. Changes save immediately and every open panel follows.
 | Volume, OK | Mutes or unmutes; Left/Right change the volume | nothing |
 | Edit | Opens the layout editor | nothing |
 
-Home, Recent apps, Screenshot and Notifications run about 0.6 s after the panel closes, so the panel is not in the picture.
+The top-bar buttons are 44 dp, slightly under the 48 dp guideline, to match the tvOS proportions. Home, Recent apps, Screenshot and Notifications run about 0.6 s after the panel closes, so the panel is not in the picture.
 
 D-pad: arrows move focus by geometry (so any arrangement works), **OK** activates, **Back** closes. On Volume, Left/Right change volume. On Now Playing, Left/Right skip tracks and OK plays or pauses. Focus is trapped inside the panel, and the last focused control is restored on the next open.
 
@@ -71,10 +72,10 @@ domain/        pure Kotlin: models, PanelLayout, GridPacker and GridNav (packing
                repository + action interfaces (no Android types)
 data/          focus memory, layout and settings (SharedPreferences), sleep timer
 system/        Android integrations: AudioManager, settings intents, MediaSessionManager,
-               NotificationListener, AccessibilityService trigger, overlay window, window blur
+               NotificationListener, AccessibilityService trigger, overlay window, screenshot backdrop
 di/            Hilt modules, plus an entry point so the overlay window can build the ViewModel
 ui/theme/      design tokens, Inter font, ProvideUiScale (screen-size fit)
-ui/glass/      frostedSheet and frostedTile modifiers
+ui/glass/      frostedSheet and frostedTile modifiers, Backdrop (blurred screen copy)
 ui/background/ AcrylicBackground (moving, low-resolution, cheap)
 ui/panel/      ViewModel, GlassTile, tile faces per size, TileGrid, ControlCenterHost
 ui/edit/       the layout editor
@@ -90,9 +91,13 @@ Glass is now plain drawing, so it costs almost nothing per frame:
   faint grain, and a rim that is bright on top and faint at the bottom.
 * **Tiles.** Same recipe per control, in a smaller dose. "On" controls get brighter glass instead of a coloured icon. Focus lifts
   the tile 4 dp, scales it to 1.07, brightens it and adds a top-left glint and a contact shadow.
-* **Real blur where the system allows.** Panel windows ask Android 12+ to blur what is behind them (`FLAG_BLUR_BEHIND`), on devices
-  with cross-window blur enabled. That is the only way to see the running app frosted behind the panel; elsewhere the dim is
-  stronger and the sheet alone carries the look. Toggle it with "Blur behind" in the editor if it costs frames on your box.
+* **Real blur of the app behind (Android 11+).** When the accessibility service is on, the panel takes a screenshot of the app
+  just before it opens (`BackdropCapture`), shrinks it to about 480 px, box-blurs it on a background thread (a few tens of ms), and
+  draws the matching piece inside each control. The app stays sharp around the glass and is blurred only inside it, as in tvOS. The
+  panel waits for the picture for at most 350 ms. Protected video (DRM) cannot be captured and falls back to the frosted look below.
+  After updating, switch the accessibility service off and on once so Android grants the new screenshot permission.
+* **Fallback.** Without a screenshot (older Android, service off, protected content) the panel draws a frosted sheet and darker tiles.
+  On Android 12+ with cross-window blur it also asks the system to blur the whole screen behind it (**Blur behind** in the editor).
 * **Performance.** Focus and open progress are read in draw/graphicsLayer lambdas, so moving focus recomposes nothing. Open/close
   animates per grid row (not per tile) on stiff springs and settles in about a quarter of a second. Nothing animates while idle.
 * **Acrylic background.** Five soft colour fields drift on a 90 s loop. They are drawn into an offscreen layer one sixth of the
@@ -112,11 +117,10 @@ Glass is now plain drawing, so it costs almost nothing per frame:
 
 * **Not device-tested.** The 2 GB-RAM, 60 fps requirement is designed for but unmeasured. Profile with Perfetto on a real box; if the
   blur is costly, switch "Blur behind" off.
-* **No refraction of other apps.** Android never lets an app read pixels of other apps. The overlay uses real window blur-behind
-  (`FLAG_BLUR_BEHIND`, Android 12+) on devices with cross-window blur enabled, and a stronger dim elsewhere.
+* **Blur over other apps needs Android 11+ and the accessibility service.** The service is the only thing that may screenshot other
+  apps. Without it the glass is the frosted fallback. There is no refraction, only blur.
 * **The activity pauses the app underneath.** `ControlCenterActivity` is a transparent window on top of the running app, so the app gets `onPause`
   and some players stop. The accessibility overlay (long-press Menu with the service enabled) pauses nothing, but needs that service.
-* **Blur needs Android 12+ and a device that enables cross-window blur.** Many TV builds do not, so over other apps the glass is frosted by the sheet only.
 * **Long-press Menu is not guaranteed.** Many Android TV remotes never deliver Menu, and Home is never delivered. Use
   Settings or remap in `TRIGGER_KEYS`.
 * **Power Off** opens the system power dialog (Android 12+ via accessibility) or turns the screen off. Android cannot power a device off.

@@ -25,13 +25,17 @@ import com.example.tvcontrolcenter.domain.model.TileId.VOLUME
 import com.example.tvcontrolcenter.domain.model.TileId.WIFI
 import kotlin.math.abs
 
-/** Footprint of a control on the 4-column grid. Every control can take every size. */
+/**
+ * Footprint of a control on the 4-column grid. Every control can take every size.
+ * [TOP] takes no grid space: the control becomes a round button in the bar above the grid.
+ */
 enum class TileSize(val cols: Int, val rows: Int) {
     SMALL(1, 1),
     WIDE(2, 1),
     TALL(1, 2),
     LARGE(2, 2),
     FULL(4, 1),
+    TOP(0, 0),
 }
 
 enum class Dir { UP, DOWN, LEFT, RIGHT }
@@ -53,10 +57,17 @@ data class PanelLayout(val items: List<ControlItem>) {
 
     fun visibleItems(): List<ControlItem> = items.filter { it.visible }
 
+    /** Shown controls that live in the top bar, in list order. */
+    fun pinnedItems(): List<ControlItem> = items.filter { it.visible && it.size == TileSize.TOP }
+
     fun hiddenItems(): List<ControlItem> = items.filter { !it.visible }
 
-    fun resize(id: TileId, size: TileSize): PanelLayout =
-        copy(items = items.map { if (it.id == id) it.copy(size = size) else it })
+    /** The top bar has room for [MAX_PINNED] buttons; asking for more changes nothing. */
+    fun resize(id: TileId, size: TileSize): PanelLayout {
+        val current = item(id) ?: return this
+        if (size == TileSize.TOP && current.size != TileSize.TOP && pinnedItems().size >= MAX_PINNED) return this
+        return copy(items = items.map { if (it.id == id) it.copy(size = size) else it })
+    }
 
     /** Steps through the sizes in enum order, wrapping round. */
     fun resizeBy(id: TileId, delta: Int): PanelLayout {
@@ -97,6 +108,8 @@ data class PanelLayout(val items: List<ControlItem>) {
     }
 
     companion object {
+        const val MAX_PINNED = 4
+
         val Default = PanelLayout(
             listOf(
                 ControlItem(POWER, TileSize.LARGE),
@@ -110,10 +123,11 @@ data class PanelLayout(val items: List<ControlItem>) {
                 ControlItem(SEARCH, TileSize.SMALL),
                 ControlItem(NOW_PLAYING, TileSize.FULL),
                 ControlItem(VOLUME, TileSize.FULL),
-                ControlItem(SETTINGS, TileSize.SMALL),
-                ControlItem(HOME, TileSize.SMALL),
-                ControlItem(RECENTS, TileSize.SMALL),
-                ControlItem(EDIT, TileSize.SMALL),
+                // Round buttons above the grid, on the right.
+                ControlItem(SETTINGS, TileSize.TOP),
+                ControlItem(HOME, TileSize.TOP),
+                ControlItem(RECENTS, TileSize.TOP),
+                ControlItem(EDIT, TileSize.TOP),
                 // Available from the editor.
                 ControlItem(NOTIFICATIONS, TileSize.SMALL, visible = false),
                 ControlItem(SCREENSHOT, TileSize.SMALL, visible = false),
@@ -168,6 +182,21 @@ data class Placed(val id: TileId, val size: TileSize, val col: Int, val row: Int
 object GridPacker {
     const val COLUMNS = 4
 
+    /** Row used for the top bar, so D-pad moves between it and the grid work like any other row. */
+    const val TOP_ROW = -1
+
+    /**
+     * Top-bar buttons, right-aligned over the last columns on [TOP_ROW]. They count as 1x1 cells
+     * for navigation only; the buttons are drawn smaller than a grid cell.
+     */
+    fun pinned(items: List<ControlItem>, columns: Int = COLUMNS): List<Placed> {
+        val bar = items.filter { it.size == TileSize.TOP }.take(PanelLayout.MAX_PINNED)
+        return bar.mapIndexed { i, item ->
+            Placed(item.id, TileSize.SMALL, columns - bar.size + i, TOP_ROW)
+        }
+    }
+
+    /** Packs everything except top-bar buttons. */
     fun pack(items: List<ControlItem>, columns: Int = COLUMNS): List<Placed> {
         val taken = HashSet<Long>()
         fun key(col: Int, row: Int) = row.toLong() * 1000L + col
@@ -179,6 +208,7 @@ object GridPacker {
 
         val placed = ArrayList<Placed>(items.size)
         for (item in items) {
+            if (item.size == TileSize.TOP) continue
             val w = minOf(item.size.cols, columns)
             val h = item.size.rows
             var row = 0

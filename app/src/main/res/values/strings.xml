@@ -39,7 +39,7 @@
     <string name="tile_edit">Edit</string>
 
     <string name="edit_title">Edit Control Center</string>
-    <string name="edit_hint_pick">Pick a control on the right with OK to resize, move or hide it.</string>
+    <string name="edit_hint_pick">Pick a control on the right with OK to resize, move, pin it to the top bar, or hide it.</string>
     <string name="edit_move_earlier">Move earlier</string>
     <string name="edit_move_later">Move later</string>
     <string name="edit_hide">Hide</string>
@@ -54,4 +54,5 @@
     <string name="size_tall">Tall</string>
     <string name="size_large">Large</string>
     <string name="size_full">Full row</string>
+    <string name="size_top">Top bar</string>
 </resources>

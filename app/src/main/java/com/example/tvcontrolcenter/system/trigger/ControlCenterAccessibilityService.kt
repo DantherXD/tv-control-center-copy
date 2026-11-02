@@ -14,6 +14,9 @@ import com.example.tvcontrolcenter.system.overlay.OverlayController
  * claimed. Menu and Settings usually arrive; Home never does. The panel itself is
  * drawn as an accessibility overlay, which needs no extra permission.
  *
+ * The service also holds the screenshot permission (Android 11+), which the panel uses to
+ * show a blurred copy of the screen inside its glass. See BackdropCapture.
+ *
  * Short presses are passed through untouched. A long press is detected from the
  * auto-repeat events, then consumed so the focused app does not also react.
  */

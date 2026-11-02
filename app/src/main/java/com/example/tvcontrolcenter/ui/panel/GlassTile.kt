@@ -16,6 +16,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
@@ -32,6 +33,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.frostedTile
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
 import com.example.tvcontrolcenter.ui.theme.Motion
@@ -48,6 +50,8 @@ private val LiftDistance = 4.dp
  * @param appear 0..1 open/close progress, read in the draw phase.
  * @param active the control is "on"; its glass is brighter.
  * @param selected editor only: draws an outline.
+ * @param backdrop blurred screen to show through the glass; [backdropOrigin] is this tile's
+ *   top-left corner in the backdrop's coordinates.
  */
 @Composable
 fun GlassTile(
@@ -60,6 +64,8 @@ fun GlassTile(
     stateText: String? = null,
     active: Boolean = false,
     selected: Boolean = false,
+    backdrop: Backdrop? = null,
+    backdropOrigin: Offset = Offset.Zero,
     appear: () -> Float = { 1f },
     onFocused: () -> Unit = {},
     onKey: (KeyEvent) -> Boolean = { false },
@@ -117,6 +123,8 @@ fun GlassTile(
                 active = active,
                 focus = { focusAmount.value },
                 selected = selected,
+                backdrop = backdrop,
+                origin = backdropOrigin,
             ),
         content = content,
     )

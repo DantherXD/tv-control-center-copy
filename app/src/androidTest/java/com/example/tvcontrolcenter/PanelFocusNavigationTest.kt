@@ -68,9 +68,22 @@ class PanelFocusNavigationTest {
 
     @Test fun focusIsTrappedAtTheEdges() {
         launch()
-        press(Key.DirectionUp)
-        rule.onNodeWithContentDescription("Power Off").assertIsFocused()
         press(Key.DirectionLeft)
+        rule.onNodeWithContentDescription("Power Off").assertIsFocused()
+        press(Key.DirectionUp)
+        rule.onNodeWithContentDescription("Settings").assertIsFocused()
+        press(Key.DirectionUp)
+        rule.onNodeWithContentDescription("Settings").assertIsFocused()
+        press(Key.DirectionLeft)
+        rule.onNodeWithContentDescription("Settings").assertIsFocused()
+    }
+
+    @Test fun topBarButtonsLeadBackToTheGrid() {
+        launch()
+        press(Key.DirectionUp)
+        press(Key.DirectionRight)
+        rule.onNodeWithContentDescription("Home").assertIsFocused()
+        press(Key.DirectionDown)
         rule.onNodeWithContentDescription("Power Off").assertIsFocused()
     }
 
@@ -84,13 +97,12 @@ class PanelFocusNavigationTest {
         rule.onNodeWithContentDescription("Volume").assertIsFocused()
     }
 
-    @Test fun quickActionRunsItsSystemAction() {
+    @Test fun topBarButtonRunsItsSystemAction() {
         launch()
-        repeat(3) { press(Key.DirectionDown) }
-        press(Key.DirectionDown)
-        rule.onNodeWithContentDescription("Home").assertIsFocused()
+        press(Key.DirectionUp)
+        rule.onNodeWithContentDescription("Settings").assertIsFocused()
         press(Key.DirectionCenter)
-        assert(actions.calls.contains("home"))
+        assert(actions.calls.contains("settings"))
     }
 
     @Test fun restoresTheLastFocusedTileOnOpen() {
@@ -124,9 +136,12 @@ class PanelFocusNavigationTest {
         listOf(
             "Power Off", "Wi-Fi", "Do Not Disturb", "Bluetooth", "Sleep Timer",
             "Game controllers", "Accessibility", "Lock screen", "Search", "Volume",
-            "Settings", "Home", "Recent apps", "Edit",
         ).forEach {
             rule.onNodeWithContentDescription(it).assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+        }
+        // The round buttons above the grid are 44 dp, a deliberate trade for the tvOS look.
+        listOf("Settings", "Home", "Recent apps", "Edit").forEach {
+            rule.onNodeWithContentDescription(it).assertWidthIsAtLeast(44.dp).assertHeightIsAtLeast(44.dp)
         }
     }
 }

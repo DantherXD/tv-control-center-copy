@@ -6,6 +6,7 @@ import android.graphics.PixelFormat
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -25,7 +26,9 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.example.tvcontrolcenter.MainActivity
 import com.example.tvcontrolcenter.di.ControlCenterEntryPoint
-import com.example.tvcontrolcenter.system.applyBackdrop
+import com.example.tvcontrolcenter.system.applyBlurFallback
+import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
+import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.system.openCapabilitySettings
 import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
@@ -77,11 +80,19 @@ class OverlayController(
     private var view: ComposeView? = null
     private var host: OverlayHost? = null
     private var visible by mutableStateOf(false)
+    private var backdrop by mutableStateOf<Backdrop?>(null)
+
+    /** False once [hide] was called, so a screenshot that arrives late cannot reopen the panel. */
+    private var wanted = false
+    private var everVisible = false
 
     val isShowing: Boolean get() = view != null
 
     fun show() {
         if (view != null) return
+        wanted = true
+        everVisible = false
+        backdrop = null
         val newHost = OverlayHost().also { it.resume() }
         val viewModel = ViewModelProvider(
             newHost,
@@ -96,6 +107,15 @@ class OverlayController(
             isFocusable = true
             setContent {
                 ControlCenterTheme {
+                    // The window is on screen but draws nothing yet, so the screenshot shows the
+                    // app alone. The panel opens as soon as the picture is ready (or has failed).
+                    LaunchedEffect(Unit) {
+                        backdrop = BackdropCapture.capture()
+                        if (wanted) {
+                            everVisible = true
+                            visible = true
+                        }
+                    }
                     ControlCenterHost(
                         viewModel = viewModel,
                         visible = visible,
@@ -109,6 +129,8 @@ class OverlayController(
                                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                             )
                         },
+                        backdrop = backdrop,
+                        scrimAlpha = if (backdrop != null) SCRIM_WITH_BACKDROP else SCRIM_WITHOUT_BACKDROP,
                     )
                 }
             }
@@ -124,7 +146,8 @@ class OverlayController(
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             val blur = ControlCenterEntryPoint.from(context).layoutRepository().settings.value.blurBehind
-            applyBackdrop(windowManager, blur)
+            // Whole-screen blur only when there is no screenshot to blur inside the glass instead.
+            applyBlurFallback(windowManager, blur && !BackdropCapture.isSupported)
         }
 
         view = composeView
@@ -139,13 +162,19 @@ class OverlayController(
             onGone()
             return
         }
-        visible = true
         composeView.requestFocus()
     }
 
     /** Starts the close animation; the window is removed when it finishes. */
     fun hide() {
-        if (view != null) visible = false
+        wanted = false
+        if (view == null) return
+        if (everVisible) visible = false else remove()
+    }
+
+    private companion object {
+        const val SCRIM_WITH_BACKDROP = 0.22f
+        const val SCRIM_WITHOUT_BACKDROP = 0.32f
     }
 
     private fun remove() {

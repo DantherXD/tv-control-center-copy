@@ -1,20 +1,39 @@
 package com.example.tvcontrolcenter.ui.panel
 
+import android.text.format.DateFormat
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusProperties
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -25,7 +44,12 @@ import com.example.tvcontrolcenter.domain.model.GridPacker
 import com.example.tvcontrolcenter.domain.model.Placed
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
+import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
+import com.example.tvcontrolcenter.ui.theme.PanelType
+import kotlinx.coroutines.delay
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 private const val VOLUME_STEP = 5
 
@@ -45,15 +69,15 @@ internal fun radiusFor(size: TileSize): Dp =
     if (size == TileSize.LARGE) PanelDimens.largeRadius else PanelDimens.cell / 2
 
 /**
- * The packed controls, absolutely positioned on the 4-column grid.
+ * Clock and top-bar buttons above the grid, then the grid itself: everything the panel shows.
+ * The host and the editor both draw this, so the editor preview is the real panel.
  *
- * @param interactive false in the editor: nothing reacts to Left/Right and OK only selects.
- * @param trapEdges true in the panel, where focus must not leave the glass.
- * @param appear per-tile open progress, read in the draw phase.
+ * @param origin top-left corner of this block in the backdrop's coordinates, in pixels.
  */
 @Composable
-internal fun TileGrid(
-    placed: List<Placed>,
+internal fun PanelContent(
+    grid: List<Placed>,
+    pinned: List<Placed>,
     state: ControlCenterUiState,
     requesters: Map<TileId, FocusRequester>,
     interactive: Boolean,
@@ -63,14 +87,127 @@ internal fun TileGrid(
     onFocused: (TileId) -> Unit,
     onActivate: (TileId) -> Unit,
     actions: TileActions,
+    backdrop: Backdrop?,
+    origin: Offset,
     modifier: Modifier = Modifier,
 ) {
+    // Focus moves over the top bar and the grid as one set of rows.
+    val navigation = remember(grid, pinned) { pinned + grid }
+    val density = LocalDensity.current
+    val gridOrigin = origin + with(density) {
+        Offset(0f, (PanelDimens.headerHeight + PanelDimens.headerGap).toPx())
+    }
+    Column(modifier.width(PanelDimens.gridWidth)) {
+        Row(
+            Modifier.fillMaxWidth().height(PanelDimens.headerHeight),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ClockText(Modifier.padding(start = 8.dp))
+            Spacer(Modifier.weight(1f))
+            Row(horizontalArrangement = Arrangement.spacedBy(PanelDimens.topButtonGap)) {
+                pinned.forEachIndexed { index, p ->
+                    key(p.id) {
+                        val left = PanelDimens.gridWidth -
+                            (PanelDimens.topButton + PanelDimens.topButtonGap) * (pinned.size - index) +
+                            PanelDimens.topButtonGap
+                        PanelTile(
+                            p = p,
+                            all = navigation,
+                            state = state,
+                            requesters = requesters,
+                            interactive = interactive,
+                            trapEdges = trapEdges,
+                            selected = selected == p.id,
+                            appear = appear(p),
+                            onFocused = { onFocused(p.id) },
+                            onActivate = { onActivate(p.id) },
+                            actions = actions,
+                            backdrop = backdrop,
+                            backdropOrigin = origin + with(density) { Offset(left.toPx(), 0f) },
+                            radius = PanelDimens.topButton / 2,
+                            modifier = Modifier.size(PanelDimens.topButton),
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(PanelDimens.headerGap))
+        TileGrid(
+            placed = grid,
+            navigation = navigation,
+            state = state,
+            requesters = requesters,
+            interactive = interactive,
+            trapEdges = trapEdges,
+            selected = selected,
+            appear = appear,
+            onFocused = onFocused,
+            onActivate = onActivate,
+            actions = actions,
+            backdrop = backdrop,
+            origin = gridOrigin,
+        )
+    }
+}
+
+/** Time of day in the user's 12 or 24 hour style, refreshed on the minute. */
+@Composable
+internal fun ClockText(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val formatter = remember(context) {
+        DateTimeFormatter.ofPattern(if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm")
+    }
+    var text by remember { mutableStateOf(LocalTime.now().format(formatter)) }
+    LaunchedEffect(formatter) {
+        while (true) {
+            val now = LocalTime.now()
+            text = now.format(formatter)
+            delay((60 - now.second) * 1000L - now.nano / 1_000_000L + 50L)
+        }
+    }
+    BasicText(
+        text,
+        modifier,
+        style = PanelType.clock.copy(color = Color.White.copy(alpha = 0.8f)),
+        maxLines = 1,
+    )
+}
+
+/**
+ * The packed controls, absolutely positioned on the 4-column grid.
+ *
+ * @param navigation every control focus can move to (grid plus top bar), for D-pad edges.
+ * @param interactive false in the editor: nothing reacts to Left/Right and OK only selects.
+ * @param trapEdges true in the panel, where focus must not leave the glass.
+ * @param appear per-tile open progress, read in the draw phase.
+ * @param origin top-left of the grid in the backdrop's coordinates, in pixels.
+ */
+@Composable
+internal fun TileGrid(
+    placed: List<Placed>,
+    navigation: List<Placed>,
+    state: ControlCenterUiState,
+    requesters: Map<TileId, FocusRequester>,
+    interactive: Boolean,
+    trapEdges: Boolean,
+    selected: TileId?,
+    appear: (Placed) -> () -> Float,
+    onFocused: (TileId) -> Unit,
+    onActivate: (TileId) -> Unit,
+    actions: TileActions,
+    backdrop: Backdrop?,
+    origin: Offset,
+    modifier: Modifier = Modifier,
+) {
+    val density = LocalDensity.current
     Box(modifier.size(PanelDimens.gridWidth, gridHeight(GridPacker.rowCount(placed)))) {
         placed.forEach { p ->
             key(p.id) {
+                val x = (PanelDimens.cell + PanelDimens.gap) * p.col
+                val y = (PanelDimens.cell + PanelDimens.gap) * p.row
                 PanelTile(
                     p = p,
-                    all = placed,
+                    all = navigation,
                     state = state,
                     requesters = requesters,
                     interactive = interactive,
@@ -80,11 +217,11 @@ internal fun TileGrid(
                     onFocused = { onFocused(p.id) },
                     onActivate = { onActivate(p.id) },
                     actions = actions,
+                    backdrop = backdrop,
+                    backdropOrigin = origin + with(density) { Offset(x.toPx(), y.toPx()) },
+                    radius = radiusFor(p.size),
                     modifier = Modifier
-                        .offset(
-                            x = (PanelDimens.cell + PanelDimens.gap) * p.col,
-                            y = (PanelDimens.cell + PanelDimens.gap) * p.row,
-                        )
+                        .offset(x = x, y = y)
                         .size(span(p.cols), span(p.rows)),
                 )
             }
@@ -105,6 +242,9 @@ private fun PanelTile(
     onFocused: () -> Unit,
     onActivate: () -> Unit,
     actions: TileActions,
+    backdrop: Backdrop?,
+    backdropOrigin: Offset,
+    radius: Dp,
     modifier: Modifier,
 ) {
     val face = faceOf(p.id, state)
@@ -133,7 +273,7 @@ private fun PanelTile(
 
     GlassTile(
         label = label,
-        cornerRadius = radiusFor(p.size),
+        cornerRadius = radius,
         focusRequester = requesters.getValue(p.id),
         focusProps = focusProps,
         onActivate = onActivate,
@@ -141,6 +281,8 @@ private fun PanelTile(
         stateText = stateText,
         active = face.active,
         selected = selected,
+        backdrop = backdrop,
+        backdropOrigin = backdropOrigin,
         appear = appear,
         onFocused = onFocused,
         onKey = onKey,

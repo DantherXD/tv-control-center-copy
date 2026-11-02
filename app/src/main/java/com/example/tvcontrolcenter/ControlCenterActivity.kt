@@ -7,12 +7,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.tvcontrolcenter.di.ControlCenterEntryPoint
-import com.example.tvcontrolcenter.system.applyBackdrop
+import com.example.tvcontrolcenter.system.applyBlurFallback
+import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
+import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.system.openCapabilitySettings
 import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
@@ -42,12 +45,24 @@ class ControlCenterActivity : ComponentActivity() {
 
     // Not named `visible`: its setter would clash with Activity.setVisible(Boolean).
     private var panelOpen by mutableStateOf(false)
+    private var backdrop by mutableStateOf<Backdrop?>(null)
+
+    /** The panel opens once the screenshot is ready. A second launch before that cancels it. */
+    private var openWhenReady = true
+    private var everOpened = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         configureWindow()
         setContent {
             ControlCenterTheme {
+                LaunchedEffect(Unit) {
+                    backdrop = BackdropCapture.capture()
+                    if (openWhenReady) {
+                        everOpened = true
+                        panelOpen = true
+                    }
+                }
                 ControlCenterHost(
                     viewModel = viewModel,
                     visible = panelOpen,
@@ -55,6 +70,8 @@ class ControlCenterActivity : ComponentActivity() {
                     onClosed = { if (!panelOpen) finish() },
                     onCapability = { openCapabilitySettings(it) },
                     modifier = Modifier.fillMaxSize(),
+                    backdrop = backdrop,
+                    scrimAlpha = if (backdrop != null) 0.22f else 0.32f,
                     onOpenEditor = {
                         startActivity(
                             Intent(this, MainActivity::class.java)
@@ -65,13 +82,17 @@ class ControlCenterActivity : ComponentActivity() {
                 )
             }
         }
-        panelOpen = true
     }
 
     /** singleTask re-launch: a second start closes the panel, a start while closing reopens it. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        panelOpen = !panelOpen
+        if (!everOpened) {
+            openWhenReady = false
+            finish()
+        } else {
+            panelOpen = !panelOpen
+        }
     }
 
     override fun onStop() {
@@ -83,7 +104,7 @@ class ControlCenterActivity : ComponentActivity() {
         window.setBackgroundDrawableResource(android.R.color.transparent)
         val blur = ControlCenterEntryPoint.from(this).layoutRepository().settings.value.blurBehind
         val params = window.attributes
-        params.applyBackdrop(windowManager, blur)
+        params.applyBlurFallback(windowManager, blur && !BackdropCapture.isSupported)
         window.attributes = params
     }
 }
