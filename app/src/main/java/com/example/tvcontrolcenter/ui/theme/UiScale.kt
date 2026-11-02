@@ -36,3 +36,16 @@ fun ProvideUiScale(userScale: Float, neededHeight: Dp = 0.dp, content: @Composab
         content = content,
     )
 }
+
+/**
+ * Makes text [scale] times bigger or smaller inside [content] without moving any dp sizes.
+ * Done through the font scale, so every sp in the panel follows.
+ */
+@Composable
+fun ProvideTextScale(scale: Float, content: @Composable () -> Unit) {
+    val density = LocalDensity.current
+    CompositionLocalProvider(
+        LocalDensity provides Density(density.density, density.fontScale * scale),
+        content = content,
+    )
+}

@@ -1,16 +1,21 @@
 package com.example.tvcontrolcenter.ui.background
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
 import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.IntSize
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -45,21 +50,38 @@ fun BoxesBackground(modifier: Modifier = Modifier) {
         return
     }
     Box(
-        modifier
-            .graphicsLayer()
-            .drawWithCache {
-                val blocks = layoutBlocks(size.width, size.height)
-                val corner = CornerRadius(size.height / 8f * 0.07f)
-                onDrawBehind {
-                    drawRect(Color(0xFF10141A))
-                    for (b in blocks) {
-                        drawRoundRect(b.color, Offset(b.x, b.y), Size(b.side, b.side), corner)
-                    }
-                    // Calms the colours so white text stays readable on top.
-                    drawRect(Color.Black.copy(alpha = 0.30f))
-                }
-            },
+        modifier.drawWithCache {
+            // Painted once into a small bitmap; every frame after that is one image draw.
+            val scale = minOf(1f, MAX_WIDTH / size.width.coerceAtLeast(1f))
+            val bw = (size.width * scale).toInt().coerceAtLeast(1)
+            val bh = (size.height * scale).toInt().coerceAtLeast(1)
+            val image = paint(bw, bh).asImageBitmap()
+            onDrawBehind {
+                drawImage(
+                    image,
+                    dstSize = IntSize(size.width.roundToInt().coerceAtLeast(1), size.height.roundToInt().coerceAtLeast(1)),
+                    filterQuality = FilterQuality.Low,
+                )
+            }
+        },
     )
+}
+
+private const val MAX_WIDTH = 1280f
+
+private fun paint(width: Int, height: Int): Bitmap {
+    val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bmp)
+    val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+    canvas.drawColor(0xFF10141A.toInt())
+    val corner = height / 8f * 0.07f
+    for (b in layoutBlocks(width.toFloat(), height.toFloat())) {
+        fill.color = b.color.toArgb()
+        canvas.drawRoundRect(RectF(b.x, b.y, b.x + b.side, b.y + b.side), corner, corner, fill)
+    }
+    // Calms the colours so white text stays readable on top.
+    canvas.drawColor(0x4D000000)
+    return bmp
 }
 
 /** Fills the screen with squares of 1, 2 or 3 cells, in a fixed random order so it never changes. */

@@ -220,6 +220,8 @@ data class PanelSettings(
     val headerGap: Int = 8,
     /** The focused control turns white and its icon and text turn dark, like tvOS. */
     val invertFocus: Boolean = true,
+    /** Size of the text in the panel, on top of the panel size (see [TextScaleSteps]). */
+    val textScale: Float = 1f,
     /** 0 = no photo. Changes whenever a new photo is saved, so the picture reloads. */
     val profilePhotoVersion: Int = 0,
     /** Colour of the profile circle when there is no photo; index into the app's palette. */
@@ -232,6 +234,8 @@ data class PanelSettings(
 val UiScaleSteps: List<Float> = listOf(0.8f, 1f, 1.25f, 1.5f, 1.75f)
 
 val TopOffsetSteps: List<Int> = listOf(0, 24, 48, 72, 96, 120)
+
+val TextScaleSteps: List<Float> = listOf(0.8f, 0.9f, 1f, 1.15f, 1.3f)
 
 val HeaderGapSteps: List<Int> = listOf(0, 4, 8, 12, 18, 24)
 

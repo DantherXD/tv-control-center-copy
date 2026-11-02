@@ -49,6 +49,7 @@ import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
 import com.example.tvcontrolcenter.ui.theme.Motion
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
+import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
 import com.example.tvcontrolcenter.ui.theme.ProvideUiScale
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -281,6 +282,7 @@ private fun HostBody(
                 LocalInvertFocus provides state.settings.invertFocus,
                 LocalOverBlur provides (backdrop != null),
             ) {
+                ProvideTextScale(state.settings.textScale) {
                 PanelContent(
                     grid = placed,
                     pinned = pinned,
@@ -304,6 +306,7 @@ private fun HostBody(
                     page = page,
                     musicFocus = musicFocus,
                 )
+                }
             }
         }
     }

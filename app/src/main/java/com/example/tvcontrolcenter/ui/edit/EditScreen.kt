@@ -13,7 +13,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
+import com.example.tvcontrolcenter.domain.model.TextScaleSteps
+import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
@@ -162,25 +165,25 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
         ) {
             Column(
                 Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 BasicText(stringResource(R.string.edit_title), style = PanelType.title.copy(color = GlassTokens.textPrimary))
+                val settings = state.settings
 
                 val item = selected?.let { layout.item(it) }
                 if (item == null) {
                     Hint(stringResource(R.string.edit_hint_pick))
+                    Hint(stringResource(R.string.edit_howto))
                 } else {
                     Section(stringResource(lookOf(item.id).label))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TileSize.entries.filter { it != TileSize.TOP || item.id == TileId.EDIT || item.id == TileId.PROFILE || item.id == TileId.NOW_PLAYING }.forEachIndexed { index, size ->
-                            EditChip(
-                                label = stringResource(sizeLabel(size)),
-                                highlighted = item.size == size,
-                                width = 76.dp,
-                                requester = if (index == 0) firstAction else null,
-                            ) { vm.setTileSize(item.id, size) }
-                        }
+                    val sizes = TileSize.entries.filter {
+                        it != TileSize.TOP || item.id == TileId.EDIT || item.id == TileId.PROFILE || item.id == TileId.NOW_PLAYING
                     }
+                    StepRow(
+                        stringResource(R.string.edit_size),
+                        stringResource(sizeLabel(item.size)),
+                        requester = firstAction,
+                    ) { d -> vm.setTileSize(item.id, sizes.step(item.size, d)) }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         EditChip(stringResource(R.string.edit_move_earlier), width = 132.dp) { vm.moveTile(item.id, -1) }
                         EditChip(stringResource(R.string.edit_move_later), width = 132.dp) { vm.moveTile(item.id, 1) }
@@ -192,11 +195,9 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                     }
                 }
 
-                Section(stringResource(R.string.edit_add))
                 val hidden = layout.hiddenItems()
-                if (hidden.isEmpty()) {
-                    Hint(stringResource(R.string.edit_nothing_hidden))
-                } else {
+                if (hidden.isNotEmpty()) {
+                    Section(stringResource(R.string.edit_add))
                     hidden.chunked(3).forEach { row ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             row.forEach { hiddenItem ->
@@ -209,70 +210,37 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                     }
                 }
 
-                Section(stringResource(R.string.edit_panel_size))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    UiScaleSteps.forEach { step ->
-                        EditChip("${(step * 100).roundToInt()}%", highlighted = state.settings.uiScale == step) {
-                            vm.setUiScale(step)
-                        }
-                    }
+                Section(stringResource(R.string.edit_look))
+                StepRow(stringResource(R.string.edit_panel_size), "${(settings.uiScale * 100).roundToInt()}%") { d ->
+                    vm.setUiScale(UiScaleSteps.step(settings.uiScale, d))
                 }
-
-                val settings = state.settings
-
-                Section(stringResource(R.string.edit_position))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TopOffsetSteps.forEachIndexed { index, step ->
-                        EditChip(
-                            if (index == 0) stringResource(R.string.edit_pos_top) else "$index",
-                            highlighted = settings.topOffset == step,
-                        ) { vm.updateSettings { it.copy(topOffset = step) } }
-                    }
+                StepRow(stringResource(R.string.edit_text_size), "${(settings.textScale * 100).roundToInt()}%") { d ->
+                    vm.updateSettings { it.copy(textScale = TextScaleSteps.step(it.textScale, d)) }
                 }
-
-                Section(stringResource(R.string.edit_header_gap))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HeaderGapSteps.forEach { step ->
-                        EditChip("$step", highlighted = settings.headerGap == step, width = 56.dp) {
-                            vm.updateSettings { it.copy(headerGap = step) }
-                        }
-                    }
+                StepRow(
+                    stringResource(R.string.edit_position),
+                    TopOffsetSteps.indexOf(settings.topOffset).let { if (it <= 0) stringResource(R.string.edit_pos_top) else "$it" },
+                ) { d -> vm.updateSettings { it.copy(topOffset = TopOffsetSteps.step(it.topOffset, d)) } }
+                StepRow(stringResource(R.string.edit_header_gap), "${settings.headerGap}") { d ->
+                    vm.updateSettings { it.copy(headerGap = HeaderGapSteps.step(it.headerGap, d)) }
                 }
-
-                Section(stringResource(R.string.edit_invert))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    EditChip(stringResource(R.string.invert_yes), highlighted = settings.invertFocus, width = 110.dp) {
-                        vm.updateSettings { it.copy(invertFocus = true) }
-                    }
-                    EditChip(stringResource(R.string.invert_no), highlighted = !settings.invertFocus, width = 110.dp) {
-                        vm.updateSettings { it.copy(invertFocus = false) }
-                    }
-                }
+                StepRow(
+                    stringResource(R.string.edit_invert),
+                    stringResource(if (settings.invertFocus) R.string.invert_yes else R.string.invert_no),
+                ) { vm.updateSettings { it.copy(invertFocus = !it.invertFocus) } }
 
                 Section(stringResource(R.string.edit_header_buttons))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(TileId.EDIT to R.string.edit_btn_menu, TileId.PROFILE to R.string.edit_btn_profile).forEach { (id, name) ->
-                        val on = layout.item(id)?.visible == true
-                        EditChip(
-                            stringResource(name) + ": " + stringResource(if (on) R.string.state_on else R.string.state_off),
-                            highlighted = on,
-                            width = 150.dp,
-                        ) { vm.setTileVisible(id, !on) }
-                    }
+                listOf(TileId.EDIT to R.string.edit_btn_menu, TileId.PROFILE to R.string.edit_btn_profile).forEach { (id, name) ->
+                    val on = layout.item(id)?.visible == true
+                    StepRow(stringResource(name), onOff(on)) { vm.setTileVisible(id, !on) }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val music = layout.item(TileId.NOW_PLAYING)
-                    val on = music?.visible == true && music.size == TileSize.TOP
-                    EditChip(
-                        stringResource(R.string.edit_btn_music) + ": " + stringResource(if (on) R.string.state_on else R.string.state_off),
-                        highlighted = on,
-                        width = 150.dp,
-                    ) {
-                        if (on) vm.setTileSize(TileId.NOW_PLAYING, TileSize.FULL)
-                        else {
-                            vm.setTileVisible(TileId.NOW_PLAYING, true)
-                            vm.setTileSize(TileId.NOW_PLAYING, TileSize.TOP)
-                        }
+                val music = layout.item(TileId.NOW_PLAYING)
+                val musicOn = music?.visible == true && music.size == TileSize.TOP
+                StepRow(stringResource(R.string.edit_btn_music), onOff(musicOn)) {
+                    if (musicOn) vm.setTileSize(TileId.NOW_PLAYING, TileSize.FULL)
+                    else {
+                        vm.setTileVisible(TileId.NOW_PLAYING, true)
+                        vm.setTileSize(TileId.NOW_PLAYING, TileSize.TOP)
                     }
                 }
                 Hint(stringResource(R.string.edit_menu_note))
@@ -305,34 +273,31 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                         ProfilePhoto.clear(context)
                         vm.updateSettings { it.copy(profilePhotoVersion = 0) }
                     }
-                    AvatarColors.forEachIndexed { index, color ->
-                        EditChip(stringResource(R.string.edit_photo_color), highlighted = settings.profileColor == index && settings.profilePhotoVersion == 0, width = 40.dp, tint = color) {
-                            vm.updateSettings { it.copy(profileColor = index) }
-                        }
-                    }
                 }
+                StepRow(
+                    stringResource(R.string.edit_photo_color),
+                    "${settings.profileColor.mod(AvatarColors.size) + 1}",
+                    swatch = AvatarColors[settings.profileColor.mod(AvatarColors.size)],
+                ) { d -> vm.updateSettings { it.copy(profileColor = Math.floorMod(it.profileColor + d, AvatarColors.size)) } }
 
-                Section(stringResource(R.string.edit_blur_level))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val names = listOf(R.string.blur_off, R.string.blur_light, R.string.blur_medium, R.string.blur_strong, R.string.blur_max)
-                    names.forEachIndexed { level, name ->
-                        EditChip(stringResource(name), highlighted = settings.effectiveBlur == level) {
-                            vm.updateSettings { it.copy(blurBehind = level > 0, blurLevel = level) }
-                        }
-                    }
+                Section(stringResource(R.string.edit_blur_title))
+                val blurNames = listOf(R.string.blur_off, R.string.blur_light, R.string.blur_medium, R.string.blur_strong, R.string.blur_max)
+                    .map { stringResource(it) }
+                StepRow(stringResource(R.string.edit_blur_level), blurNames[settings.effectiveBlur]) { d ->
+                    val level = Math.floorMod(settings.effectiveBlur + d, blurNames.size)
+                    vm.updateSettings { it.copy(blurBehind = level > 0, blurLevel = level) }
                 }
-
-                Section(stringResource(R.string.edit_blur_method))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        BlurMethod.AUTO to R.string.method_auto,
-                        BlurMethod.SCREENSHOT to R.string.method_screenshot,
-                        BlurMethod.WINDOW to R.string.method_window,
-                    ).forEach { (method, name) ->
-                        EditChip(stringResource(name), highlighted = settings.blurMethod == method, width = 112.dp) {
-                            vm.updateSettings { it.copy(blurMethod = method) }
-                        }
-                    }
+                val methods = listOf(
+                    BlurMethod.AUTO to R.string.method_auto,
+                    BlurMethod.SCREENSHOT to R.string.method_screenshot,
+                    BlurMethod.WINDOW to R.string.method_window,
+                )
+                StepRow(
+                    stringResource(R.string.edit_blur_method),
+                    stringResource(methods.first { it.first == settings.blurMethod }.second),
+                ) { d ->
+                    val next = methods[Math.floorMod(methods.indexOfFirst { it.first == settings.blurMethod } + d, methods.size)].first
+                    vm.updateSettings { it.copy(blurMethod = next) }
                 }
                 Hint(stringResource(R.string.blur_whole_note))
                 Hint(
@@ -344,18 +309,17 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                         },
                     ),
                 )
-
-                Section(stringResource(R.string.edit_frost))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        FrostStyle.SMOKE to R.string.frost_smoke,
-                        FrostStyle.MILKY to R.string.frost_milky,
-                        FrostStyle.CLEAR to R.string.frost_clear,
-                    ).forEach { (style, name) ->
-                        EditChip(stringResource(name), highlighted = settings.frost == style) {
-                            vm.updateSettings { it.copy(frost = style) }
-                        }
-                    }
+                val frosts = listOf(
+                    FrostStyle.SMOKE to R.string.frost_smoke,
+                    FrostStyle.MILKY to R.string.frost_milky,
+                    FrostStyle.CLEAR to R.string.frost_clear,
+                )
+                StepRow(
+                    stringResource(R.string.edit_frost),
+                    stringResource(frosts.first { it.first == settings.frost }.second),
+                ) { d ->
+                    val next = frosts[Math.floorMod(frosts.indexOfFirst { it.first == settings.frost } + d, frosts.size)].first
+                    vm.updateSettings { it.copy(frost = next) }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
@@ -373,6 +337,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                     .padding(PanelDimens.sheetPadding),
             ) {
                 CompositionLocalProvider(LocalFrostStyle provides state.settings.frost) {
+                ProvideTextScale(state.settings.textScale) {
                 PanelContent(
                     grid = placed,
                     pinned = pinned,
@@ -389,6 +354,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                     origin = Offset.Zero,
                     sheet = true,
                 )
+                }
                 }
             }
         }
@@ -430,6 +396,7 @@ private fun FlatButton(
     highlighted: Boolean,
     requester: FocusRequester?,
     activate: () -> Unit,
+    onKeyExtra: (KeyEvent) -> Boolean = { false },
     content: @Composable BoxScope.() -> Unit,
 ) {
     val r = requester ?: remember { FocusRequester() }
@@ -443,6 +410,7 @@ private fun FlatButton(
             .onFocusChanged { focused = it.isFocused }
             .onKeyEvent { e ->
                 when {
+                    onKeyExtra(e) -> true
                     e.type == KeyEventType.KeyUp && e.key.isSelectKey() -> { activate(); true }
                     e.key.isSelectKey() -> true
                     else -> false
@@ -494,6 +462,51 @@ private fun EditChip(
         if (tint != null) Box(Modifier.align(Alignment.Center).size(18.dp).background(tint, CircleShape))
         else Label(label, Modifier.align(Alignment.Center).padding(horizontal = 6.dp), maxLines = 1)
     }
+}
+
+/**
+ * One setting on one row: name on the left, current value on the right. OK moves to the next
+ * value (wrapping), Left to the previous one. A single focusable per setting keeps this page light.
+ */
+@Composable
+private fun StepRow(
+    label: String,
+    value: String,
+    requester: FocusRequester? = null,
+    swatch: Color? = null,
+    onStep: (Int) -> Unit,
+) {
+    FlatButton(
+        label = "$label, $value",
+        width = 340.dp,
+        highlighted = false,
+        requester = requester,
+        activate = { onStep(1) },
+        onKeyExtra = { e ->
+            if (e.key == Key.DirectionLeft) {
+                if (e.type == KeyEventType.KeyDown) onStep(-1)
+                true
+            } else false
+        },
+    ) {
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Label(label, Modifier.weight(1f), maxLines = 1)
+            if (swatch != null) Box(Modifier.size(16.dp).background(swatch, CircleShape))
+            Label(value, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun onOff(on: Boolean): String = stringResource(if (on) R.string.state_on else R.string.state_off)
+
+private fun <T> List<T>.step(current: T, delta: Int): T {
+    val i = indexOf(current).let { if (it < 0) 0 else it }
+    return this[Math.floorMod(i + delta, size)]
 }
 
 @Composable

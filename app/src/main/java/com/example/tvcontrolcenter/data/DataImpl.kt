@@ -110,6 +110,7 @@ class PreferencesLayoutRepository @Inject constructor(
             topOffset = prefs.getInt(KEY_TOP, 48),
             headerGap = prefs.getInt(KEY_GAP, 8),
             invertFocus = prefs.getBoolean(KEY_INVERT, true),
+            textScale = prefs.getFloat(KEY_TEXT, 1f),
             profilePhotoVersion = prefs.getInt(KEY_PHOTO, 0),
             profileColor = prefs.getInt(KEY_COLOR, 0),
         ),
@@ -151,6 +152,7 @@ class PreferencesLayoutRepository @Inject constructor(
             .putInt(KEY_TOP, next.topOffset)
             .putInt(KEY_GAP, next.headerGap)
             .putBoolean(KEY_INVERT, next.invertFocus)
+            .putFloat(KEY_TEXT, next.textScale)
             .putInt(KEY_PHOTO, next.profilePhotoVersion)
             .putInt(KEY_COLOR, next.profileColor)
             .apply()
@@ -163,6 +165,7 @@ class PreferencesLayoutRepository @Inject constructor(
         const val KEY_TOP = "top_offset"
         const val KEY_GAP = "header_gap"
         const val KEY_INVERT = "invert_focus"
+        const val KEY_TEXT = "text_scale"
         const val KEY_PHOTO = "profile_photo"
         const val KEY_COLOR = "profile_color"
         const val KEY_LAYOUT = "layout"

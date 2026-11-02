@@ -96,4 +96,9 @@
     <string name="music_play">Play</string>
     <string name="music_pause">Pause</string>
     <string name="music_next">Next</string>
+    <string name="edit_text_size">Menu text size</string>
+    <string name="edit_size">Size</string>
+    <string name="edit_howto">OK changes a setting to its next value, Left goes back one, Right jumps to the controls.</string>
+    <string name="edit_look">Look</string>
+    <string name="edit_blur_title">Blur and glass</string>
 </resources>

@@ -23,7 +23,7 @@ object PanelDimens {
     val gap = 8.dp
     val sheetPadding = 8.dp
     val sheetRadius = 30.dp
-    val largeRadius = 34.dp
+    val largeRadius = 24.dp
 
     val iconSmall = 22.dp
     val iconLarge = 34.dp
