@@ -2,6 +2,7 @@ package com.example.tvcontrolcenter.system.media
 
 import android.content.ComponentName
 import android.content.Context
+import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
@@ -71,17 +72,54 @@ class MediaSessionNowPlayingSource @Inject constructor(
         publish()
     }
 
+    // The last picture we shrank, so a position tick does not rescale the same bitmap.
+    private var artSource: Bitmap? = null
+    private var artSmall: Bitmap? = null
+
+    /** Album picture from the metadata, shrunk to at most [ART_MAX] px so it stays cheap to keep. */
+    private fun artwork(meta: MediaMetadata?): Bitmap? {
+        val raw = meta?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+            ?: meta?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+            ?: meta?.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
+            ?: return null
+        if (raw === artSource) return artSmall
+        artSource = raw
+        artSmall = runCatching {
+            val longest = maxOf(raw.width, raw.height)
+            if (longest <= ART_MAX) raw else {
+                val scale = ART_MAX / longest.toFloat()
+                Bitmap.createScaledBitmap(
+                    raw,
+                    (raw.width * scale).toInt().coerceAtLeast(1),
+                    (raw.height * scale).toInt().coerceAtLeast(1),
+                    true,
+                )
+            }
+        }.getOrNull()
+        return artSmall
+    }
+
     private fun publish() {
         val c = controller
         val meta = c?.metadata
         val title = meta?.getString(MediaMetadata.METADATA_KEY_TITLE)
+        val state = c?.playbackState
         _nowPlaying.value = if (c == null || title.isNullOrBlank()) null else NowPlaying(
             title = title,
             artist = meta?.getString(MediaMetadata.METADATA_KEY_ARTIST)
                 ?: meta?.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST),
             packageName = c.packageName,
-            isPlaying = c.playbackState?.state == PlaybackState.STATE_PLAYING,
+            isPlaying = state?.state == PlaybackState.STATE_PLAYING,
+            artwork = artwork(meta),
+            durationMs = (meta?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L).coerceAtLeast(0L),
+            positionMs = (state?.position ?: 0L).coerceAtLeast(0L),
+            positionUpdatedAt = state?.lastPositionUpdateTime ?: 0L,
+            speed = state?.playbackSpeed ?: 1f,
         )
+    }
+
+    private companion object {
+        const val ART_MAX = 256
     }
 
     override fun togglePlayPause() {

@@ -40,6 +40,7 @@ import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.NetworkKind
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
+import com.example.tvcontrolcenter.ui.glass.LocalTileInk
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import com.example.tvcontrolcenter.ui.theme.PanelType
@@ -88,7 +89,7 @@ internal fun faceOf(id: TileId, state: ControlCenterUiState): Face {
 /** Icon plus name (and state) laid out for the control's size. */
 @Composable
 internal fun GenericFace(id: TileId, face: Face, size: TileSize) {
-    val tint = Color.White.copy(alpha = if (face.active) 1f else 0.9f)
+    val tint = LocalTileInk.current.copy(alpha = if (face.active) 1f else 0.9f)
     when (size) {
         TileSize.SMALL, TileSize.TOP -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             TileIcon(face.icon, PanelDimens.iconSmall, tint)
@@ -142,6 +143,7 @@ internal fun GenericFace(id: TileId, face: Face, size: TileSize) {
 internal fun VolumeFace(percent: Int, muted: Boolean, size: TileSize) {
     val icon = if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp
     val fill = if (muted) 0 else percent
+    val ink = LocalTileInk.current
     when (size) {
         TileSize.SMALL, TileSize.TOP -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             TileIcon(icon, PanelDimens.iconSmall)
@@ -152,13 +154,13 @@ internal fun VolumeFace(percent: Int, muted: Boolean, size: TileSize) {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             TileIcon(icon, PanelDimens.iconSmall)
-            VolumeBar(fill, Modifier.weight(1f).height(7.dp))
+            VolumeBar(fill, Modifier.weight(1f).height(7.dp), ink = ink)
         }
         TileSize.TALL -> Column(
             Modifier.fillMaxSize().padding(vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            VolumeBar(fill, Modifier.weight(1f).width(7.dp), vertical = true)
+            VolumeBar(fill, Modifier.weight(1f).width(7.dp), vertical = true, ink = ink)
             Spacer(Modifier.height(8.dp))
             TileIcon(icon, PanelDimens.iconSmall)
         }
@@ -169,23 +171,23 @@ internal fun VolumeFace(percent: Int, muted: Boolean, size: TileSize) {
             TileIcon(icon, PanelDimens.iconLarge)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Label(if (muted) stringResource(R.string.state_muted) else "$percent%")
-                VolumeBar(fill, Modifier.fillMaxWidth().height(7.dp))
+                VolumeBar(fill, Modifier.fillMaxWidth().height(7.dp), ink = ink)
             }
         }
     }
 }
 
 @Composable
-private fun VolumeBar(percent: Int, modifier: Modifier, vertical: Boolean = false) {
+private fun VolumeBar(percent: Int, modifier: Modifier, vertical: Boolean = false, ink: Color = Color.White) {
     Box(
         modifier
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.28f))
+            .background(ink.copy(alpha = 0.28f))
             .drawBehind {
                 val f = percent / 100f
                 val s = if (vertical) Size(size.width, size.height * f) else Size(size.width * f, size.height)
                 val top = if (vertical) size.height - s.height else 0f
-                drawRect(Color.White, topLeft = androidx.compose.ui.geometry.Offset(0f, top), size = s)
+                drawRect(ink, topLeft = androidx.compose.ui.geometry.Offset(0f, top), size = s)
             },
     )
 }
@@ -253,9 +255,10 @@ internal fun NowPlayingFace(
 }
 
 @Composable
-internal fun TileIcon(icon: ImageVector, size: Dp, tint: Color = Color.White, modifier: Modifier = Modifier) {
-    // Decorative: the tile itself carries the spoken label.
-    Icon(icon, contentDescription = null, modifier = modifier.size(size), tint = tint)
+internal fun TileIcon(icon: ImageVector, size: Dp, tint: Color = Color.Unspecified, modifier: Modifier = Modifier) {
+    // Decorative: the tile itself carries the spoken label. Unspecified follows the tile: white, or dark on a white tile.
+    val color = if (tint == Color.Unspecified) LocalTileInk.current else tint
+    Icon(icon, contentDescription = null, modifier = modifier.size(size), tint = color)
 }
 
 @Composable
@@ -267,7 +270,7 @@ internal fun Label(
 ) {
     BasicText(
         text, modifier.clearAndSetSemantics { },
-        style = style.copy(color = GlassTokens.textPrimary),
+        style = style.copy(color = LocalTileInk.current),
         maxLines = maxLines, overflow = TextOverflow.Ellipsis,
     )
 }
@@ -276,7 +279,7 @@ internal fun Label(
 internal fun Detail(text: String) {
     BasicText(
         text, Modifier.clearAndSetSemantics { },
-        style = PanelType.detail.copy(color = GlassTokens.textSecondary),
+        style = PanelType.detail.copy(color = LocalTileInk.current.copy(alpha = 0.82f)),
         maxLines = 1, overflow = TextOverflow.Ellipsis,
     )
 }

@@ -70,12 +70,22 @@ private fun FrostStyle.tileTint(overBlur: Boolean) = if (overBlur) {
  * [inflate] grows it past the modifier's bounds on every side, so it can wrap content that
  * sits inside padding.
  */
-fun Modifier.frostedSheet(cornerRadius: Dp, style: FrostStyle = FrostStyle.SMOKE, inflate: Dp = 0.dp): Modifier = drawBehind {
+fun Modifier.frostedSheet(
+    cornerRadius: Dp,
+    style: FrostStyle = FrostStyle.SMOKE,
+    inflate: Dp = 0.dp,
+    lite: Boolean = false,
+): Modifier = drawBehind {
     val t = style.sheetTint()
     val pad = inflate.toPx()
     val topLeft = Offset(-pad, -pad)
     val box = Size(size.width + 2 * pad, size.height + 2 * pad)
     val r = CornerRadius(cornerRadius.toPx())
+    if (lite) {
+        // Editor: one flat fill, no gradient and no grain.
+        drawRoundRect(Color.Black.copy(alpha = 0.38f), topLeft, box, r)
+        return@drawBehind
+    }
     drawRoundRect(Color.Black.copy(alpha = t.dark), topLeft, box, r)
     drawRoundRect(
         Brush.verticalGradient(
@@ -105,9 +115,38 @@ fun Modifier.frostedTile(
     backdrop: Backdrop? = null,
     origin: Offset = Offset.Zero,
     style: FrostStyle = FrostStyle.SMOKE,
+    overBlur: Boolean = backdrop != null,
+    /** The focused control turns white (its content turns dark, see GlassTile). */
+    invert: Boolean = false,
+    /** Always white, e.g. the top-bar button whose page is open. */
+    solid: Boolean = false,
+    /** Flat fills only: no gradient, grain or glint. Used by the editor, which has many controls. */
+    lite: Boolean = false,
 ): Modifier = drawWithCache {
-    val tint = style.tileTint(overBlur = backdrop != null)
+    val tint = style.tileTint(overBlur = overBlur)
     val r = CornerRadius(cornerRadius.toPx())
+    if (lite) {
+        return@drawWithCache onDrawBehind {
+            val f = focus()
+            drawRoundRect(Color.Black.copy(alpha = 0.38f), cornerRadius = r)
+            drawRoundRect(Color.White.copy(alpha = if (active) 0.24f else 0.10f), cornerRadius = r)
+            when {
+                solid -> drawRoundRect(Color.White.copy(alpha = 0.97f), cornerRadius = r)
+                f > 0.01f && invert -> drawRoundRect(Color.White.copy(alpha = 0.97f * f), cornerRadius = r)
+                f > 0.01f -> drawRoundRect(Color.White.copy(alpha = 0.30f * f), cornerRadius = r)
+            }
+            if (selected) {
+                val w = 2.5.dp.toPx()
+                drawRoundRect(
+                    Color.White,
+                    topLeft = Offset(w / 2f, w / 2f),
+                    size = Size(size.width - w, size.height - w),
+                    cornerRadius = CornerRadius((r.x - w / 2f).coerceAtLeast(0f), (r.y - w / 2f).coerceAtLeast(0f)),
+                    style = Stroke(width = w),
+                )
+            }
+        }
+    }
     val shape = Path().apply {
         addRoundRect(RoundRect(0f, 0f, size.width, size.height, r))
     }
@@ -130,8 +169,12 @@ fun Modifier.frostedTile(
         )
         drawRoundRect(Grain, cornerRadius = r, alpha = GlassTokens.grainAlpha)
 
-        // Top-left specular glint, only while focused.
-        if (f > 0.01f) {
+        // Inverted focus: the whole tile turns white.
+        val white = if (solid) 1f else if (invert) f else 0f
+        if (white > 0.01f) drawRoundRect(Color.White.copy(alpha = 0.97f * white), cornerRadius = r)
+
+        // Top-left specular glint, only while focused (not on a white tile).
+        if (f > 0.01f && !invert && !solid) {
             val radius = size.minDimension * 0.9f
             drawRoundRect(
                 Brush.radialGradient(
@@ -203,3 +246,15 @@ private fun DrawScope.drawRim(
 
 /** The frost style every tile below draws with. Provided by the panel and the editor. */
 val LocalFrostStyle = compositionLocalOf { FrostStyle.SMOKE }
+
+/** Setting: focused controls turn white with dark content. */
+val LocalInvertFocus = compositionLocalOf { true }
+
+/** True in the editor: controls draw flat fills and skip animation, so the page stays fast. */
+val LocalLiteGlass = compositionLocalOf { false }
+
+/** True when a blurred picture is behind the panel, so glass can be lighter. */
+val LocalOverBlur = compositionLocalOf { false }
+
+/** Colour of icons and text inside a control: white, or dark while the control is white. */
+val LocalTileInk = compositionLocalOf { Color.White }

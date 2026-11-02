@@ -64,9 +64,24 @@ class LayoutTest {
         assertEquals(listOf(3), GridPacker.pinned(one.visibleItems()).map { it.col })
     }
 
-    @Test fun `the top bar holds at most two buttons`() {
+    @Test fun `now playing can join the top bar and sits leftmost`() {
+        val three = default.resize(NOW_PLAYING, TileSize.TOP)
+        val bar = GridPacker.pinned(three.visibleItems())
+        assertEquals(listOf(NOW_PLAYING, EDIT, TileId.PROFILE), bar.map { it.id })
+        assertEquals(listOf(1, 2, 3), bar.map { it.col })
+        assertFalse(GridPacker.pack(three.visibleItems()).any { it.id == NOW_PLAYING })
+    }
+
+    @Test fun `a saved layout keeps now playing in the top bar`() {
+        val saved = PanelLayout.decode(default.resize(NOW_PLAYING, TileSize.TOP).encode())
+        assertEquals(TileSize.TOP, saved.item(NOW_PLAYING)?.size)
+        assertEquals(3, saved.pinnedItems().size)
+    }
+
+    @Test fun `the top bar holds at most three buttons`() {
         assertEquals(2, default.pinnedItems().size)
-        assertEquals(default, default.resize(WIFI, TileSize.TOP))
+        val full = default.resize(NOW_PLAYING, TileSize.TOP)
+        assertEquals(full, full.resize(WIFI, TileSize.TOP))
         val room = default.setVisible(TileId.PROFILE, false)
         assertEquals(TileSize.SMALL, room.resize(TileId.PROFILE, TileSize.SMALL).item(TileId.PROFILE)?.size)
         assertEquals(default, default.resize(EDIT, TileSize.TOP)) // already there: no change
@@ -221,7 +236,7 @@ class LayoutTest {
     }
 
     @Test fun `every control can be resized to every size`() {
-        // Start with an empty top bar so the two-button limit cannot get in the way.
+        // Start with an empty top bar so the button limit cannot get in the way.
         val roomy = PanelLayout(default.items.map { if (it.size == TileSize.TOP) it.copy(size = TileSize.SMALL) else it })
         for (item in roomy.items) for (size in TileSize.entries) {
             assertEquals(size, roomy.resize(item.id, size).item(item.id)?.size)

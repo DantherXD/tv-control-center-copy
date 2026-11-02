@@ -108,6 +108,8 @@ class PreferencesLayoutRepository @Inject constructor(
             blurMethod = BlurMethod.entries.firstOrNull { it.name == prefs.getString(KEY_BLUR_METHOD, null) } ?: BlurMethod.AUTO,
             frost = FrostStyle.entries.firstOrNull { it.name == prefs.getString(KEY_FROST, null) } ?: FrostStyle.SMOKE,
             topOffset = prefs.getInt(KEY_TOP, 48),
+            headerGap = prefs.getInt(KEY_GAP, 8),
+            invertFocus = prefs.getBoolean(KEY_INVERT, true),
             profilePhotoVersion = prefs.getInt(KEY_PHOTO, 0),
             profileColor = prefs.getInt(KEY_COLOR, 0),
         ),
@@ -147,6 +149,8 @@ class PreferencesLayoutRepository @Inject constructor(
             .putString(KEY_BLUR_METHOD, next.blurMethod.name)
             .putString(KEY_FROST, next.frost.name)
             .putInt(KEY_TOP, next.topOffset)
+            .putInt(KEY_GAP, next.headerGap)
+            .putBoolean(KEY_INVERT, next.invertFocus)
             .putInt(KEY_PHOTO, next.profilePhotoVersion)
             .putInt(KEY_COLOR, next.profileColor)
             .apply()
@@ -157,6 +161,8 @@ class PreferencesLayoutRepository @Inject constructor(
         const val KEY_BLUR_METHOD = "blur_method"
         const val KEY_FROST = "frost"
         const val KEY_TOP = "top_offset"
+        const val KEY_GAP = "header_gap"
+        const val KEY_INVERT = "invert_focus"
         const val KEY_PHOTO = "profile_photo"
         const val KEY_COLOR = "profile_color"
         const val KEY_LAYOUT = "layout"

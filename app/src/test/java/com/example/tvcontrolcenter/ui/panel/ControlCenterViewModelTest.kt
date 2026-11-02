@@ -69,6 +69,35 @@ class ControlCenterViewModelTest {
     }
 
     @Test
+    fun `music page without listener access asks for it and stays closed`() = runTest {
+        nowPlaying.access = false
+        val vm = viewModel()
+        vm.events.test {
+            assertFalse(vm.onMusicPageRequested())
+            assertEquals(PanelEvent.NeedsCapability(Capability.NOTIFICATION_LISTENER), awaitItem())
+        }
+    }
+
+    @Test
+    fun `music page opens and play pause reaches the player when access is granted`() = runTest {
+        val vm = viewModel()
+        assertTrue(vm.onMusicPageRequested())
+        vm.onPlayPause()
+        assertEquals(listOf("toggle"), nowPlaying.calls)
+    }
+
+    @Test
+    fun `gap and inverted focus are settings with defaults`() = runTest {
+        val vm = viewModel()
+        collecting(vm)
+        assertEquals(8, vm.uiState.value.settings.headerGap)
+        assertTrue(vm.uiState.value.settings.invertFocus)
+        vm.updateSettings { it.copy(headerGap = 0, invertFocus = false) }
+        assertEquals(0, vm.uiState.value.settings.headerGap)
+        assertFalse(vm.uiState.value.settings.invertFocus)
+    }
+
+    @Test
     fun `wifi tile is inactive without a network`() = runTest {
         val vm = viewModel()
         collecting(vm)

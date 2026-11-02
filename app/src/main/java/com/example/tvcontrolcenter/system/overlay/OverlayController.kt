@@ -117,9 +117,9 @@ class OverlayController(
                     LaunchedEffect(Unit) {
                         val settings = ControlCenterEntryPoint.from(context).layoutRepository().settings.value
                         val level = settings.effectiveBlur
-                        backdrop = if (settings.blurMethod == BlurMethod.WINDOW) null else BackdropCapture.capture(level)
-                        // Auto: no picture (old Android, DRM video, slow device) -> blur the whole screen.
-                        if (backdrop == null && settings.blurMethod == BlurMethod.AUTO && !windowBlurOn) {
+                        backdrop = BackdropCapture.capture(level)
+                        // No picture (old Android, DRM video, slow device) -> ask the system to blur the screen.
+                        if (backdrop == null && settings.blurMethod != BlurMethod.SCREENSHOT && !windowBlurOn) {
                             val p = windowParams
                             val v = view
                             if (p != null && v != null && p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))) {
@@ -162,9 +162,8 @@ class OverlayController(
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             val s = ControlCenterEntryPoint.from(context).layoutRepository().settings.value
-            // Whole-screen blur only when asked for, or when Auto has no screenshot to use.
-            val wantsWindow = s.blurMethod == BlurMethod.WINDOW ||
-                (s.blurMethod == BlurMethod.AUTO && !BackdropCapture.isSupported)
+            // System window blur only when there is no screenshot to blur ourselves.
+            val wantsWindow = s.blurMethod != BlurMethod.SCREENSHOT && !BackdropCapture.isSupported
             if (wantsWindow && applyBlurFallback(windowManager, BlurLevels.windowRadius(s.effectiveBlur))) windowBlurOn = true
         }
         windowParams = params

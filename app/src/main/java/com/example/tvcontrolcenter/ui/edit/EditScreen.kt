@@ -6,6 +6,24 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.BoxScope
+import com.example.tvcontrolcenter.domain.model.HeaderGapSteps
+import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
+import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
+import com.example.tvcontrolcenter.ui.glass.LocalTileInk
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -54,11 +72,10 @@ import com.example.tvcontrolcenter.domain.model.GridPacker
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
 import com.example.tvcontrolcenter.domain.model.UiScaleSteps
-import com.example.tvcontrolcenter.ui.background.AcrylicBackground
+import com.example.tvcontrolcenter.ui.background.BoxesBackground
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
 import com.example.tvcontrolcenter.ui.panel.ControlCenterUiState
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
-import com.example.tvcontrolcenter.ui.panel.GlassTile
 import com.example.tvcontrolcenter.ui.panel.Label
 import com.example.tvcontrolcenter.ui.panel.TileActions
 import com.example.tvcontrolcenter.ui.panel.PanelContent
@@ -82,9 +99,15 @@ fun EditScreen(viewModel: ControlCenterViewModel, onDone: () -> Unit) {
     // Fits the screen but ignores the user's panel size, so the controls always have room.
     val rows = remember(state.layout) { GridPacker.rowCount(GridPacker.pack(state.layout.visibleItems())) }
     val needed = gridHeight(rows) + PanelDimens.sheetPadding * 2 +
-        PanelDimens.headerHeight + PanelDimens.headerGap + 56.dp
+        PanelDimens.headerHeight + state.settings.headerGap.dp + PanelDimens.sheetPadding + 56.dp
     ProvideUiScale(1f, neededHeight = needed) {
-        EditBody(state, viewModel, onDone)
+        // Lite glass: flat fills and no animation, so this page with its many buttons stays quick.
+        CompositionLocalProvider(
+            LocalLiteGlass provides true,
+            LocalInvertFocus provides state.settings.invertFocus,
+        ) {
+            EditBody(state, viewModel, onDone)
+        }
     }
 }
 
@@ -132,7 +155,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                 } else false
             },
     ) {
-        AcrylicBackground(Modifier.fillMaxSize())
+        BoxesBackground(Modifier.fillMaxSize())
         Row(
             Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 28.dp),
             horizontalArrangement = Arrangement.spacedBy(32.dp),
@@ -149,7 +172,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                 } else {
                     Section(stringResource(lookOf(item.id).label))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TileSize.entries.filter { it != TileSize.TOP || item.id == TileId.EDIT || item.id == TileId.PROFILE }.forEachIndexed { index, size ->
+                        TileSize.entries.filter { it != TileSize.TOP || item.id == TileId.EDIT || item.id == TileId.PROFILE || item.id == TileId.NOW_PLAYING }.forEachIndexed { index, size ->
                             EditChip(
                                 label = stringResource(sizeLabel(size)),
                                 highlighted = item.size == size,
@@ -207,6 +230,25 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                     }
                 }
 
+                Section(stringResource(R.string.edit_header_gap))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HeaderGapSteps.forEach { step ->
+                        EditChip("$step", highlighted = settings.headerGap == step, width = 56.dp) {
+                            vm.updateSettings { it.copy(headerGap = step) }
+                        }
+                    }
+                }
+
+                Section(stringResource(R.string.edit_invert))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    EditChip(stringResource(R.string.invert_yes), highlighted = settings.invertFocus, width = 110.dp) {
+                        vm.updateSettings { it.copy(invertFocus = true) }
+                    }
+                    EditChip(stringResource(R.string.invert_no), highlighted = !settings.invertFocus, width = 110.dp) {
+                        vm.updateSettings { it.copy(invertFocus = false) }
+                    }
+                }
+
                 Section(stringResource(R.string.edit_header_buttons))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(TileId.EDIT to R.string.edit_btn_menu, TileId.PROFILE to R.string.edit_btn_profile).forEach { (id, name) ->
@@ -218,7 +260,23 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                         ) { vm.setTileVisible(id, !on) }
                     }
                 }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val music = layout.item(TileId.NOW_PLAYING)
+                    val on = music?.visible == true && music.size == TileSize.TOP
+                    EditChip(
+                        stringResource(R.string.edit_btn_music) + ": " + stringResource(if (on) R.string.state_on else R.string.state_off),
+                        highlighted = on,
+                        width = 150.dp,
+                    ) {
+                        if (on) vm.setTileSize(TileId.NOW_PLAYING, TileSize.FULL)
+                        else {
+                            vm.setTileVisible(TileId.NOW_PLAYING, true)
+                            vm.setTileSize(TileId.NOW_PLAYING, TileSize.TOP)
+                        }
+                    }
+                }
                 Hint(stringResource(R.string.edit_menu_note))
+                Hint(stringResource(R.string.edit_music_note))
 
                 Section(stringResource(R.string.edit_photo))
                 val context = LocalContext.current
@@ -276,6 +334,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                         }
                     }
                 }
+                Hint(stringResource(R.string.blur_whole_note))
                 Hint(
                     stringResource(
                         when (BackdropCapture.status()) {
@@ -359,7 +418,69 @@ private fun Hint(text: String) {
     BasicText(text, style = PanelType.hint.copy(color = GlassTokens.textSecondary))
 }
 
-/** A small glass button. [highlighted] marks the current choice in a group. */
+/**
+ * A small flat button. [highlighted] marks the current choice in a group (outlined), focus turns
+ * it white. One fill and no animation: this page has dozens of them, so they must stay cheap.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun FlatButton(
+    label: String,
+    width: Dp,
+    highlighted: Boolean,
+    requester: FocusRequester?,
+    activate: () -> Unit,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val r = requester ?: remember { FocusRequester() }
+    val invert = LocalInvertFocus.current
+    var focused by remember { mutableStateOf(false) }
+    val ink = if (focused && invert) GlassTokens.inkDark else Color.White
+    Box(
+        Modifier
+            .size(width, 40.dp)
+            .focusRequester(r)
+            .onFocusChanged { focused = it.isFocused }
+            .onKeyEvent { e ->
+                when {
+                    e.type == KeyEventType.KeyUp && e.key.isSelectKey() -> { activate(); true }
+                    e.key.isSelectKey() -> true
+                    else -> false
+                }
+            }
+            .focusable()
+            .semantics(mergeDescendants = true) {
+                contentDescription = label
+                role = Role.Button
+                onClick(label = label) { activate(); true }
+            }
+            .drawBehind {
+                val radius = CornerRadius(size.height / 2f)
+                val fill = when {
+                    focused && invert -> Color.White
+                    focused -> Color.White.copy(alpha = 0.32f)
+                    highlighted -> Color.White.copy(alpha = 0.24f)
+                    else -> Color.Black.copy(alpha = 0.42f)
+                }
+                drawRoundRect(fill, cornerRadius = radius)
+                if (highlighted && !focused) {
+                    val w = 2.dp.toPx()
+                    drawRoundRect(
+                        Color.White.copy(alpha = 0.9f),
+                        topLeft = Offset(w / 2f, w / 2f),
+                        size = androidx.compose.ui.geometry.Size(size.width - w, size.height - w),
+                        cornerRadius = CornerRadius(radius.x - w / 2f),
+                        style = Stroke(w),
+                    )
+                }
+            },
+    ) {
+        CompositionLocalProvider(LocalTileInk provides ink) { content() }
+    }
+}
+
+private fun Key.isSelectKey() = this == Key.DirectionCenter || this == Key.Enter || this == Key.NumPadEnter
+
 @Composable
 private fun EditChip(
     label: String,
@@ -369,23 +490,9 @@ private fun EditChip(
     tint: Color? = null,
     onClick: () -> Unit,
 ) {
-    val r = requester ?: remember { FocusRequester() }
-    GlassTile(
-        label = label,
-        cornerRadius = 20.dp,
-        focusRequester = r,
-        focusProps = {},
-        onActivate = onClick,
-        modifier = Modifier.size(width, 40.dp),
-        active = highlighted,
-    ) {
+    FlatButton(label, width, highlighted, requester, onClick) {
         if (tint != null) Box(Modifier.align(Alignment.Center).size(18.dp).background(tint, CircleShape))
-        if (tint == null) BasicText(
-            label,
-            Modifier.align(Alignment.Center).padding(horizontal = 6.dp),
-            style = PanelType.label.copy(color = GlassTokens.textPrimary),
-            maxLines = 1,
-        )
+        else Label(label, Modifier.align(Alignment.Center).padding(horizontal = 6.dp), maxLines = 1)
     }
 }
 
@@ -393,14 +500,7 @@ private fun EditChip(
 private fun AddChip(id: TileId, onClick: () -> Unit) {
     val look = lookOf(id)
     val label = stringResource(look.label)
-    GlassTile(
-        label = label,
-        cornerRadius = 20.dp,
-        focusRequester = remember { FocusRequester() },
-        focusProps = {},
-        onActivate = onClick,
-        modifier = Modifier.size(168.dp, 40.dp),
-    ) {
+    FlatButton(label, 168.dp, false, null, onClick) {
         Row(
             Modifier.align(Alignment.CenterStart).padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,

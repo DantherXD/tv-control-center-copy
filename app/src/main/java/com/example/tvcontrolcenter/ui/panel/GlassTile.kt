@@ -2,6 +2,9 @@ package com.example.tvcontrolcenter.ui.panel
 
 import android.view.SoundEffectConstants
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -35,6 +38,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
+import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
+import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
+import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
+import com.example.tvcontrolcenter.ui.glass.LocalTileInk
 import com.example.tvcontrolcenter.ui.glass.frostedTile
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
 import com.example.tvcontrolcenter.ui.theme.Motion
@@ -63,6 +70,8 @@ fun GlassTile(
     stateText: String? = null,
     active: Boolean = false,
     selected: Boolean = false,
+    /** Drawn white with dark content whatever the focus, e.g. the open page's top-bar button. */
+    solid: Boolean = false,
     backdrop: Backdrop? = null,
     backdropOrigin: Offset = Offset.Zero,
     appear: () -> Float = { 1f },
@@ -71,12 +80,17 @@ fun GlassTile(
     content: @Composable BoxScope.() -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
+    val invert = LocalInvertFocus.current
+    val lite = LocalLiteGlass.current
+    val overBlur = LocalOverBlur.current
     val focusAmount = animateFloatAsState(
         targetValue = if (focused) 1f else 0f,
-        animationSpec = Motion.focusSpring(),
+        animationSpec = if (lite) snap<Float>() else Motion.focusSpring<Float>(),
         label = "tileFocus",
     )
     val view = LocalView.current
+    // Content colour changes at once on focus; the white fill fades in over it in the draw phase.
+    val ink = if (solid || (invert && focused)) GlassTokens.inkDark else Color.White
 
     Box(
         modifier = modifier
@@ -108,14 +122,16 @@ fun GlassTile(
                 role = Role.Button
                 onClick(label = label) { onActivate(); true }
             }
-            .graphicsLayer {
-                val a = appear()
-                val f = focusAmount.value
-                val s = (0.7f + 0.3f * a) * (1f + (GlassTokens.focusScale - 1f) * f)
-                scaleX = s
-                scaleY = s
-                alpha = a.coerceIn(0f, 1f)
-            }
+            .then(
+                if (lite) Modifier else Modifier.graphicsLayer {
+                    val a = appear()
+                    val f = focusAmount.value
+                    val s = (0.7f + 0.3f * a) * (1f + (GlassTokens.focusScale - 1f) * f)
+                    scaleX = s
+                    scaleY = s
+                    alpha = a.coerceIn(0f, 1f)
+                },
+            )
             .frostedTile(
                 cornerRadius = cornerRadius,
                 active = active,
@@ -124,9 +140,14 @@ fun GlassTile(
                 backdrop = backdrop,
                 origin = backdropOrigin,
                 style = LocalFrostStyle.current,
+                overBlur = overBlur || backdrop != null,
+                invert = invert,
+                solid = solid,
+                lite = lite,
             ),
-        content = content,
-    )
+    ) {
+        CompositionLocalProvider(LocalTileInk provides ink) { content() }
+    }
 }
 
 private fun Key.isSelect() = this == Key.DirectionCenter || this == Key.Enter || this == Key.NumPadEnter

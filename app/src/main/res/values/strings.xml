@@ -84,4 +84,16 @@
     <string name="frost_smoke">Smoke</string>
     <string name="frost_milky">Milky</string>
     <string name="frost_clear">Clear</string>
+
+    <string name="edit_header_gap">Gap under the top bar</string>
+    <string name="edit_invert">Selected control colors</string>
+    <string name="invert_yes">Inverted</string>
+    <string name="invert_no">Normal</string>
+    <string name="edit_btn_music">Music button</string>
+    <string name="edit_music_note">With the music button on, it opens a now-playing page. With it off, Now Playing is an ordinary control in the grid.</string>
+    <string name="blur_whole_note">Whole screen blurs everything behind the panel from a screenshot, with no box around the controls.</string>
+    <string name="music_previous">Previous</string>
+    <string name="music_play">Play</string>
+    <string name="music_pause">Pause</string>
+    <string name="music_next">Next</string>
 </resources>

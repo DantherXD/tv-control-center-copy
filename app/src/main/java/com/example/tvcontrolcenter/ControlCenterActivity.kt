@@ -61,8 +61,9 @@ class ControlCenterActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     val settings = ControlCenterEntryPoint.from(this@ControlCenterActivity).layoutRepository().settings.value
                     val level = settings.effectiveBlur
-                    backdrop = if (settings.blurMethod == BlurMethod.WINDOW) null else BackdropCapture.capture(level)
-                    if (backdrop == null && settings.blurMethod == BlurMethod.AUTO) {
+                    backdrop = BackdropCapture.capture(level)
+                    // No screenshot (older Android, service off, protected video): ask the system to blur.
+                    if (backdrop == null && settings.blurMethod != BlurMethod.SCREENSHOT) {
                         val p = window.attributes
                         if (p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))) window.attributes = p
                     }
@@ -110,10 +111,5 @@ class ControlCenterActivity : ComponentActivity() {
 
     private fun configureWindow() {
         window.setBackgroundDrawableResource(android.R.color.transparent)
-        val s = ControlCenterEntryPoint.from(this).layoutRepository().settings.value
-        if (s.blurMethod == BlurMethod.WINDOW) {
-            val params = window.attributes
-            if (params.applyBlurFallback(windowManager, BlurLevels.windowRadius(s.effectiveBlur))) window.attributes = params
-        }
     }
 }

@@ -11,7 +11,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.example.tvcontrolcenter.di.ControlCenterEntryPoint
-import com.example.tvcontrolcenter.domain.model.BlurMethod
 import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
 import com.example.tvcontrolcenter.ui.demo.DemoScreen
 import com.example.tvcontrolcenter.ui.glass.Backdrop
@@ -78,8 +77,7 @@ class MainActivity : ComponentActivity() {
         if (panelVisible) return
         lifecycleScope.launch {
             val settings = ControlCenterEntryPoint.from(this@MainActivity).layoutRepository().settings.value
-            backdrop = if (settings.blurMethod == BlurMethod.WINDOW) null
-            else BackdropCapture.captureWindow(window, settings.effectiveBlur)
+            backdrop = BackdropCapture.captureWindow(window, settings.effectiveBlur)
             panelVisible = true
         }
     }

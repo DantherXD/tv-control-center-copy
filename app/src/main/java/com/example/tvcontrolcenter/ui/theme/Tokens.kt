@@ -33,8 +33,8 @@ object PanelDimens {
 
     /** Clock on the left, round shortcut buttons on the right, above the grid. */
     val headerHeight = 44.dp
-    /** Clear space between the header and the grid, so the buttons never touch the glass. */
-    val headerGap = 18.dp
+    /** Height of the now-playing card that replaces the grid on the music page. */
+    val musicCardHeight = 150.dp
     val topButton = 40.dp
     val topButtonGap = 12.dp
 
@@ -49,6 +49,8 @@ object GlassTokens {
 
     val textPrimary = Color.White
     val textSecondary = Color(0xFFDDE3EC)
+    /** Icon and text colour on a white (focused) control. */
+    val inkDark = Color(0xFF14181D)
 
     // Frosted glass layers. All plain fills and gradients, no shader and no blur pass.
     const val sheetBaseAlpha = 0.40f

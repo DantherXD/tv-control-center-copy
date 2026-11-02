@@ -31,6 +31,15 @@ data class NowPlaying(
     val artist: String?,
     val packageName: String?,
     val isPlaying: Boolean,
+    /** Album picture, already shrunk by the media source. Null when the app gives none. */
+    val artwork: android.graphics.Bitmap? = null,
+    /** 0 when unknown (live streams). */
+    val durationMs: Long = 0L,
+    /** Where playback was at [positionUpdatedAt]; the music page adds the time since then. */
+    val positionMs: Long = 0L,
+    /** SystemClock.elapsedRealtime() when [positionMs] was read. 0 when unknown. */
+    val positionUpdatedAt: Long = 0L,
+    val speed: Float = 1f,
 )
 
 /** Permissions or services that unlock a feature. The UI maps each to a settings screen. */

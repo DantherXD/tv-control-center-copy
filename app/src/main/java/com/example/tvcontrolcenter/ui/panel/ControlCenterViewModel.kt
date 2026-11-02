@@ -173,6 +173,20 @@ class ControlCenterViewModel @Inject constructor(
         scheduleOverrideReset()
     }
 
+    /**
+     * The Now Playing button in the top bar was pressed. True when the music page may open.
+     * Without media access it asks for it instead, and the page stays closed.
+     */
+    fun onMusicPageRequested(): Boolean {
+        if (nowPlayingSource.hasAccess()) return true
+        _events.tryEmit(PanelEvent.NeedsCapability(Capability.NOTIFICATION_LISTENER))
+        return false
+    }
+
+    fun onPlayPause() {
+        if (nowPlayingSource.hasAccess()) nowPlayingSource.togglePlayPause()
+    }
+
     fun onSkipNext() = nowPlayingSource.skipNext()
 
     fun onSkipPrevious() = nowPlayingSource.skipPrevious()

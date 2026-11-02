@@ -3,7 +3,7 @@
 An Android TV app that recreates the look and behaviour of the tvOS Control Center panel with an original
 "Liquid Glass" material: Kotlin, Jetpack Compose for TV, MVVM + StateFlow, Hilt, single activity, D-pad only.
 No Apple logos, SF Symbols or fonts. Icons are Material icons, the font is Inter (SIL OFL, see `FONT_LICENSE_Inter.txt`),
-and the animated acrylic background is drawn in code (no image assets).
+and the wallpaper (a static wall of colourful boxes) is drawn in code. Drop `wallpaper_boxes.jpg` into `res/drawable` to use a photo instead.
 
 > **Status.** This source was written without an Android SDK in the authoring environment, so it has **not been compiled
 > or run**. Expect a few small compile fixes on first build, and no performance numbers exist yet. Sizes, spacing and
@@ -44,11 +44,14 @@ The clock follows the TV's 12/24 hour setting. **Menu** opens the editor; **Prof
 buttons on the left set its size, move it earlier or later, or hide it. "Add controls" lists hidden ones. Below that:
 
 * **Panel position** lowers the panel from the top edge (six steps).
+* **Gap under the top bar** sets the space between the clock row and the controls (0 to 24).
+* **Selected control colors** Inverted (focused control turns white, icon and text dark) or Normal.
+* **Music button** puts Now Playing in the top bar. It then opens a now-playing page (album art, title, progress, rewind / play-pause / forward) instead of acting as a grid control. Back leaves the page first.
 * **Buttons beside the clock** turns Menu and Profile on or off.
 * **Profile photo** picks a picture with the system file picker (square-cropped to 256 px and kept in the app), removes it, or
   picks one of six colours. If the TV has no file picker, use a colour.
 * **Blur strength** Off, Light, Medium, Strong, Max.
-* **Blur method** Auto, Screenshot (blur only inside the glass) or Whole screen (the system blurs everything behind the panel).
+* **Blur method** Auto, Screenshot (blur only inside the glass) or Whole screen (the whole picture behind the panel is blurred from a screenshot, with no box around the controls; the system window blur is the fallback).
   A line under it says whether screenshot blur is ready.
 * **Glass style** Smoke (dark), Milky (light) or Clear.
 * **Panel size** scales the panel (80 % to 175 %) on top of the automatic screen fit. "Reset layout" restores the default.
@@ -70,7 +73,7 @@ Glass is now plain drawing, so it costs almost nothing per frame:
   On Android 12+ with cross-window blur it also asks the system to blur the whole screen behind it (blur method **Whole screen**, or Auto when no screenshot is possible).
 * **Performance.** Focus and open progress are read in draw/graphicsLayer lambdas, so moving focus recomposes nothing. Open/close
   animates per grid row (not per tile) on stiff springs and settles in about a quarter of a second. Nothing animates while idle.
-* **Acrylic background.** Five soft colour fields drift on a 90 s loop. They are drawn into an offscreen layer one sixth of the
+* **Wallpaper.** Static colourful boxes, drawn once per screen size. Nothing animates.
   screen size and scaled up by the GPU, so a 4K screen costs about as much as 640 x 360, and the position updates 25 times a second.
 
 ## Permissions and what degrades

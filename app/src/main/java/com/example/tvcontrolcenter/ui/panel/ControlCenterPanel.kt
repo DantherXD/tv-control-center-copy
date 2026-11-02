@@ -38,7 +38,14 @@ import com.example.tvcontrolcenter.domain.model.Capability
 import com.example.tvcontrolcenter.domain.model.GridPacker
 import com.example.tvcontrolcenter.domain.model.PanelEvent
 import com.example.tvcontrolcenter.domain.model.Placed
+import com.example.tvcontrolcenter.domain.model.BlurMethod
 import com.example.tvcontrolcenter.domain.model.TileId
+import com.example.tvcontrolcenter.domain.model.TileSize
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.unit.IntSize
+import kotlin.math.roundToInt
+import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
+import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
 import com.example.tvcontrolcenter.ui.theme.Motion
@@ -79,13 +86,18 @@ fun ControlCenterHost(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val shown = remember(state.layout, state.hasNowPlaying) {
-        state.layout.visibleItems().filter { it.id != TileId.NOW_PLAYING || state.hasNowPlaying }
+        // The grid tile appears only while something plays; the top-bar button is always there.
+        state.layout.visibleItems().filter {
+            it.id != TileId.NOW_PLAYING || it.size == TileSize.TOP || state.hasNowPlaying
+        }
     }
     val placed = remember(shown) { GridPacker.pack(shown) }
     val pinned = remember(shown) { GridPacker.pinned(shown) }
+    val musicOnTop = pinned.any { it.id == TileId.NOW_PLAYING }
+    val body = maxOf(gridHeight(GridPacker.rowCount(placed)), if (musicOnTop) PanelDimens.musicCardHeight else 0.dp)
     val needed = state.settings.topOffset.dp + PanelDimens.sheetPadding * 2 +
-        PanelDimens.headerHeight + PanelDimens.headerGap +
-        gridHeight(GridPacker.rowCount(placed)) + PanelDimens.edgeInset
+        PanelDimens.headerHeight + state.settings.headerGap.dp + PanelDimens.sheetPadding +
+        body + PanelDimens.edgeInset
     ProvideUiScale(state.settings.uiScale, neededHeight = needed) {
         HostBody(
             state = state,
@@ -126,6 +138,9 @@ private fun HostBody(
     val progress = remember { Animatable(0f) }
     val rowProgress = remember { List(ROW_SLOTS) { Animatable(0f) } }
     val requesters = remember { TileId.entries.associateWith { FocusRequester() } }
+    val musicFocus = remember { MusicFocus() }
+    var page by remember { mutableStateOf(PanelPage.GRID) }
+    val musicOnTop = pinned.any { it.id == TileId.NOW_PLAYING }
 
     val currentPlaced by rememberUpdatedState(placed)
     val currentPinned by rememberUpdatedState(pinned)
@@ -141,6 +156,7 @@ private fun HostBody(
     LaunchedEffect(visible) {
         if (visible) {
             hasOpened[0] = true
+            page = PanelPage.GRID
             viewModel.onOpened()
             launch {
                 for (row in 0 until ROW_SLOTS) {
@@ -200,17 +216,49 @@ private fun HostBody(
     val mapped = remember(backdrop, hostSize) {
         if (backdrop != null && hostSize.width > 0) backdrop.copy(width = hostSize.width, height = hostSize.height) else null
     }
+    // Whole screen: the blurred picture covers everything behind the panel and the controls are
+    // plain glass on top of it. No frosted box is drawn around them.
+    val wholeScreen = state.settings.blurMethod == BlurMethod.WINDOW
+    val fullBackdrop = if (wholeScreen) backdrop else null
+    val tileBackdrop = if (wholeScreen) null else mapped
+
+    val onActivate: (TileId) -> Unit = { id ->
+        if (id == TileId.NOW_PLAYING && musicOnTop) {
+            if (page == PanelPage.MUSIC) {
+                page = PanelPage.GRID
+            } else if (viewModel.onMusicPageRequested()) {
+                page = PanelPage.MUSIC
+            }
+        } else {
+            viewModel.onTileActivated(id)
+        }
+    }
 
     Box(
         modifier = modifier
             .onSizeChanged { hostSize = it }
             .drawBehind {
+                val full = fullBackdrop
+                if (full != null && progress.value > 0.001f) {
+                    drawImage(
+                        full.image,
+                        dstSize = IntSize(size.width.roundToInt().coerceAtLeast(1), size.height.roundToInt().coerceAtLeast(1)),
+                        alpha = progress.value.coerceIn(0f, 1f),
+                        filterQuality = FilterQuality.Medium,
+                    )
+                }
                 val a = scrimAlpha * progress.value
                 if (a > 0.001f) drawRect(Color.Black.copy(alpha = a))
             }
             .onPreviewKeyEvent { event ->
                 if (event.key == Key.Back || event.key == Key.Escape) {
-                    if (event.type == KeyEventType.KeyUp) dismiss()
+                    if (event.type == KeyEventType.KeyUp) {
+                        if (page == PanelPage.MUSIC) {
+                            // First Back leaves the music page, the next one closes the panel.
+                            page = PanelPage.GRID
+                            runCatching { requesters.getValue(TileId.NOW_PLAYING).requestFocus() }
+                        } else dismiss()
+                    }
                     true
                 } else false
             },
@@ -229,27 +277,34 @@ private fun HostBody(
                 }
                 .padding(PanelDimens.sheetPadding),
         ) {
-            CompositionLocalProvider(LocalFrostStyle provides state.settings.frost) {
-            PanelContent(
-                grid = placed,
-                pinned = pinned,
-                state = state,
-                requesters = requesters,
-                interactive = true,
-                trapEdges = true,
-                selected = null,
-                appear = { p -> { rowProgress[(p.row + 1).coerceIn(0, ROW_SLOTS - 1)].value } },
-                onFocused = viewModel::onFocused,
-                onActivate = viewModel::onTileActivated,
-                actions = TileActions(
-                    onVolumeStep = viewModel::onVolumeStep,
-                    onSkipNext = viewModel::onSkipNext,
-                    onSkipPrevious = viewModel::onSkipPrevious,
-                ),
-                backdrop = mapped,
-                origin = origin,
-                sheet = mapped == null,
-            )
+            CompositionLocalProvider(
+                LocalFrostStyle provides state.settings.frost,
+                LocalInvertFocus provides state.settings.invertFocus,
+                LocalOverBlur provides (backdrop != null),
+            ) {
+                PanelContent(
+                    grid = placed,
+                    pinned = pinned,
+                    state = state,
+                    requesters = requesters,
+                    interactive = true,
+                    trapEdges = true,
+                    selected = null,
+                    appear = { p -> { rowProgress[(p.row + 1).coerceIn(0, ROW_SLOTS - 1)].value } },
+                    onFocused = viewModel::onFocused,
+                    onActivate = onActivate,
+                    actions = TileActions(
+                        onVolumeStep = viewModel::onVolumeStep,
+                        onSkipNext = viewModel::onSkipNext,
+                        onSkipPrevious = viewModel::onSkipPrevious,
+                        onPlayPause = viewModel::onPlayPause,
+                    ),
+                    backdrop = tileBackdrop,
+                    origin = origin,
+                    sheet = !wholeScreen && mapped == null,
+                    page = page,
+                    musicFocus = musicFocus,
+                )
             }
         }
     }

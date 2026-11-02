@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +48,7 @@ import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
+import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.glass.frostedSheet
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import com.example.tvcontrolcenter.ui.theme.PanelType
@@ -60,6 +63,7 @@ internal class TileActions(
     val onVolumeStep: (Int) -> Unit = {},
     val onSkipNext: () -> Unit = {},
     val onSkipPrevious: () -> Unit = {},
+    val onPlayPause: () -> Unit = {},
 )
 
 /** Edge length of a block of [cells] cells, gaps included. */
@@ -93,13 +97,18 @@ internal fun PanelContent(
     backdrop: Backdrop?,
     origin: Offset,
     sheet: Boolean = false,
+    page: PanelPage = PanelPage.GRID,
+    musicFocus: MusicFocus? = null,
     modifier: Modifier = Modifier,
 ) {
     // Focus moves over the top bar and the grid as one set of rows.
     val navigation = remember(grid, pinned) { pinned + grid }
     val density = LocalDensity.current
+    // The sheet reaches sheetPadding above the grid, so it adds that to keep the visible gap equal.
+    val gap = state.settings.headerGap.dp + if (sheet) PanelDimens.sheetPadding else 0.dp
+    val music = page == PanelPage.MUSIC && musicFocus != null
     val gridOrigin = origin + with(density) {
-        Offset(0f, (PanelDimens.headerHeight + PanelDimens.headerGap).toPx())
+        Offset(0f, (PanelDimens.headerHeight + gap).toPx())
     }
     Column(modifier.width(PanelDimens.gridWidth)) {
         Row(
@@ -128,6 +137,8 @@ internal fun PanelContent(
                             actions = actions,
                             backdrop = backdrop,
                             backdropOrigin = origin + with(density) { Offset(left.toPx(), 0f) },
+                            downTarget = if (music) musicFocus?.play else null,
+                            pageOpen = music && p.id == TileId.NOW_PLAYING,
                             radius = PanelDimens.topButton / 2,
                             modifier = Modifier.size(PanelDimens.topButton),
                         )
@@ -135,8 +146,18 @@ internal fun PanelContent(
                 }
             }
         }
-        Spacer(Modifier.height(PanelDimens.headerGap))
-        TileGrid(
+        Spacer(Modifier.height(gap))
+        if (music && musicFocus != null) {
+            MusicCard(
+                np = state.nowPlaying,
+                actions = actions,
+                focus = musicFocus,
+                up = requesters.getValue(TileId.NOW_PLAYING),
+                backdrop = backdrop,
+                origin = gridOrigin,
+                sheet = sheet,
+            )
+        } else TileGrid(
             placed = grid,
             navigation = navigation,
             state = state,
@@ -151,7 +172,7 @@ internal fun PanelContent(
             backdrop = backdrop,
             origin = gridOrigin,
             modifier = if (sheet) {
-                Modifier.frostedSheet(PanelDimens.sheetRadius, LocalFrostStyle.current, PanelDimens.sheetPadding)
+                Modifier.frostedSheet(PanelDimens.sheetRadius, LocalFrostStyle.current, PanelDimens.sheetPadding, LocalLiteGlass.current)
             } else Modifier,
         )
     }
@@ -226,6 +247,8 @@ internal fun TileGrid(
                     actions = actions,
                     backdrop = backdrop,
                     backdropOrigin = origin + with(density) { Offset(x.toPx(), y.toPx()) },
+                    downTarget = null,
+                    pageOpen = false,
                     radius = radiusFor(p.size),
                     modifier = Modifier
                         .offset(x = x, y = y)
@@ -251,10 +274,14 @@ private fun PanelTile(
     actions: TileActions,
     backdrop: Backdrop?,
     backdropOrigin: Offset,
+    downTarget: FocusRequester?,
+    pageOpen: Boolean,
     radius: Dp,
     modifier: Modifier,
 ) {
     val face = faceOf(p.id, state)
+    // Now Playing in the top bar is a page button, not a grid control.
+    val musicButton = p.id == TileId.NOW_PLAYING && p.row == GridPacker.TOP_ROW
     val np = state.nowPlaying
     val volume = state.volumePercent
     val muted = state.muted
@@ -270,12 +297,13 @@ private fun PanelTile(
     }
     val onKey: (KeyEvent) -> Boolean = when {
         !interactive -> NoKeys
+        musicButton -> NoKeys
         p.id == TileId.NOW_PLAYING -> nowPlayingKeys(actions)
         p.id == TileId.VOLUME -> volumeKeys(actions)
         else -> NoKeys
     }
-    val focusProps = remember(p.id, all, trapEdges, requesters) {
-        focusPropsFor(p.id, all, requesters, trapEdges)
+    val focusProps = remember(p.id, all, trapEdges, requesters, downTarget) {
+        focusPropsFor(p.id, all, requesters, trapEdges, downTarget)
     }
 
     GlassTile(
@@ -287,6 +315,7 @@ private fun PanelTile(
         modifier = modifier,
         stateText = stateText,
         active = face.active,
+        solid = pageOpen,
         selected = selected,
         backdrop = backdrop,
         backdropOrigin = backdropOrigin,
@@ -296,7 +325,9 @@ private fun PanelTile(
     ) {
         when (p.id) {
             TileId.VOLUME -> VolumeFace(volume, muted, p.size)
-            TileId.NOW_PLAYING -> NowPlayingFace(np?.title, np?.artist, np?.isPlaying == true, p.size)
+            TileId.NOW_PLAYING ->
+                if (musicButton) TileIcon(Icons.Filled.GraphicEq, PanelDimens.iconSmall, modifier = Modifier.align(Alignment.Center))
+                else NowPlayingFace(np?.title, np?.artist, np?.isPlaying == true, p.size)
             TileId.PROFILE -> ProfileFace(state.settings)
             else -> GenericFace(p.id, face, p.size)
         }
@@ -331,12 +362,13 @@ internal fun focusPropsFor(
     placed: List<Placed>,
     requesters: Map<TileId, FocusRequester>,
     trapEdges: Boolean,
+    downOverride: FocusRequester? = null,
 ): FocusProperties.() -> Unit = {
     fun target(dir: Dir): FocusRequester =
         GridNav.neighbour(placed, id, dir)?.let(requesters::get)
             ?: if (trapEdges) FocusRequester.Cancel else FocusRequester.Default
     up = target(Dir.UP)
-    down = target(Dir.DOWN)
+    down = downOverride ?: target(Dir.DOWN)
     left = target(Dir.LEFT)
     right = target(Dir.RIGHT)
 }

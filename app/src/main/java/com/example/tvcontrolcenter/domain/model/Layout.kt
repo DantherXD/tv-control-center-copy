@@ -109,7 +109,7 @@ data class PanelLayout(val items: List<ControlItem>) {
     }
 
     companion object {
-        const val MAX_PINNED = 2
+        const val MAX_PINNED = 3
 
         val Default = PanelLayout(
             listOf(
@@ -154,9 +154,9 @@ data class PanelLayout(val items: List<ControlItem>) {
                 val id = TileId.entries.firstOrNull { it.name == f[0] } ?: continue
                 val size = TileSize.entries.firstOrNull { it.name == f[1] } ?: continue
                 if (id in seen) continue
-                // Older versions pinned four buttons. Only the menu and profile buttons stay on top.
+                // Older versions pinned four buttons. Only menu, profile and now playing may stay on top.
                 val bar = size == TileSize.TOP
-                val keep = !bar || id == EDIT || id == PROFILE
+                val keep = !bar || id == EDIT || id == PROFILE || id == NOW_PLAYING
                 seen[id] = ControlItem(id, if (keep) size else TileSize.SMALL, f[2] == "1" && keep)
             }
             if (seen.values.none { it.visible }) return Default
@@ -178,7 +178,11 @@ enum class BlurMethod {
     AUTO,
     /** Blur only inside the glass, from a screenshot (Android 11+, accessibility service). */
     SCREENSHOT,
-    /** Ask the system to blur everything behind the panel (Android 12+, device permitting). */
+    /**
+     * Blur the whole screen behind the panel. Uses the screenshot, drawn blurred over the full
+     * screen (works on TVs whose system cannot blur windows); falls back to the system window
+     * blur (Android 12+, device permitting). No frosted box is drawn around the controls.
+     */
     WINDOW,
 }
 
@@ -213,6 +217,10 @@ data class PanelSettings(
     val frost: FrostStyle = FrostStyle.SMOKE,
     /** Gap above the panel, in reference dp (see [TopOffsetSteps]). */
     val topOffset: Int = 48,
+    /** Gap between the top bar (clock and round buttons) and the controls, in reference dp (see [HeaderGapSteps]). */
+    val headerGap: Int = 8,
+    /** The focused control turns white and its icon and text turn dark, like tvOS. */
+    val invertFocus: Boolean = true,
     /** 0 = no photo. Changes whenever a new photo is saved, so the picture reloads. */
     val profilePhotoVersion: Int = 0,
     /** Colour of the profile circle when there is no photo; index into the app's palette. */
@@ -225,6 +233,8 @@ data class PanelSettings(
 val UiScaleSteps: List<Float> = listOf(0.8f, 1f, 1.25f, 1.5f, 1.75f)
 
 val TopOffsetSteps: List<Int> = listOf(0, 24, 48, 72, 96, 120)
+
+val HeaderGapSteps: List<Int> = listOf(0, 4, 8, 12, 18, 24)
 
 /** A control placed on the grid. Coordinates are cells, not pixels. */
 data class Placed(val id: TileId, val size: TileSize, val col: Int, val row: Int) {

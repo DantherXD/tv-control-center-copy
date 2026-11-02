@@ -33,7 +33,7 @@ import com.example.tvcontrolcenter.system.overlay.OverlayService
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Brush
-import com.example.tvcontrolcenter.ui.background.AcrylicBackground
+import com.example.tvcontrolcenter.ui.background.BoxesBackground
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
@@ -58,7 +58,7 @@ fun DemoScreen(
     val rootRequester = remember { FocusRequester() }
 
     Box(Modifier.fillMaxSize()) {
-        AcrylicBackground(Modifier.fillMaxSize())
+        BoxesBackground(Modifier.fillMaxSize())
 
         // Fits the screen but ignores the user's panel size: this is just stage dressing.
         ProvideUiScale(1f) {
