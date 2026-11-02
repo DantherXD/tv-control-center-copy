@@ -10,6 +10,8 @@ enum class TileId {
     HOME, RECENTS, SCREENSHOT, NOTIFICATIONS,
     // Opens the layout editor.
     EDIT,
+    // Round button next to the clock; shows the profile picture.
+    PROFILE,
 }
 
 enum class NetworkKind { WIFI, ETHERNET, NONE }

@@ -30,7 +30,11 @@ import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.Capability
 import com.example.tvcontrolcenter.system.openCapabilitySettings
 import com.example.tvcontrolcenter.system.overlay.OverlayService
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
 import com.example.tvcontrolcenter.ui.background.AcrylicBackground
+import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
 import com.example.tvcontrolcenter.ui.panel.GlassTile
@@ -46,6 +50,7 @@ import com.example.tvcontrolcenter.ui.theme.ProvideUiScale
 fun DemoScreen(
     viewModel: ControlCenterViewModel,
     panelVisible: Boolean,
+    backdrop: Backdrop?,
     onPanelVisibleChange: (Boolean) -> Unit,
     onEdit: () -> Unit,
 ) {
@@ -57,6 +62,8 @@ fun DemoScreen(
 
         // Fits the screen but ignores the user's panel size: this is just stage dressing.
         ProvideUiScale(1f) {
+            // Sharp, colourful shelves so the blur inside the glass is easy to see.
+            Shelf(Modifier.align(Alignment.TopEnd).padding(top = 60.dp, end = 24.dp))
             // Everything below sits behind the panel and is inert while it is open.
             if (!panelVisible) {
                 Column(
@@ -101,6 +108,7 @@ fun DemoScreen(
             onCapability = { context.openCapabilitySettings(it) },
             modifier = Modifier.fillMaxSize(),
             onOpenEditor = onEdit,
+            backdrop = backdrop,
             scrimAlpha = 0.25f,
         )
     }
@@ -124,5 +132,34 @@ private fun SetupButton(labelRes: Int, onClick: () -> Unit) {
             style = PanelType.label.copy(color = GlassTokens.textPrimary),
             maxLines = 1,
         )
+    }
+}
+
+/** Fake app content: rows of sharp cards that the panel's glass blurs. Not focusable. */
+@Composable
+private fun Shelf(modifier: Modifier) {
+    val colors = listOf(
+        listOf(Color(0xFFFF8A3D), Color(0xFFE23D6B)), listOf(Color(0xFF3DDCFF), Color(0xFF3D5BFF)),
+        listOf(Color(0xFFB8FF5A), Color(0xFF1FA67A)), listOf(Color(0xFFFFE15A), Color(0xFFFF7A3D)),
+        listOf(Color(0xFFD28BFF), Color(0xFF6A3DFF)),
+    )
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        repeat(3) { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                repeat(5) { col ->
+                    Box(
+                        Modifier
+                            .size(width = 150.dp, height = 84.dp)
+                            .background(Brush.linearGradient(colors[(row + col) % colors.size]), RoundedCornerShape(10.dp)),
+                    ) {
+                        BasicText(
+                            "Title ${row * 5 + col + 1}",
+                            Modifier.align(Alignment.BottomStart).padding(8.dp),
+                            style = PanelType.label.copy(color = Color.White),
+                        )
+                    }
+                }
+            }
+        }
     }
 }

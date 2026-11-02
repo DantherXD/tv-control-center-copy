@@ -88,5 +88,6 @@ class FakeLayoutRepository(initial: PanelLayout = PanelLayout.Default) : LayoutR
     override fun update(transform: (PanelLayout) -> PanelLayout) { layoutState.value = transform(layoutState.value) }
     override fun resetLayout() { layoutState.value = PanelLayout.Default }
     override fun setUiScale(scale: Float) { settingsState.value = settingsState.value.copy(uiScale = scale) }
+    override fun updateSettings(transform: (com.example.tvcontrolcenter.domain.model.PanelSettings) -> com.example.tvcontrolcenter.domain.model.PanelSettings) { settingsState.value = transform(settingsState.value) }
     override fun setBlurBehind(enabled: Boolean) { settingsState.value = settingsState.value.copy(blurBehind = enabled) }
 }

@@ -14,6 +14,7 @@ import com.example.tvcontrolcenter.domain.model.TileId.LOCK
 import com.example.tvcontrolcenter.domain.model.TileId.NOTIFICATIONS
 import com.example.tvcontrolcenter.domain.model.TileId.NOW_PLAYING
 import com.example.tvcontrolcenter.domain.model.TileId.POWER
+import com.example.tvcontrolcenter.domain.model.TileId.PROFILE
 import com.example.tvcontrolcenter.domain.model.TileId.RECENTS
 import com.example.tvcontrolcenter.domain.model.TileId.SCREENSAVER
 import com.example.tvcontrolcenter.domain.model.TileId.SCREENSHOT
@@ -108,7 +109,7 @@ data class PanelLayout(val items: List<ControlItem>) {
     }
 
     companion object {
-        const val MAX_PINNED = 4
+        const val MAX_PINNED = 2
 
         val Default = PanelLayout(
             listOf(
@@ -123,12 +124,13 @@ data class PanelLayout(val items: List<ControlItem>) {
                 ControlItem(SEARCH, TileSize.SMALL),
                 ControlItem(NOW_PLAYING, TileSize.FULL),
                 ControlItem(VOLUME, TileSize.FULL),
-                // Round buttons above the grid, on the right.
-                ControlItem(SETTINGS, TileSize.TOP),
-                ControlItem(HOME, TileSize.TOP),
-                ControlItem(RECENTS, TileSize.TOP),
+                // The two round buttons beside the clock: menu (opens the editor) and profile.
                 ControlItem(EDIT, TileSize.TOP),
+                ControlItem(PROFILE, TileSize.TOP),
                 // Available from the editor.
+                ControlItem(SETTINGS, TileSize.SMALL, visible = false),
+                ControlItem(HOME, TileSize.SMALL, visible = false),
+                ControlItem(RECENTS, TileSize.SMALL, visible = false),
                 ControlItem(NOTIFICATIONS, TileSize.SMALL, visible = false),
                 ControlItem(SCREENSHOT, TileSize.SMALL, visible = false),
                 ControlItem(APPS, TileSize.SMALL, visible = false),
@@ -151,26 +153,78 @@ data class PanelLayout(val items: List<ControlItem>) {
                 if (f.size != 3) continue
                 val id = TileId.entries.firstOrNull { it.name == f[0] } ?: continue
                 val size = TileSize.entries.firstOrNull { it.name == f[1] } ?: continue
-                if (id !in seen) seen[id] = ControlItem(id, size, f[2] == "1")
+                if (id in seen) continue
+                // Older versions pinned four buttons. Only the menu and profile buttons stay on top.
+                val bar = size == TileSize.TOP
+                val keep = !bar || id == EDIT || id == PROFILE
+                seen[id] = ControlItem(id, if (keep) size else TileSize.SMALL, f[2] == "1" && keep)
             }
             if (seen.values.none { it.visible }) return Default
             val missing = TileId.entries
                 .filter { it !in seen }
-                .map { id -> ControlItem(id, Default.item(id)?.size ?: TileSize.SMALL, visible = false) }
+                .map { id ->
+                    val d = Default.item(id)
+                    // A new top-bar button (profile) shows up at once; anything else waits in the editor.
+                    ControlItem(id, d?.size ?: TileSize.SMALL, visible = d?.size == TileSize.TOP)
+                }
             return PanelLayout(seen.values.toList() + missing)
         }
     }
+}
+
+/** Where the blurred picture inside the glass comes from. */
+enum class BlurMethod {
+    /** Screenshot first, whole-screen window blur if there is none. */
+    AUTO,
+    /** Blur only inside the glass, from a screenshot (Android 11+, accessibility service). */
+    SCREENSHOT,
+    /** Ask the system to blur everything behind the panel (Android 12+, device permitting). */
+    WINDOW,
+}
+
+/** How the glass itself is tinted. All three are plain fills; none costs extra drawing. */
+enum class FrostStyle {
+    /** Dark smoked glass: best contrast on bright apps. */
+    SMOKE,
+    /** Light milky glass, like frosted white acrylic. */
+    MILKY,
+    /** Almost clear: only a faint tint and the blur show. */
+    CLEAR,
+}
+
+/** Blur strength 0 (none) to [MAX]. Radii are for the 480 px screenshot and for the window blur. */
+object BlurLevels {
+    const val MAX = 4
+    fun clamp(level: Int) = level.coerceIn(0, MAX)
+    /** Box-blur radius on the ~480 px copy of the screen. Three passes, so the real spread is wider. */
+    fun boxRadius(level: Int): Int = when (clamp(level)) { 0 -> 0; 1 -> 3; 2 -> 6; 3 -> 10; else -> 16 }
+    /** Radius in pixels for `blurBehindRadius`. */
+    fun windowRadius(level: Int): Int = when (clamp(level)) { 0 -> 0; 1 -> 20; 2 -> 40; 3 -> 70; else -> 110 }
 }
 
 /** Look-and-feel choices that are not about which controls exist. */
 data class PanelSettings(
     /** Multiplies the automatic screen-size scaling. 1.0 fits the panel to the screen. */
     val uiScale: Float = 1f,
-    /** Ask the system to blur the app behind the panel (Android 12+, device permitting). */
+    /** Master switch for blur behind the glass. */
     val blurBehind: Boolean = true,
-)
+    val blurLevel: Int = 3,
+    val blurMethod: BlurMethod = BlurMethod.AUTO,
+    val frost: FrostStyle = FrostStyle.SMOKE,
+    /** Gap above the panel, in reference dp (see [TopOffsetSteps]). */
+    val topOffset: Int = 48,
+    /** 0 = no photo. Changes whenever a new photo is saved, so the picture reloads. */
+    val profilePhotoVersion: Int = 0,
+    /** Colour of the profile circle when there is no photo; index into the app's palette. */
+    val profileColor: Int = 0,
+) {
+    /** The blur strength actually in force. */
+    val effectiveBlur: Int get() = if (blurBehind) BlurLevels.clamp(blurLevel) else 0
+}
 
 val UiScaleSteps: List<Float> = listOf(0.8f, 1f, 1.25f, 1.5f, 1.75f)
+
+val TopOffsetSteps: List<Int> = listOf(0, 24, 48, 72, 96, 120)
 
 /** A control placed on the grid. Coordinates are cells, not pixels. */
 data class Placed(val id: TileId, val size: TileSize, val col: Int, val row: Int) {
@@ -240,6 +294,8 @@ object GridNav {
 
         val candidates = placed.mapNotNull { b ->
             if (b.id == from) return@mapNotNull null
+            // Left and Right stay in their own row: the header bar and the grid never swap sideways.
+            if (horizontal && (a.row == GridPacker.TOP_ROW) != (b.row == GridPacker.TOP_ROW)) return@mapNotNull null
             val gap = when (dir) {
                 Dir.RIGHT -> b.col - (a.col + a.cols)
                 Dir.LEFT -> a.col - (b.col + b.cols)

@@ -36,7 +36,8 @@
     <string name="tile_screenshot">Screenshot</string>
     <string name="tile_notifications">Notifications</string>
     <string name="open_control_center">Open Control Center</string>
-    <string name="tile_edit">Edit</string>
+    <string name="tile_edit">Menu</string>
+    <string name="tile_profile">Profile</string>
 
     <string name="edit_title">Edit Control Center</string>
     <string name="edit_hint_pick">Pick a control on the right with OK to resize, move, pin it to the top bar, or hide it.</string>
@@ -46,7 +47,6 @@
     <string name="edit_add">Add controls</string>
     <string name="edit_nothing_hidden">Every control is already on the panel.</string>
     <string name="edit_panel_size">Panel size</string>
-    <string name="edit_blur">Blur behind</string>
     <string name="edit_reset">Reset layout</string>
     <string name="edit_done">Done</string>
     <string name="size_small">Small</string>
@@ -55,4 +55,33 @@
     <string name="size_large">Large</string>
     <string name="size_full">Full row</string>
     <string name="size_top">Top bar</string>
+    <string name="edit_position">Panel position (lower the menu)</string>
+    <string name="edit_pos_top">Top</string>
+    <string name="edit_header_buttons">Buttons beside the clock</string>
+    <string name="edit_btn_menu">Menu</string>
+    <string name="edit_btn_profile">Profile</string>
+    <string name="edit_menu_note">The Menu button opens this editor. If you turn it off, open the editor from the app.</string>
+    <string name="edit_photo">Profile photo</string>
+    <string name="edit_photo_choose">Choose photo</string>
+    <string name="edit_photo_color">Colour</string>
+    <string name="edit_photo_remove">Remove</string>
+    <string name="edit_photo_failed">That picture could not be read.</string>
+    <string name="edit_photo_no_picker">This TV has no file picker. Pick a colour instead.</string>
+    <string name="edit_blur_level">Blur strength</string>
+    <string name="blur_off">Off</string>
+    <string name="blur_light">Light</string>
+    <string name="blur_medium">Medium</string>
+    <string name="blur_strong">Strong</string>
+    <string name="blur_max">Max</string>
+    <string name="edit_blur_method">Blur method</string>
+    <string name="method_auto">Auto</string>
+    <string name="method_screenshot">Screenshot</string>
+    <string name="method_window">Whole screen</string>
+    <string name="blur_status_ready">Screenshot blur is ready.</string>
+    <string name="blur_status_service">Screenshot blur needs the accessibility service. Switch it off and on in Android settings.</string>
+    <string name="blur_status_old">Screenshot blur needs Android 11 or newer. Use Whole screen.</string>
+    <string name="edit_frost">Glass style</string>
+    <string name="frost_smoke">Smoke</string>
+    <string name="frost_milky">Milky</string>
+    <string name="frost_clear">Clear</string>
 </resources>

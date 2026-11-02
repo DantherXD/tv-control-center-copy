@@ -9,7 +9,13 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.lifecycleScope
+import com.example.tvcontrolcenter.di.ControlCenterEntryPoint
+import com.example.tvcontrolcenter.domain.model.BlurMethod
+import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
 import com.example.tvcontrolcenter.ui.demo.DemoScreen
+import com.example.tvcontrolcenter.ui.glass.Backdrop
+import kotlinx.coroutines.launch
 import com.example.tvcontrolcenter.ui.edit.EditScreen
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
 import com.example.tvcontrolcenter.ui.theme.ControlCenterTheme
@@ -23,11 +29,12 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val viewModel: ControlCenterViewModel by viewModels {
-        com.example.tvcontrolcenter.di.ControlCenterEntryPoint.from(this).viewModelFactory()
+        ControlCenterEntryPoint.from(this).viewModelFactory()
     }
 
     private var panelVisible by mutableStateOf(false)
     private var editing by mutableStateOf(false)
+    private var backdrop by mutableStateOf<Backdrop?>(null)
 
     /** Started straight into the editor by the panel's Edit control: closing it leaves the app. */
     private var openedForEdit = false
@@ -43,7 +50,8 @@ class MainActivity : ComponentActivity() {
                     DemoScreen(
                         viewModel = viewModel,
                         panelVisible = panelVisible,
-                        onPanelVisibleChange = { panelVisible = it },
+                        backdrop = backdrop,
+                        onPanelVisibleChange = { open -> if (open) openPanel() else panelVisible = false },
                         onEdit = { editing = true },
                     )
                 }
@@ -65,6 +73,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Blurs a picture of this screen first, so the glass has something real to show through. */
+    private fun openPanel() {
+        if (panelVisible) return
+        lifecycleScope.launch {
+            val settings = ControlCenterEntryPoint.from(this@MainActivity).layoutRepository().settings.value
+            backdrop = if (settings.blurMethod == BlurMethod.WINDOW) null
+            else BackdropCapture.captureWindow(window, settings.effectiveBlur)
+            panelVisible = true
+        }
+    }
+
     private fun closeEditor() {
         if (openedForEdit) finish() else editing = false
     }
@@ -80,7 +99,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onKeyLongPress(keyCode: Int, event: KeyEvent): Boolean {
         if (keyCode == KeyEvent.KEYCODE_MENU && !editing) {
-            panelVisible = true
+            openPanel()
             return true
         }
         return super.onKeyLongPress(keyCode, event)

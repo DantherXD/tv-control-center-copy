@@ -26,6 +26,8 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.example.tvcontrolcenter.MainActivity
 import com.example.tvcontrolcenter.di.ControlCenterEntryPoint
+import com.example.tvcontrolcenter.domain.model.BlurLevels
+import com.example.tvcontrolcenter.domain.model.BlurMethod
 import com.example.tvcontrolcenter.system.applyBlurFallback
 import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
 import com.example.tvcontrolcenter.ui.glass.Backdrop
@@ -81,6 +83,8 @@ class OverlayController(
     private var host: OverlayHost? = null
     private var visible by mutableStateOf(false)
     private var backdrop by mutableStateOf<Backdrop?>(null)
+    private var layoutParams: WindowManager.LayoutParams? = null
+    private var windowBlurOn = false
 
     /** False once [hide] was called, so a screenshot that arrives late cannot reopen the panel. */
     private var wanted = false
@@ -93,6 +97,7 @@ class OverlayController(
         wanted = true
         everVisible = false
         backdrop = null
+        windowBlurOn = false
         val newHost = OverlayHost().also { it.resume() }
         val viewModel = ViewModelProvider(
             newHost,
@@ -110,7 +115,18 @@ class OverlayController(
                     // The window is on screen but draws nothing yet, so the screenshot shows the
                     // app alone. The panel opens as soon as the picture is ready (or has failed).
                     LaunchedEffect(Unit) {
-                        backdrop = BackdropCapture.capture()
+                        val settings = ControlCenterEntryPoint.from(context).layoutRepository().settings.value
+                        val level = settings.effectiveBlur
+                        backdrop = if (settings.blurMethod == BlurMethod.WINDOW) null else BackdropCapture.capture(level)
+                        // Auto: no picture (old Android, DRM video, slow device) -> blur the whole screen.
+                        if (backdrop == null && settings.blurMethod == BlurMethod.AUTO && !windowBlurOn) {
+                            val p = layoutParams
+                            val v = view
+                            if (p != null && v != null && p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))) {
+                                windowBlurOn = true
+                                runCatching { windowManager.updateViewLayout(v, p) }
+                            }
+                        }
                         if (wanted) {
                             everVisible = true
                             visible = true
@@ -145,10 +161,13 @@ class OverlayController(
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            val blur = ControlCenterEntryPoint.from(context).layoutRepository().settings.value.blurBehind
-            // Whole-screen blur only when there is no screenshot to blur inside the glass instead.
-            applyBlurFallback(windowManager, blur && !BackdropCapture.isSupported)
+            val s = ControlCenterEntryPoint.from(context).layoutRepository().settings.value
+            // Whole-screen blur only when asked for, or when Auto has no screenshot to use.
+            val wantsWindow = s.blurMethod == BlurMethod.WINDOW ||
+                (s.blurMethod == BlurMethod.AUTO && !BackdropCapture.isSupported)
+            if (wantsWindow && applyBlurFallback(windowManager, BlurLevels.windowRadius(s.effectiveBlur))) windowBlurOn = true
         }
+        layoutParams = params
 
         view = composeView
         host = newHost

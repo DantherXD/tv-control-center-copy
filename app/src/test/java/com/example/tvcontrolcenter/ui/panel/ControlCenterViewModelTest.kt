@@ -195,8 +195,11 @@ class ControlCenterViewModelTest {
         collecting(vm)
         vm.setUiScale(1.5f)
         vm.setBlurBehind(false)
+        vm.updateSettings { it.copy(topOffset = 96, blurLevel = 4) }
         assertEquals(1.5f, vm.uiState.value.settings.uiScale)
         assertFalse(vm.uiState.value.settings.blurBehind)
+        assertEquals(96, vm.uiState.value.settings.topOffset)
+        assertEquals(4, vm.uiState.value.settings.blurLevel)
     }
 
     @Test
@@ -240,7 +243,7 @@ class ControlCenterViewModelTest {
             TileId.SETTINGS to "settings", TileId.DISPLAY to "display", TileId.SOUND to "sound",
             TileId.CAPTIONS to "captions", TileId.SCREENSAVER to "screensaver", TileId.APPS to "apps",
             TileId.HOME to "home", TileId.RECENTS to "recents", TileId.SCREENSHOT to "screenshot",
-            TileId.NOTIFICATIONS to "notifications",
+            TileId.NOTIFICATIONS to "notifications", TileId.PROFILE to "settings",
         )
         val vm = viewModel()
         vm.events.test {

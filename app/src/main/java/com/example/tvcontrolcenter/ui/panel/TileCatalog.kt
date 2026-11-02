@@ -7,13 +7,14 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Search
@@ -53,5 +54,6 @@ internal fun lookOf(id: TileId): TileLook = when (id) {
     TileId.RECENTS -> TileLook(Icons.Filled.Layers, R.string.tile_recents)
     TileId.SCREENSHOT -> TileLook(Icons.Filled.CameraAlt, R.string.tile_screenshot)
     TileId.NOTIFICATIONS -> TileLook(Icons.Filled.Notifications, R.string.tile_notifications)
-    TileId.EDIT -> TileLook(Icons.Filled.Edit, R.string.tile_edit)
+    TileId.EDIT -> TileLook(Icons.Filled.Menu, R.string.tile_edit)
+    TileId.PROFILE -> TileLook(Icons.Filled.Person, R.string.tile_profile)
 }

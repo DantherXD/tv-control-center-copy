@@ -28,22 +28,22 @@ object PanelDimens {
     val iconSmall = 22.dp
     val iconLarge = 34.dp
 
-    /** Space above the panel and the safe margin from the right edge. The panel sits high. */
-    val topInset = 0.dp
+    /** Safe margin from the right edge. The gap above the panel is a setting (topOffset). */
     val edgeInset = 32.dp
 
     /** Clock on the left, round shortcut buttons on the right, above the grid. */
     val headerHeight = 44.dp
-    val headerGap = 6.dp
-    val topButton = 44.dp
-    val topButtonGap = 6.dp
+    /** Clear space between the header and the grid, so the buttons never touch the glass. */
+    val headerGap = 18.dp
+    val topButton = 40.dp
+    val topButtonGap = 12.dp
 
     /** Width of the 4-column grid, without the sheet padding. */
     val gridWidth = cell * 4 + gap * 3
 }
 
 object GlassTokens {
-    const val focusScale = 1.07f
+    const val focusScale = 1.06f
     /** Short system sound on focus move and select. Set false to silence. */
     const val soundCues = true
 
@@ -62,8 +62,8 @@ object GlassTokens {
     const val tileActiveBoost = 0.14f
     const val tileFocusBoost = 0.26f
     const val grainAlpha = 0.055f
-    const val rimTop = 0.62f
-    const val rimBottom = 0.12f
+    const val rimTop = 0.20f
+    const val rimBottom = 0.03f
 }
 
 object Motion {

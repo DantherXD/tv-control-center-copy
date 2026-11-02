@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -30,6 +31,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.Capability
@@ -38,7 +40,7 @@ import com.example.tvcontrolcenter.domain.model.PanelEvent
 import com.example.tvcontrolcenter.domain.model.Placed
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.ui.glass.Backdrop
-import com.example.tvcontrolcenter.ui.glass.frostedSheet
+import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
 import com.example.tvcontrolcenter.ui.theme.Motion
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import com.example.tvcontrolcenter.ui.theme.ProvideUiScale
@@ -81,7 +83,7 @@ fun ControlCenterHost(
     }
     val placed = remember(shown) { GridPacker.pack(shown) }
     val pinned = remember(shown) { GridPacker.pinned(shown) }
-    val needed = PanelDimens.topInset + PanelDimens.sheetPadding * 2 +
+    val needed = state.settings.topOffset.dp + PanelDimens.sheetPadding * 2 +
         PanelDimens.headerHeight + PanelDimens.headerGap +
         gridHeight(GridPacker.rowCount(placed)) + PanelDimens.edgeInset
     ProvideUiScale(state.settings.uiScale, neededHeight = needed) {
@@ -119,6 +121,7 @@ private fun HostBody(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
+    val topOffset = state.settings.topOffset.dp
     var hostSize by remember { mutableStateOf(IntSize.Zero) }
     val progress = remember { Animatable(0f) }
     val rowProgress = remember { List(ROW_SLOTS) { Animatable(0f) } }
@@ -191,7 +194,7 @@ private fun HostBody(
     val origin = with(density) {
         Offset(
             hostSize.width - (PanelDimens.edgeInset + PanelDimens.sheetPadding + PanelDimens.gridWidth).toPx(),
-            (PanelDimens.topInset + PanelDimens.sheetPadding).toPx(),
+            (topOffset + PanelDimens.sheetPadding).toPx(),
         )
     }
     val mapped = remember(backdrop, hostSize) {
@@ -215,7 +218,7 @@ private fun HostBody(
     ) {
         Box(
             modifier = Modifier
-                .padding(top = PanelDimens.topInset, end = PanelDimens.edgeInset)
+                .padding(top = topOffset, end = PanelDimens.edgeInset)
                 .graphicsLayer {
                     val p = progress.value
                     val s = Motion.openFromScale + (1f - Motion.openFromScale) * p
@@ -224,9 +227,9 @@ private fun HostBody(
                     alpha = (p * 1.5f).coerceIn(0f, 1f)
                     transformOrigin = TransformOrigin(1f, 0f)
                 }
-                .then(if (mapped == null) Modifier.frostedSheet(PanelDimens.sheetRadius) else Modifier)
                 .padding(PanelDimens.sheetPadding),
         ) {
+            CompositionLocalProvider(LocalFrostStyle provides state.settings.frost) {
             PanelContent(
                 grid = placed,
                 pinned = pinned,
@@ -245,7 +248,9 @@ private fun HostBody(
                 ),
                 backdrop = mapped,
                 origin = origin,
+                sheet = mapped == null,
             )
+            }
         }
     }
 }

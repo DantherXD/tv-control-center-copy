@@ -79,4 +79,5 @@ interface LayoutRepository {
     fun resetLayout()
     fun setUiScale(scale: Float)
     fun setBlurBehind(enabled: Boolean)
+    fun updateSettings(transform: (PanelSettings) -> PanelSettings)
 }

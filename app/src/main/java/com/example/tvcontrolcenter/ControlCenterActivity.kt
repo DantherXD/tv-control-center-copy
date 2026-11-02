@@ -13,6 +13,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.tvcontrolcenter.di.ControlCenterEntryPoint
+import com.example.tvcontrolcenter.domain.model.BlurLevels
+import com.example.tvcontrolcenter.domain.model.BlurMethod
 import com.example.tvcontrolcenter.system.applyBlurFallback
 import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
 import com.example.tvcontrolcenter.ui.glass.Backdrop
@@ -57,7 +59,13 @@ class ControlCenterActivity : ComponentActivity() {
         setContent {
             ControlCenterTheme {
                 LaunchedEffect(Unit) {
-                    backdrop = BackdropCapture.capture()
+                    val settings = ControlCenterEntryPoint.from(this@ControlCenterActivity).layoutRepository().settings.value
+                    val level = settings.effectiveBlur
+                    backdrop = if (settings.blurMethod == BlurMethod.WINDOW) null else BackdropCapture.capture(level)
+                    if (backdrop == null && settings.blurMethod == BlurMethod.AUTO) {
+                        val p = window.attributes
+                        if (p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))) window.attributes = p
+                    }
                     if (openWhenReady) {
                         everOpened = true
                         panelOpen = true
@@ -102,9 +110,10 @@ class ControlCenterActivity : ComponentActivity() {
 
     private fun configureWindow() {
         window.setBackgroundDrawableResource(android.R.color.transparent)
-        val blur = ControlCenterEntryPoint.from(this).layoutRepository().settings.value.blurBehind
-        val params = window.attributes
-        params.applyBlurFallback(windowManager, blur && !BackdropCapture.isSupported)
-        window.attributes = params
+        val s = ControlCenterEntryPoint.from(this).layoutRepository().settings.value
+        if (s.blurMethod == BlurMethod.WINDOW) {
+            val params = window.attributes
+            if (params.applyBlurFallback(windowManager, BlurLevels.windowRadius(s.effectiveBlur))) window.attributes = params
+        }
     }
 }

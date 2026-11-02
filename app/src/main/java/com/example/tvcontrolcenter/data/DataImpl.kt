@@ -1,6 +1,9 @@
 package com.example.tvcontrolcenter.data
 
 import android.content.Context
+import com.example.tvcontrolcenter.domain.model.BlurLevels
+import com.example.tvcontrolcenter.domain.model.BlurMethod
+import com.example.tvcontrolcenter.domain.model.FrostStyle
 import com.example.tvcontrolcenter.domain.model.PanelLayout
 import com.example.tvcontrolcenter.domain.model.PanelSettings
 import com.example.tvcontrolcenter.domain.model.SleepTimerPresets
@@ -101,6 +104,12 @@ class PreferencesLayoutRepository @Inject constructor(
         PanelSettings(
             uiScale = prefs.getFloat(KEY_SCALE, 1f),
             blurBehind = prefs.getBoolean(KEY_BLUR, true),
+            blurLevel = BlurLevels.clamp(prefs.getInt(KEY_BLUR_LEVEL, 3)),
+            blurMethod = BlurMethod.entries.firstOrNull { it.name == prefs.getString(KEY_BLUR_METHOD, null) } ?: BlurMethod.AUTO,
+            frost = FrostStyle.entries.firstOrNull { it.name == prefs.getString(KEY_FROST, null) } ?: FrostStyle.SMOKE,
+            topOffset = prefs.getInt(KEY_TOP, 48),
+            profilePhotoVersion = prefs.getInt(KEY_PHOTO, 0),
+            profileColor = prefs.getInt(KEY_COLOR, 0),
         ),
     )
     override val settings: StateFlow<PanelSettings> = _settings.asStateFlow()
@@ -127,7 +136,29 @@ class PreferencesLayoutRepository @Inject constructor(
         prefs.edit().putBoolean(KEY_BLUR, enabled).apply()
     }
 
+    override fun updateSettings(transform: (PanelSettings) -> PanelSettings) {
+        val next = transform(_settings.value)
+        if (next == _settings.value) return
+        _settings.value = next
+        prefs.edit()
+            .putFloat(KEY_SCALE, next.uiScale)
+            .putBoolean(KEY_BLUR, next.blurBehind)
+            .putInt(KEY_BLUR_LEVEL, next.blurLevel)
+            .putString(KEY_BLUR_METHOD, next.blurMethod.name)
+            .putString(KEY_FROST, next.frost.name)
+            .putInt(KEY_TOP, next.topOffset)
+            .putInt(KEY_PHOTO, next.profilePhotoVersion)
+            .putInt(KEY_COLOR, next.profileColor)
+            .apply()
+    }
+
     private companion object {
+        const val KEY_BLUR_LEVEL = "blur_level"
+        const val KEY_BLUR_METHOD = "blur_method"
+        const val KEY_FROST = "frost"
+        const val KEY_TOP = "top_offset"
+        const val KEY_PHOTO = "profile_photo"
+        const val KEY_COLOR = "profile_color"
         const val KEY_LAYOUT = "layout"
         const val KEY_SCALE = "ui_scale"
         const val KEY_BLUR = "blur_behind"

@@ -45,6 +45,8 @@ import com.example.tvcontrolcenter.domain.model.Placed
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
 import com.example.tvcontrolcenter.ui.glass.Backdrop
+import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
+import com.example.tvcontrolcenter.ui.glass.frostedSheet
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import com.example.tvcontrolcenter.ui.theme.PanelType
 import kotlinx.coroutines.delay
@@ -69,10 +71,11 @@ internal fun radiusFor(size: TileSize): Dp =
     if (size == TileSize.LARGE) PanelDimens.largeRadius else PanelDimens.cell / 2
 
 /**
- * Clock and top-bar buttons above the grid, then the grid itself: everything the panel shows.
+ * Clock and the two round buttons above the grid, then the grid itself: everything the panel shows.
  * The host and the editor both draw this, so the editor preview is the real panel.
  *
  * @param origin top-left corner of this block in the backdrop's coordinates, in pixels.
+ * @param sheet draw a frosted card behind the grid. Used when there is no blurred screen to show.
  */
 @Composable
 internal fun PanelContent(
@@ -89,6 +92,7 @@ internal fun PanelContent(
     actions: TileActions,
     backdrop: Backdrop?,
     origin: Offset,
+    sheet: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // Focus moves over the top bar and the grid as one set of rows.
@@ -102,7 +106,7 @@ internal fun PanelContent(
             Modifier.fillMaxWidth().height(PanelDimens.headerHeight),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ClockText(Modifier.padding(start = 8.dp))
+            ClockText(Modifier.padding(start = 6.dp))
             Spacer(Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(PanelDimens.topButtonGap)) {
                 pinned.forEachIndexed { index, p ->
@@ -146,6 +150,9 @@ internal fun PanelContent(
             actions = actions,
             backdrop = backdrop,
             origin = gridOrigin,
+            modifier = if (sheet) {
+                Modifier.frostedSheet(PanelDimens.sheetRadius, LocalFrostStyle.current, PanelDimens.sheetPadding)
+            } else Modifier,
         )
     }
 }
@@ -290,6 +297,7 @@ private fun PanelTile(
         when (p.id) {
             TileId.VOLUME -> VolumeFace(volume, muted, p.size)
             TileId.NOW_PLAYING -> NowPlayingFace(np?.title, np?.artist, np?.isPlaying == true, p.size)
+            TileId.PROFILE -> ProfileFace(state.settings)
             else -> GenericFace(p.id, face, p.size)
         }
     }

@@ -143,6 +143,7 @@ class ControlCenterViewModel @Inject constructor(
             TileId.SCREENSHOT -> handle(actions.takeScreenshot(), dismissOnDone = true, tile = id)
             TileId.NOTIFICATIONS -> handle(actions.showNotifications(), dismissOnDone = true, tile = id)
             TileId.EDIT -> _events.tryEmit(PanelEvent.OpenEditor)
+            TileId.PROFILE -> handle(actions.openSettings(), dismissOnDone = true, tile = id)
         }
     }
 
@@ -160,6 +161,8 @@ class ControlCenterViewModel @Inject constructor(
     fun setUiScale(scale: Float) = layoutRepository.setUiScale(scale)
 
     fun setBlurBehind(enabled: Boolean) = layoutRepository.setBlurBehind(enabled)
+
+    fun updateSettings(transform: (PanelSettings) -> PanelSettings) = layoutRepository.updateSettings(transform)
 
     /** Positive steps raise the volume. Shows the new value at once, then lets polling take over. */
     fun onVolumeStep(deltaPercent: Int) {

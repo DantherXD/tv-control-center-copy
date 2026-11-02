@@ -52,24 +52,31 @@ class LayoutTest {
         assertEquals(0 to 4, cell(p, NOW_PLAYING))
         assertEquals(0 to 5, cell(p, VOLUME))
         assertEquals(6, GridPacker.rowCount(p))
-        assertTrue(p.none { it.id == SETTINGS || it.id == EDIT })
+        assertTrue(p.none { it.id == SETTINGS || it.id == EDIT || it.id == TileId.PROFILE })
     }
 
-    @Test fun `top bar buttons are right aligned above the grid`() {
+    @Test fun `menu and profile buttons are right aligned above the grid`() {
         val bar = GridPacker.pinned(shown(true))
-        assertEquals(listOf(SETTINGS, HOME, RECENTS, EDIT), bar.map { it.id })
-        assertEquals(listOf(0, 1, 2, 3), bar.map { it.col })
+        assertEquals(listOf(EDIT, TileId.PROFILE), bar.map { it.id })
+        assertEquals(listOf(2, 3), bar.map { it.col })
         assertTrue(bar.all { it.row == GridPacker.TOP_ROW })
-        val two = PanelLayout(default.items.map { if (it.id == RECENTS || it.id == EDIT) it else it.copy(size = TileSize.SMALL) })
-        assertEquals(listOf(2, 3), GridPacker.pinned(two.visibleItems()).map { it.col })
+        val one = default.setVisible(EDIT, false)
+        assertEquals(listOf(3), GridPacker.pinned(one.visibleItems()).map { it.col })
     }
 
-    @Test fun `the top bar holds at most four buttons`() {
-        assertEquals(4, default.pinnedItems().size)
+    @Test fun `the top bar holds at most two buttons`() {
+        assertEquals(2, default.pinnedItems().size)
         assertEquals(default, default.resize(WIFI, TileSize.TOP))
-        val room = default.resize(HOME, TileSize.SMALL)
-        assertEquals(TileSize.TOP, room.resize(WIFI, TileSize.TOP).item(WIFI)?.size)
+        val room = default.setVisible(TileId.PROFILE, false)
+        assertEquals(TileSize.SMALL, room.resize(TileId.PROFILE, TileSize.SMALL).item(TileId.PROFILE)?.size)
         assertEquals(default, default.resize(EDIT, TileSize.TOP)) // already there: no change
+    }
+
+    @Test fun `old layouts keep only the menu and profile buttons on top`() {
+        val old = PanelLayout.decode("POWER:LARGE:1,SETTINGS:TOP:1,HOME:TOP:1,RECENTS:TOP:1,EDIT:TOP:1")
+        assertEquals(listOf(EDIT, TileId.PROFILE), old.pinnedItems().map { it.id })
+        assertEquals(TileSize.SMALL, old.item(SETTINGS)?.size)
+        assertFalse(old.item(SETTINGS)!!.visible)
     }
 
     @Test fun `the panel closes the gap when nothing is playing`() {
@@ -82,7 +89,7 @@ class LayoutTest {
         val ids = packed(true).map { it.id }
         assertFalse(SCREENSHOT in ids)
         assertTrue(WIFI in ids)
-        assertFalse(HOME in ids) // pinned to the top bar, not on the grid
+        assertFalse(HOME in ids)
     }
 
     @Test fun `no two controls overlap and all stay inside the columns`() {
@@ -142,13 +149,13 @@ class LayoutTest {
 
     @Test fun `the top bar connects to the grid in both directions`() {
         val p = nav(true)
-        assertEquals(SETTINGS, go(p, POWER, Dir.UP))
-        assertEquals(POWER, go(p, SETTINGS, Dir.DOWN))
-        assertEquals(POWER, go(p, HOME, Dir.DOWN))
-        assertEquals(WIFI, go(p, RECENTS, Dir.DOWN))
-        assertEquals(WIFI, go(p, EDIT, Dir.DOWN))
-        assertEquals(RECENTS, go(p, EDIT, Dir.LEFT))
-        assertEquals(EDIT, go(p, SETTINGS, Dir.RIGHT, Dir.RIGHT, Dir.RIGHT))
+        val menu = TileId.EDIT
+        val profile = TileId.PROFILE
+        assertEquals(menu, go(p, POWER, Dir.UP))
+        assertEquals(WIFI, go(p, menu, Dir.DOWN))
+        assertEquals(WIFI, go(p, profile, Dir.DOWN))
+        assertEquals(menu, go(p, profile, Dir.LEFT))
+        assertEquals(profile, go(p, menu, Dir.RIGHT))
     }
 
     @Test fun `focus steps over a hidden now playing control`() {
@@ -159,9 +166,9 @@ class LayoutTest {
 
     @Test fun `focus is trapped at the outer edges`() {
         val p = nav(true)
-        assertNull(go(p, SETTINGS, Dir.UP))
-        assertNull(go(p, SETTINGS, Dir.LEFT))
-        assertNull(go(p, EDIT, Dir.RIGHT))
+        assertNull(go(p, EDIT, Dir.UP))
+        assertNull(go(p, EDIT, Dir.LEFT))
+        assertNull(go(p, TileId.PROFILE, Dir.RIGHT))
         assertNull(go(p, POWER, Dir.LEFT))
         assertNull(go(p, WIFI, Dir.RIGHT))
         assertNull(go(p, NOW_PLAYING, Dir.LEFT))
@@ -202,18 +209,19 @@ class LayoutTest {
         assertEquals(listOf(WIFI, POWER), l.items.take(2).map { it.id })
         assertEquals(TileSize.LARGE, l.item(WIFI)?.size)
         assertEquals(TileId.entries.size, l.items.size)
-        assertTrue(l.items.drop(2).none { it.visible })
+        // The profile button is new in the header, so it shows at once; everything else waits hidden.
+        assertTrue(l.items.drop(2).filter { it.id != TileId.PROFILE && it.id != EDIT }.none { it.visible })
     }
 
     @Test fun `resize steps through the sizes and wraps`() {
-        val small = default.resize(HOME, TileSize.SMALL)
+        val small = default.setVisible(TileId.PROFILE, false).setVisible(EDIT, false).resize(HOME, TileSize.SMALL)
         assertEquals(TileSize.WIDE, small.resizeBy(HOME, 1).item(HOME)?.size)
         assertEquals(TileSize.TOP, small.resizeBy(HOME, -1).item(HOME)?.size)
         assertEquals(TileSize.SMALL, small.resizeBy(HOME, 6).item(HOME)?.size)
     }
 
     @Test fun `every control can be resized to every size`() {
-        // Start with an empty top bar so the four-button limit cannot get in the way.
+        // Start with an empty top bar so the two-button limit cannot get in the way.
         val roomy = PanelLayout(default.items.map { if (it.size == TileSize.TOP) it.copy(size = TileSize.SMALL) else it })
         for (item in roomy.items) for (size in TileSize.entries) {
             assertEquals(size, roomy.resize(item.id, size).item(item.id)?.size)
@@ -246,6 +254,23 @@ class LayoutTest {
     @Test fun `the default layout lists every control exactly once`() {
         assertEquals(TileId.entries.toSet(), default.items.map { it.id }.toSet())
         assertEquals(TileId.entries.size, default.items.size)
-        assertTrue(RECENTS in default.pinnedItems().map { it.id })
+        assertTrue(EDIT in default.pinnedItems().map { it.id })
+    }
+}
+
+class BlurLevelsTest {
+    @Test fun `blur radii grow with the level and level zero is off`() {
+        val radii = (0..BlurLevels.MAX).map { BlurLevels.boxRadius(it) }
+        assertEquals(0, radii.first())
+        assertEquals(radii, radii.sorted())
+        assertEquals(radii.distinct(), radii)
+        assertEquals(0, BlurLevels.windowRadius(0))
+        assertEquals(BlurLevels.boxRadius(BlurLevels.MAX), BlurLevels.boxRadius(99))
+    }
+
+    @Test fun `blur is off when the master switch or the level is off`() {
+        assertEquals(3, PanelSettings().effectiveBlur)
+        assertEquals(0, PanelSettings(blurBehind = false).effectiveBlur)
+        assertEquals(0, PanelSettings(blurLevel = 0).effectiveBlur)
     }
 }

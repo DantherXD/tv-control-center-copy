@@ -34,16 +34,15 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.tvcontrolcenter.ui.glass.Backdrop
+import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
 import com.example.tvcontrolcenter.ui.glass.frostedTile
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
 import com.example.tvcontrolcenter.ui.theme.Motion
 
-private val LiftDistance = 4.dp
-
 /**
  * One focusable frosted-glass control.
  *
- * Focus lifts the tile, scales it to [GlassTokens.focusScale], brightens the glass and adds
+ * Focus scales the tile (no lift) to [GlassTokens.focusScale], brightens the glass and adds
  * a glint. Everything that changes per frame (focus, open progress) is read in the draw
  * phase, so moving focus redraws two tiles and recomposes nothing.
  *
@@ -116,7 +115,6 @@ fun GlassTile(
                 scaleX = s
                 scaleY = s
                 alpha = a.coerceIn(0f, 1f)
-                translationY = -LiftDistance.toPx() * f
             }
             .frostedTile(
                 cornerRadius = cornerRadius,
@@ -125,6 +123,7 @@ fun GlassTile(
                 selected = selected,
                 backdrop = backdrop,
                 origin = backdropOrigin,
+                style = LocalFrostStyle.current,
             ),
         content = content,
     )

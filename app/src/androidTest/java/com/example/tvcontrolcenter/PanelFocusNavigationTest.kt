@@ -71,20 +71,20 @@ class PanelFocusNavigationTest {
         press(Key.DirectionLeft)
         rule.onNodeWithContentDescription("Power Off").assertIsFocused()
         press(Key.DirectionUp)
-        rule.onNodeWithContentDescription("Settings").assertIsFocused()
+        rule.onNodeWithContentDescription("Menu").assertIsFocused()
         press(Key.DirectionUp)
-        rule.onNodeWithContentDescription("Settings").assertIsFocused()
+        rule.onNodeWithContentDescription("Menu").assertIsFocused()
         press(Key.DirectionLeft)
-        rule.onNodeWithContentDescription("Settings").assertIsFocused()
+        rule.onNodeWithContentDescription("Menu").assertIsFocused()
     }
 
     @Test fun topBarButtonsLeadBackToTheGrid() {
         launch()
         press(Key.DirectionUp)
         press(Key.DirectionRight)
-        rule.onNodeWithContentDescription("Home").assertIsFocused()
+        rule.onNodeWithContentDescription("Profile").assertIsFocused()
         press(Key.DirectionDown)
-        rule.onNodeWithContentDescription("Power Off").assertIsFocused()
+        rule.onNodeWithContentDescription("Wi-Fi").assertIsFocused()
     }
 
     @Test fun reachesTheBottomRowAndVolume() {
@@ -97,10 +97,11 @@ class PanelFocusNavigationTest {
         rule.onNodeWithContentDescription("Volume").assertIsFocused()
     }
 
-    @Test fun topBarButtonRunsItsSystemAction() {
+    @Test fun profileButtonOpensSettings() {
         launch()
         press(Key.DirectionUp)
-        rule.onNodeWithContentDescription("Settings").assertIsFocused()
+        press(Key.DirectionRight)
+        rule.onNodeWithContentDescription("Profile").assertIsFocused()
         press(Key.DirectionCenter)
         assert(actions.calls.contains("settings"))
     }
@@ -139,9 +140,9 @@ class PanelFocusNavigationTest {
         ).forEach {
             rule.onNodeWithContentDescription(it).assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
         }
-        // The round buttons above the grid are 44 dp, a deliberate trade for the tvOS look.
-        listOf("Settings", "Home", "Recent apps", "Edit").forEach {
-            rule.onNodeWithContentDescription(it).assertWidthIsAtLeast(44.dp).assertHeightIsAtLeast(44.dp)
+        // The round buttons beside the clock are 40 dp, a deliberate trade for the tvOS look.
+        listOf("Menu", "Profile").forEach {
+            rule.onNodeWithContentDescription(it).assertWidthIsAtLeast(40.dp).assertHeightIsAtLeast(40.dp)
         }
     }
 }

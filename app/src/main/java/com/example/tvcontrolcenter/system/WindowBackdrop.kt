@@ -3,21 +3,19 @@ package com.example.tvcontrolcenter.system
 import android.os.Build
 import android.view.WindowManager
 
-private const val BLUR_RADIUS_PX = 32
-
 /**
- * Fallback glass for panel windows that have no screenshot to work with: on Android 12+,
- * ask the system to blur everything behind the window, where the device allows it.
+ * Whole-screen blur: on Android 12+ ask the system to blur everything behind the window,
+ * where the device allows it. Used by the "Whole screen" blur method, and by Auto when no
+ * screenshot can be taken. Returns true if the blur was requested.
  *
- * Do not use this together with a screenshot backdrop. The panel then shows the app sharp
- * around the glass, and blurred only inside it, like tvOS. The dim behind the panel is
- * drawn by the panel itself.
+ * Do not combine with a screenshot backdrop: the panel then shows the app sharp around the
+ * glass and blurred only inside it, like tvOS.
  */
-internal fun WindowManager.LayoutParams.applyBlurFallback(windowManager: WindowManager, blur: Boolean) {
-    val canBlur = blur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+internal fun WindowManager.LayoutParams.applyBlurFallback(windowManager: WindowManager, radiusPx: Int): Boolean {
+    val canBlur = radiusPx > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
         windowManager.isCrossWindowBlurEnabled
-    if (canBlur) {
-        flags = flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
-        blurBehindRadius = BLUR_RADIUS_PX
-    }
+    if (!canBlur) return false
+    flags = flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
+    blurBehindRadius = radiusPx
+    return true
 }

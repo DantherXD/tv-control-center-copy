@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.compositionLocalOf
+import com.example.tvcontrolcenter.domain.model.FrostStyle
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -39,26 +41,51 @@ private val Grain: ShaderBrush by lazy {
     ShaderBrush(ImageShader(bmp.asImageBitmap(), TileMode.Repeated, TileMode.Repeated))
 }
 
+/** How dark and how white a glass layer is. Plain numbers, so a style costs nothing to draw. */
+private class Tint(val dark: Float, val veilTop: Float, val veilBottom: Float)
+
+private fun FrostStyle.sheetTint() = when (this) {
+    FrostStyle.SMOKE -> Tint(GlassTokens.sheetBaseAlpha, GlassTokens.sheetVeilTop, GlassTokens.sheetVeilBottom)
+    FrostStyle.MILKY -> Tint(0.14f, 0.34f, 0.18f)
+    FrostStyle.CLEAR -> Tint(0.22f, 0.10f, 0.04f)
+}
+
+private fun FrostStyle.tileTint(overBlur: Boolean) = if (overBlur) {
+    when (this) {
+        FrostStyle.SMOKE -> Tint(0.20f, 0.10f, 0.06f)
+        FrostStyle.MILKY -> Tint(0.04f, 0.34f, 0.26f)
+        FrostStyle.CLEAR -> Tint(0.06f, 0.06f, 0.03f)
+    }
+} else {
+    when (this) {
+        FrostStyle.SMOKE -> Tint(GlassTokens.tileBaseAlpha, GlassTokens.tileVeilTop, GlassTokens.tileVeilBottom)
+        FrostStyle.MILKY -> Tint(0.08f, 0.40f, 0.28f)
+        FrostStyle.CLEAR -> Tint(0.12f, 0.10f, 0.05f)
+    }
+}
+
 /**
- * The big frosted card behind all controls. Dark base for contrast on bright apps, a white
- * veil that fades downwards, grain, and a rim that is bright on top and faint below.
- * Over a window that the system blurs, this reads as real frosted glass; without blur it
- * still reads as acrylic.
+ * The card behind the grid, used only when there is no blurred screen to show through the
+ * tiles. Dark base, a white veil that fades downwards and grain. No border.
+ * [inflate] grows it past the modifier's bounds on every side, so it can wrap content that
+ * sits inside padding.
  */
-fun Modifier.frostedSheet(cornerRadius: Dp): Modifier = drawBehind {
+fun Modifier.frostedSheet(cornerRadius: Dp, style: FrostStyle = FrostStyle.SMOKE, inflate: Dp = 0.dp): Modifier = drawBehind {
+    val t = style.sheetTint()
+    val pad = inflate.toPx()
+    val topLeft = Offset(-pad, -pad)
+    val box = Size(size.width + 2 * pad, size.height + 2 * pad)
     val r = CornerRadius(cornerRadius.toPx())
-    drawRoundRect(Color.Black.copy(alpha = GlassTokens.sheetBaseAlpha), cornerRadius = r)
+    drawRoundRect(Color.Black.copy(alpha = t.dark), topLeft, box, r)
     drawRoundRect(
         Brush.verticalGradient(
-            listOf(
-                Color.White.copy(alpha = GlassTokens.sheetVeilTop),
-                Color.White.copy(alpha = GlassTokens.sheetVeilBottom),
-            ),
+            listOf(Color.White.copy(alpha = t.veilTop), Color.White.copy(alpha = t.veilBottom)),
+            startY = topLeft.y,
+            endY = topLeft.y + box.height,
         ),
-        cornerRadius = r,
+        topLeft, box, r,
     )
-    drawRoundRect(Grain, cornerRadius = r, alpha = GlassTokens.grainAlpha)
-    drawRim(r, 1.2.dp.toPx(), 1f)
+    drawRoundRect(Grain, topLeft, box, r, alpha = GlassTokens.grainAlpha)
 }
 
 /**
@@ -77,7 +104,9 @@ fun Modifier.frostedTile(
     selected: Boolean = false,
     backdrop: Backdrop? = null,
     origin: Offset = Offset.Zero,
+    style: FrostStyle = FrostStyle.SMOKE,
 ): Modifier = drawWithCache {
+    val tint = style.tileTint(overBlur = backdrop != null)
     val r = CornerRadius(cornerRadius.toPx())
     val shape = Path().apply {
         addRoundRect(RoundRect(0f, 0f, size.width, size.height, r))
@@ -85,43 +114,20 @@ fun Modifier.frostedTile(
     onDrawBehind {
         val f = focus()
 
-        // Soft contact shadow under a lifted tile: one offset fill, no blur.
-        if (f > 0.01f) {
-            drawRoundRect(
-                Color.Black.copy(alpha = 0.28f * f),
-                topLeft = Offset(0f, 5.dp.toPx() * f),
-                size = size,
-                cornerRadius = r,
-            )
-        }
-
         val boost = (if (active) GlassTokens.tileActiveBoost else 0f) + GlassTokens.tileFocusBoost * f
         if (backdrop != null) {
             clipPath(shape) { drawBackdropCrop(backdrop, origin) }
-            // A thin veil keeps white icons readable on bright pictures.
-            drawRoundRect(
-                Color.White.copy(alpha = (GlassTokens.glassVeil + boost * 0.7f).coerceAtMost(0.6f)),
-                cornerRadius = r,
-            )
-            drawRoundRect(
-                Brush.verticalGradient(
-                    listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
-                    endY = size.height * 0.6f,
-                ),
-                cornerRadius = r,
-            )
-        } else {
-            drawRoundRect(Color.Black.copy(alpha = GlassTokens.tileBaseAlpha * (1f - 0.5f * f)), cornerRadius = r)
-            drawRoundRect(
-                Brush.verticalGradient(
-                    listOf(
-                        Color.White.copy(alpha = (GlassTokens.tileVeilTop + boost).coerceAtMost(0.7f)),
-                        Color.White.copy(alpha = (GlassTokens.tileVeilBottom + boost * 0.6f).coerceAtMost(0.7f)),
-                    ),
-                ),
-                cornerRadius = r,
-            )
         }
+        drawRoundRect(Color.Black.copy(alpha = tint.dark * (1f - 0.5f * f)), cornerRadius = r)
+        drawRoundRect(
+            Brush.verticalGradient(
+                listOf(
+                    Color.White.copy(alpha = (tint.veilTop + boost).coerceAtMost(0.7f)),
+                    Color.White.copy(alpha = (tint.veilBottom + boost * 0.6f).coerceAtMost(0.7f)),
+                ),
+            ),
+            cornerRadius = r,
+        )
         drawRoundRect(Grain, cornerRadius = r, alpha = GlassTokens.grainAlpha)
 
         // Top-left specular glint, only while focused.
@@ -136,7 +142,8 @@ fun Modifier.frostedTile(
                 cornerRadius = r,
             )
         }
-        drawRim(r, 1.dp.toPx() + 0.6.dp.toPx() * f, 0.8f + 0.2f * f)
+        // Hairline only: the glass edge is felt, not drawn as a frame.
+        drawRim(r, 0.8.dp.toPx(), 1f)
 
         // Editor: the control being edited gets a solid outline.
         if (selected) {
@@ -193,3 +200,6 @@ private fun DrawScope.drawRim(
         style = Stroke(width = widthPx),
     )
 }
+
+/** The frost style every tile below draws with. Provided by the panel and the editor. */
+val LocalFrostStyle = compositionLocalOf { FrostStyle.SMOKE }
