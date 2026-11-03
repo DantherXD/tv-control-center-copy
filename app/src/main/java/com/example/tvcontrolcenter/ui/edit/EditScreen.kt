@@ -29,6 +29,7 @@ import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.panel.LocalIconStyle
 import com.example.tvcontrolcenter.domain.model.EdgeWidthSteps
 import com.example.tvcontrolcenter.domain.model.IconStyle
+import com.example.tvcontrolcenter.domain.model.MusicStyle
 import com.example.tvcontrolcenter.domain.model.TopSizeSteps
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.glass.LocalTileInk
@@ -274,6 +275,14 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                 }
                 StepRow(stringResource(R.string.edit_menu_home), onOff(settings.menuIsHome)) {
                     vm.updateSettings { it.copy(menuIsHome = !it.menuIsHome) }
+                }
+                val musicStyles = listOf(MusicStyle.COMPACT to R.string.music_compact, MusicStyle.BIG to R.string.music_big)
+                StepRow(
+                    stringResource(R.string.edit_music_style),
+                    stringResource(musicStyles.first { it.first == settings.musicStyle }.second),
+                ) { d ->
+                    val next = musicStyles[Math.floorMod(musicStyles.indexOfFirst { it.first == settings.musicStyle } + d, musicStyles.size)].first
+                    vm.updateSettings { it.copy(musicStyle = next) }
                 }
                 Hint(stringResource(R.string.edit_menu_note))
                 Hint(stringResource(R.string.edit_music_note))

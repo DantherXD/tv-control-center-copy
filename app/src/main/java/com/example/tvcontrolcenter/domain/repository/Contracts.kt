@@ -46,6 +46,16 @@ interface SystemActions {
     fun showRecents(): ActionResult
     fun takeScreenshot(): ActionResult
     fun showNotifications(): ActionResult
+
+    // Sub-windows (Wi-Fi, Bluetooth, Input). Android 10+ stops normal apps from switching radios
+    // on and off, so the setters fall back to opening the system screen.
+    fun wifiEnabled(): Boolean = false
+    fun wifiNetworkName(): String? = null
+    fun setWifiEnabled(enabled: Boolean): ActionResult = ActionResult.Unavailable
+    fun setBluetoothEnabled(enabled: Boolean): ActionResult = ActionResult.Unavailable
+    fun pairedBluetoothDevices(): List<String> = emptyList()
+    fun tvInputs(): List<com.example.tvcontrolcenter.domain.model.TvInputItem> = emptyList()
+    fun switchInput(id: String): ActionResult = ActionResult.Unavailable
 }
 
 interface NowPlayingSource {

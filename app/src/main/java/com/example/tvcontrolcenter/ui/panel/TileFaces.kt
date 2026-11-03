@@ -283,9 +283,9 @@ internal fun Label(
 }
 
 @Composable
-internal fun Detail(text: String) {
+internal fun Detail(text: String, modifier: Modifier = Modifier) {
     BasicText(
-        text, Modifier.clearAndSetSemantics { },
+        text, modifier.clearAndSetSemantics { },
         style = PanelType.detail.copy(color = LocalTileInk.current.copy(alpha = 0.82f)),
         maxLines = 1, overflow = TextOverflow.Ellipsis,
     )

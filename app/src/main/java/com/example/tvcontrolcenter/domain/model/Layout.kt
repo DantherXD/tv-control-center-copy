@@ -17,6 +17,7 @@ import com.example.tvcontrolcenter.domain.model.TileId.POWER
 import com.example.tvcontrolcenter.domain.model.TileId.PROFILE
 import com.example.tvcontrolcenter.domain.model.TileId.RECENTS
 import com.example.tvcontrolcenter.domain.model.TileId.SCREENSAVER
+import com.example.tvcontrolcenter.domain.model.TileId.INPUT
 import com.example.tvcontrolcenter.domain.model.TileId.SCREENSHOT
 import com.example.tvcontrolcenter.domain.model.TileId.SEARCH
 import com.example.tvcontrolcenter.domain.model.TileId.SETTINGS
@@ -137,6 +138,7 @@ data class PanelLayout(val items: List<ControlItem>) {
                 ControlItem(SOUND, TileSize.SMALL, visible = false),
                 ControlItem(CAPTIONS, TileSize.SMALL, visible = false),
                 ControlItem(SCREENSAVER, TileSize.SMALL, visible = false),
+                ControlItem(INPUT, TileSize.SMALL, visible = false),
             ),
         )
 
@@ -231,6 +233,7 @@ data class PanelSettings(
     /** Menu button is the main page: it leaves the music page, and the music button only opens it. */
     val menuIsHome: Boolean = true,
     val iconStyle: IconStyle = IconStyle.FILLED,
+    val musicStyle: MusicStyle = MusicStyle.COMPACT,
     /** 0 = no photo. Changes whenever a new photo is saved, so the picture reloads. */
     val profilePhotoVersion: Int = 0,
     /** Colour of the profile circle when there is no photo; index into the app's palette. */
@@ -353,3 +356,6 @@ object GridNav {
 
 /** Which Material icon family the controls use. */
 enum class IconStyle { FILLED, OUTLINED, ROUNDED }
+
+/** Look of the now-playing page: a compact card, or a big one like iOS with the album picture filling it. */
+enum class MusicStyle { COMPACT, BIG }

@@ -5,6 +5,7 @@ import com.example.tvcontrolcenter.domain.model.BlurLevels
 import com.example.tvcontrolcenter.domain.model.BlurMethod
 import com.example.tvcontrolcenter.domain.model.FrostStyle
 import com.example.tvcontrolcenter.domain.model.IconStyle
+import com.example.tvcontrolcenter.domain.model.MusicStyle
 import com.example.tvcontrolcenter.domain.model.PanelLayout
 import com.example.tvcontrolcenter.domain.model.PanelSettings
 import com.example.tvcontrolcenter.domain.model.SleepTimerPresets
@@ -116,6 +117,7 @@ class PreferencesLayoutRepository @Inject constructor(
             topSize = prefs.getInt(KEY_TOP_SIZE, 40),
             topBorderless = prefs.getBoolean(KEY_TOP_FLAT, false),
             menuIsHome = prefs.getBoolean(KEY_MENU_HOME, true),
+            musicStyle = MusicStyle.entries.firstOrNull { it.name == prefs.getString(KEY_MUSIC_STYLE, null) } ?: MusicStyle.COMPACT,
             iconStyle = IconStyle.entries.firstOrNull { it.name == prefs.getString(KEY_ICONS, null) } ?: IconStyle.FILLED,
             profilePhotoVersion = prefs.getInt(KEY_PHOTO, 0),
             profileColor = prefs.getInt(KEY_COLOR, 0),
@@ -164,6 +166,7 @@ class PreferencesLayoutRepository @Inject constructor(
             .putBoolean(KEY_TOP_FLAT, next.topBorderless)
             .putBoolean(KEY_MENU_HOME, next.menuIsHome)
             .putString(KEY_ICONS, next.iconStyle.name)
+            .putString(KEY_MUSIC_STYLE, next.musicStyle.name)
             .putInt(KEY_PHOTO, next.profilePhotoVersion)
             .putInt(KEY_COLOR, next.profileColor)
             .apply()
@@ -182,6 +185,7 @@ class PreferencesLayoutRepository @Inject constructor(
         const val KEY_TOP_FLAT = "top_borderless"
         const val KEY_MENU_HOME = "menu_is_home"
         const val KEY_ICONS = "icon_style"
+        const val KEY_MUSIC_STYLE = "music_style"
         const val KEY_PHOTO = "profile_photo"
         const val KEY_COLOR = "profile_color"
         const val KEY_LAYOUT = "layout"

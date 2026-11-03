@@ -2,6 +2,18 @@ package com.example.tvcontrolcenter.ui.panel
 
 import android.graphics.Bitmap
 import android.os.SystemClock
+import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.State
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.CornerRadius
+import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
+import kotlin.math.PI
+import kotlin.math.sin
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -79,7 +91,12 @@ import androidx.compose.runtime.CompositionLocalProvider
  * What the panel shows under the top bar. MUSIC is only used when Now Playing sits in the top
  * bar: its button then opens this page instead of acting as a grid control.
  */
-internal enum class PanelPage { GRID, MUSIC }
+internal enum class PanelPage {
+    GRID, MUSIC, WIFI, BLUETOOTH, INPUT;
+
+    /** Wi-Fi, Bluetooth and Input open from a tile and take the grid's place. */
+    val isSub: Boolean get() = this == WIFI || this == BLUETOOTH || this == INPUT
+}
 
 /** Focus handles for the three buttons on the music page. */
 internal class MusicFocus {
@@ -88,9 +105,32 @@ internal class MusicFocus {
     val next = FocusRequester()
 }
 
+/** Frosted glass behind a card that replaces the grid: a sheet when nothing blurred shows through, else a big tile. */
+@Composable
+internal fun cardGlass(backdrop: Backdrop?, origin: Offset, sheet: Boolean): Modifier {
+    val style = LocalFrostStyle.current
+    val radius = PanelDimens.sheetRadius
+    return if (sheet && backdrop == null) {
+        Modifier.frostedSheet(radius, style, lite = LocalLiteGlass.current)
+    } else {
+        Modifier.frostedTile(
+            cornerRadius = radius,
+            active = false,
+            focus = { 0f },
+            backdrop = backdrop,
+            origin = origin,
+            style = style,
+            overBlur = LocalOverBlur.current || backdrop != null,
+            lite = LocalLiteGlass.current,
+            edge = LocalEdgeWidth.current,
+        )
+    }
+}
+
 /**
- * The now-playing card: album picture, title and artist, a progress bar with elapsed and
- * remaining time, and rewind / play-pause / forward. Takes the place of the grid.
+ * The now-playing card. Compact: album picture, title and artist, a progress bar with elapsed and
+ * remaining time, and rewind / play-pause / forward. Big: the album picture fills the card like
+ * the iOS widget, with the same controls over it. Takes the place of the grid.
  *
  * @param up focus target above the card (the top-bar button that opened it).
  * @param sheet draw the frosted card when there is no blurred picture to show through.
@@ -105,23 +145,45 @@ internal fun MusicCard(
     backdrop: Backdrop?,
     origin: Offset,
     sheet: Boolean,
+    big: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    val style = LocalFrostStyle.current
-    val radius = PanelDimens.sheetRadius
-    val glass = if (sheet && backdrop == null) {
-        Modifier.frostedSheet(radius, style, lite = LocalLiteGlass.current)
-    } else {
-        Modifier.frostedTile(
-            cornerRadius = radius,
-            active = false,
-            focus = { 0f },
-            backdrop = backdrop,
-            origin = origin,
-            style = style,
-            overBlur = LocalOverBlur.current || backdrop != null,
-            lite = LocalLiteGlass.current,
-        )
+    val glass = cardGlass(backdrop, origin, sheet)
+    if (big) {
+        val image = remember(np?.artwork) { np?.artwork?.asImageBitmap() }
+        Box(
+            modifier
+                .size(PanelDimens.gridWidth, PanelDimens.musicCardBigHeight)
+                .then(glass)
+                .clip(RoundedCornerShape(PanelDimens.sheetRadius)),
+        ) {
+            if (image != null) {
+                Image(image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            } else {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    TileIcon(Icons.Filled.MusicNote, 64.dp, Color.White.copy(alpha = 0.35f))
+                }
+            }
+            // Darkens the lower part so the text and buttons stay readable on any picture.
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        0.35f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.78f),
+                    ),
+                ),
+            )
+            Column(
+                Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Label(np?.title ?: stringResource(R.string.nothing_playing), maxLines = 1)
+                np?.artist?.let { Detail(it) }
+                Progress(np)
+                MusicControls(np, actions, focus, up)
+            }
+        }
+        return
     }
     Column(
         modifier
@@ -146,30 +208,69 @@ internal fun MusicCard(
                 np?.artist?.let { Detail(it) }
             }
         }
-
         Progress(np)
+        MusicControls(np, actions, focus, up)
+    }
+}
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-            TransportButton(
-                icon = Icons.Filled.FastRewind,
-                label = stringResource(R.string.music_previous),
-                requester = focus.previous,
-                upTarget = up, leftTarget = FocusRequester.Cancel, rightTarget = focus.play,
-                activate = actions.onSkipPrevious,
-            )
-            TransportButton(
-                icon = if (np?.isPlaying == true) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                label = stringResource(if (np?.isPlaying == true) R.string.music_pause else R.string.music_play),
-                requester = focus.play,
-                upTarget = up, leftTarget = focus.previous, rightTarget = focus.next,
-                activate = actions.onPlayPause,
-            )
-            TransportButton(
-                icon = Icons.Filled.FastForward,
-                label = stringResource(R.string.music_next),
-                requester = focus.next,
-                upTarget = up, leftTarget = focus.play, rightTarget = FocusRequester.Cancel,
-                activate = actions.onSkipNext,
+@Composable
+private fun MusicControls(np: NowPlaying?, actions: TileActions, focus: MusicFocus, up: FocusRequester) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+        TransportButton(
+            icon = Icons.Filled.FastRewind,
+            label = stringResource(R.string.music_previous),
+            requester = focus.previous,
+            upTarget = up, leftTarget = FocusRequester.Cancel, rightTarget = focus.play,
+            activate = actions.onSkipPrevious,
+        )
+        TransportButton(
+            icon = if (np?.isPlaying == true) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+            label = stringResource(if (np?.isPlaying == true) R.string.music_pause else R.string.music_play),
+            requester = focus.play,
+            upTarget = up, leftTarget = focus.previous, rightTarget = focus.next,
+            activate = actions.onPlayPause,
+        )
+        TransportButton(
+            icon = Icons.Filled.FastForward,
+            label = stringResource(R.string.music_next),
+            requester = focus.next,
+            upTarget = up, leftTarget = focus.play, rightTarget = FocusRequester.Cancel,
+            activate = actions.onSkipNext,
+        )
+    }
+}
+
+/**
+ * The music button's icon: four bars that rise and fall while something plays and rest when it
+ * stops, like tvOS. The motion is read while drawing, so it never recomposes.
+ */
+@Composable
+internal fun EqualizerIcon(playing: Boolean, size: Dp, modifier: Modifier = Modifier) {
+    val ink = LocalTileInk.current
+    val phase: State<Float>? = if (playing) {
+        rememberInfiniteTransition(label = "equalizer").animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(1600, easing = LinearEasing)),
+            label = "phase",
+        )
+    } else null
+    Canvas(modifier.size(size)) {
+        val bars = 4
+        val barWidth = this.size.width / (bars * 2f - 1f)
+        val rest = floatArrayOf(0.35f, 0.6f, 0.45f, 0.3f)
+        val speed = intArrayOf(2, 3, 1, 4)
+        val shift = floatArrayOf(0f, 0.3f, 0.65f, 0.15f)
+        val t = phase?.value ?: 0f
+        for (i in 0 until bars) {
+            val level = if (phase == null) rest[i]
+            else 0.25f + 0.75f * (0.5f + 0.5f * sin(2f * PI.toFloat() * (t * speed[i] + shift[i])))
+            val h = this.size.height * level
+            drawRoundRect(
+                ink,
+                topLeft = Offset(i * 2f * barWidth, (this.size.height - h) / 2f),
+                size = Size(barWidth, h),
+                cornerRadius = CornerRadius(barWidth / 2f),
             )
         }
     }

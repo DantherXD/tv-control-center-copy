@@ -8,6 +8,8 @@ enum class TileId {
     // Quick actions column, Google TV style.
     SETTINGS, DISPLAY, SOUND, CAPTIONS, SCREENSAVER, APPS,
     HOME, RECENTS, SCREENSHOT, NOTIFICATIONS,
+    // Opens a list of the TV's inputs (HDMI and so on).
+    INPUT,
     // Opens the layout editor.
     EDIT,
     // Round button next to the clock; shows the profile picture.
@@ -68,3 +70,6 @@ sealed interface PanelEvent {
 
 /** Sleep timer presets in minutes. 0 means off. */
 val SleepTimerPresets: List<Int> = listOf(0, 15, 30, 60, 90)
+
+/** One TV input (an HDMI port, say) that the Input page can switch to. */
+data class TvInputItem(val id: String, val label: String)

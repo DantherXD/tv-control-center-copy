@@ -113,4 +113,17 @@
     <string name="edit_longpress_note">Hold OK on the Profile button to open this editor.</string>
     <string name="screenshot_saved">Screenshot saved to Pictures/Screenshots</string>
     <string name="screenshot_failed">Could not take the screenshot</string>
+    <string name="tile_input">Input</string>
+    <string name="edit_music_style">Now playing page style</string>
+    <string name="music_compact">Compact</string>
+    <string name="music_big">Big (album cover)</string>
+    <string name="sub_network">Network</string>
+    <string name="sub_connected">Connected</string>
+    <string name="sub_not_connected">Not connected</string>
+    <string name="sub_other_networks">Other networks…</string>
+    <string name="sub_bt_audio">Connected audio</string>
+    <string name="sub_bt_none">None</string>
+    <string name="sub_paired">Paired</string>
+    <string name="sub_bt_pair">Pair a new device…</string>
+    <string name="sub_input_none">No inputs found</string>
 </resources>

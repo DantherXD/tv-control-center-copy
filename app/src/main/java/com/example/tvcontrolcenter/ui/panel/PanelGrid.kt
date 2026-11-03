@@ -44,6 +44,7 @@ import com.example.tvcontrolcenter.domain.model.Dir
 import com.example.tvcontrolcenter.domain.model.GridNav
 import com.example.tvcontrolcenter.domain.model.GridPacker
 import com.example.tvcontrolcenter.domain.model.Placed
+import com.example.tvcontrolcenter.domain.model.MusicStyle
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
 import com.example.tvcontrolcenter.ui.glass.Backdrop
@@ -99,6 +100,8 @@ internal fun PanelContent(
     sheet: Boolean = false,
     page: PanelPage = PanelPage.GRID,
     musicFocus: MusicFocus? = null,
+    subFocus: FocusRequester? = null,
+    subActions: SubPageActions? = null,
     onLongPress: (TileId) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -108,6 +111,8 @@ internal fun PanelContent(
     // The sheet reaches sheetPadding above the grid, so it adds that to keep the visible gap equal.
     val gap = state.settings.headerGap.dp + if (sheet) PanelDimens.sheetPadding else 0.dp
     val music = page == PanelPage.MUSIC && musicFocus != null
+    val sub = page.isSub && subFocus != null && subActions != null
+    val musicButton = pinned.any { it.id == TileId.NOW_PLAYING }
     val top = state.settings.topSize.dp
     val header = PanelDimens.headerFor(state.settings.topSize)
     val gridOrigin = origin + with(density) {
@@ -140,8 +145,17 @@ internal fun PanelContent(
                             actions = actions,
                             backdrop = backdrop,
                             backdropOrigin = origin + with(density) { Offset(left.toPx(), 0f) },
-                            downTarget = if (music) musicFocus?.play else null,
-                            pageOpen = music && p.id == TileId.NOW_PLAYING,
+                            downTarget = when {
+                                music -> musicFocus?.play
+                                sub -> subFocus
+                                else -> null
+                            },
+                            // The open page's button is white and the other one stays grey.
+                            pageOpen = when (p.id) {
+                                TileId.NOW_PLAYING -> music
+                                TileId.EDIT -> state.settings.menuIsHome && musicButton && page == PanelPage.GRID
+                                else -> false
+                            },
                             radius = top / 2,
                             flat = state.settings.topBorderless,
                             longPress = if (interactive && p.id == TileId.PROFILE) ({ onLongPress(p.id) }) else null,
@@ -161,8 +175,20 @@ internal fun PanelContent(
                 backdrop = backdrop,
                 origin = gridOrigin,
                 sheet = sheet,
+                big = state.settings.musicStyle == MusicStyle.BIG,
+            )
+        } else if (sub && subFocus != null && subActions != null) {
+            SubPageCard(
+                page = page,
+                state = state,
+                actions = subActions,
+                first = subFocus,
+                backdrop = backdrop,
+                origin = gridOrigin,
+                sheet = sheet,
             )
         } else TileGrid(
+            onLongPress = onLongPress,
             placed = grid,
             navigation = navigation,
             state = state,
@@ -231,6 +257,7 @@ internal fun TileGrid(
     backdrop: Backdrop?,
     origin: Offset,
     modifier: Modifier = Modifier,
+    onLongPress: (TileId) -> Unit = {},
 ) {
     val density = LocalDensity.current
     Box(modifier.size(PanelDimens.gridWidth, gridHeight(GridPacker.rowCount(placed)))) {
@@ -255,7 +282,8 @@ internal fun TileGrid(
                     downTarget = null,
                     pageOpen = false,
                     flat = false,
-                    longPress = null,
+                    // Hold OK on Wi-Fi or Bluetooth for their small window.
+                    longPress = if (interactive && (p.id == TileId.WIFI || p.id == TileId.BLUETOOTH)) ({ onLongPress(p.id) }) else null,
                     radius = radiusFor(p.size),
                     modifier = Modifier
                         .offset(x = x, y = y)
@@ -337,7 +365,7 @@ private fun PanelTile(
         when (p.id) {
             TileId.VOLUME -> VolumeFace(volume, muted, p.size)
             TileId.NOW_PLAYING ->
-                if (musicButton) TileIcon(Icons.Filled.GraphicEq, PanelDimens.iconSmall, modifier = Modifier.align(Alignment.Center))
+                if (musicButton) EqualizerIcon(np?.isPlaying == true, PanelDimens.iconSmall, Modifier.align(Alignment.Center))
                 else NowPlayingFace(np?.title, np?.artist, np?.isPlaying == true, p.size)
             TileId.PROFILE -> ProfileFace(state.settings)
             else -> GenericFace(p.id, face, p.size)

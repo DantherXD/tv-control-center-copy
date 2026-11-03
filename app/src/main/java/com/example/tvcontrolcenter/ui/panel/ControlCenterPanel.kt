@@ -39,6 +39,7 @@ import com.example.tvcontrolcenter.domain.model.GridPacker
 import com.example.tvcontrolcenter.domain.model.PanelEvent
 import com.example.tvcontrolcenter.domain.model.Placed
 import com.example.tvcontrolcenter.domain.model.BlurMethod
+import com.example.tvcontrolcenter.domain.model.MusicStyle
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
 import androidx.compose.ui.graphics.FilterQuality
@@ -93,7 +94,7 @@ fun ControlCenterHost(
     val placed = remember(shown) { GridPacker.pack(shown) }
     val pinned = remember(shown) { GridPacker.pinned(shown) }
     val musicOnTop = pinned.any { it.id == TileId.NOW_PLAYING }
-    val body = maxOf(gridHeight(GridPacker.rowCount(placed)), if (musicOnTop) PanelDimens.musicCardHeight else 0.dp)
+    val body = maxOf(gridHeight(GridPacker.rowCount(placed)), if (musicOnTop) PanelDimens.musicHeightFor(state.settings.musicStyle == MusicStyle.BIG) else 0.dp)
     val needed = state.settings.topOffset.dp + PanelDimens.sheetPadding * 2 +
         PanelDimens.headerFor(state.settings.topSize) + state.settings.headerGap.dp + PanelDimens.sheetPadding +
         body + PanelDimens.edgeInset
@@ -138,6 +139,9 @@ private fun HostBody(
     val rowProgress = remember { List(ROW_SLOTS) { Animatable(0f) } }
     val requesters = remember { TileId.entries.associateWith { FocusRequester() } }
     val musicFocus = remember { MusicFocus() }
+    val subFocus = remember { FocusRequester() }
+    // Tile to give focus back to when a small window closes.
+    var returnTo by remember { mutableStateOf<TileId?>(null) }
     var page by remember { mutableStateOf(PanelPage.GRID) }
     val musicOnTop = pinned.any { it.id == TileId.NOW_PLAYING }
 
@@ -227,8 +231,42 @@ private fun HostBody(
     LaunchedEffect(state.hasNowPlaying) {
         if (!state.hasNowPlaying && page == PanelPage.MUSIC) page = PanelPage.GRID
     }
+    val openSub: (PanelPage, TileId) -> Unit = { target, from ->
+        returnTo = from
+        page = target
+    }
+    val subActions = remember(viewModel) {
+        SubPageActions(
+            wifiEnabled = viewModel::wifiEnabled,
+            wifiName = viewModel::wifiName,
+            setWifi = viewModel::onSetWifi,
+            openWifiSettings = viewModel::onOpenWifiSettings,
+            setBluetooth = viewModel::onSetBluetooth,
+            openBluetoothSettings = viewModel::onOpenBluetoothSettings,
+            pairedBluetooth = viewModel::pairedBluetooth,
+            inputs = viewModel::tvInputs,
+            switchInput = viewModel::onSwitchInput,
+        )
+    }
+    // A small window opened: put focus on its first row. Closed: back to the tile that opened it.
+    LaunchedEffect(page) {
+        if (page.isSub) {
+            withFrameNanos { }
+            withFrameNanos { }
+            runCatching { subFocus.requestFocus() }
+        } else if (page == PanelPage.GRID) {
+            val target = returnTo
+            if (target != null) {
+                returnTo = null
+                withFrameNanos { }
+                withFrameNanos { }
+                runCatching { requesters.getValue(target).requestFocus() }
+            }
+        }
+    }
     val onActivate: (TileId) -> Unit = { id ->
         when {
+            id == TileId.INPUT -> openSub(PanelPage.INPUT, TileId.INPUT)
             id == TileId.NOW_PLAYING && musicOnTop -> {
                 if (page == PanelPage.MUSIC) {
                     // With Menu as the main page, the music button only opens the music page.
@@ -239,6 +277,7 @@ private fun HostBody(
             }
             id == TileId.EDIT && menuIsHome -> {
                 if (page != PanelPage.GRID) {
+                    returnTo = null
                     page = PanelPage.GRID
                 } else if (!profileShown) {
                     // Long-press on Profile opens the editor; without that button Menu still does.
@@ -268,10 +307,13 @@ private fun HostBody(
             .onPreviewKeyEvent { event ->
                 if (event.key == Key.Back || event.key == Key.Escape) {
                     if (event.type == KeyEventType.KeyUp) {
-                        if (page == PanelPage.MUSIC) {
-                            // First Back leaves the music page, the next one closes the panel.
+                        if (page != PanelPage.GRID) {
+                            // First Back leaves the music page or small window, the next one closes the panel.
+                            val leaving = page
                             page = PanelPage.GRID
-                            runCatching { requesters.getValue(TileId.NOW_PLAYING).requestFocus() }
+                            if (leaving == PanelPage.MUSIC) {
+                                runCatching { requesters.getValue(TileId.NOW_PLAYING).requestFocus() }
+                            }
                         } else dismiss()
                     }
                     true
@@ -311,7 +353,15 @@ private fun HostBody(
                     appear = { p -> { rowProgress[(p.row + 1).coerceIn(0, ROW_SLOTS - 1)].value } },
                     onFocused = viewModel::onFocused,
                     onActivate = onActivate,
-                    onLongPress = viewModel::onTileLongPressed,
+                    onLongPress = { id ->
+                        when (id) {
+                            TileId.WIFI -> openSub(PanelPage.WIFI, id)
+                            TileId.BLUETOOTH -> openSub(PanelPage.BLUETOOTH, id)
+                            else -> viewModel.onTileLongPressed(id)
+                        }
+                    },
+                    subFocus = subFocus,
+                    subActions = subActions,
                     actions = TileActions(
                         onVolumeStep = viewModel::onVolumeStep,
                         onSkipNext = viewModel::onSkipNext,

@@ -10,7 +10,13 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.annotation.SuppressLint
+import android.bluetooth.BluetoothManager
+import android.media.tv.TvContract
+import android.media.tv.TvInputManager
+import android.net.wifi.WifiManager
 import android.widget.Toast
+import com.example.tvcontrolcenter.domain.model.TvInputItem
 import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.system.backdrop.ScreenshotSaver
 import kotlinx.coroutines.CoroutineScope
@@ -123,6 +129,54 @@ class AndroidSystemActions @Inject constructor(
     override fun showRecents() = global(AccessibilityService.GLOBAL_ACTION_RECENTS)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    private val wifi get() = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+    private val bluetoothAdapter get() =
+        (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
+
+    @Suppress("DEPRECATION")
+    override fun wifiEnabled(): Boolean = runCatching { wifi.isWifiEnabled }.getOrDefault(false)
+
+    /** Needs the location permission on Android 8.1+, otherwise the name is hidden and this gives null. */
+    @Suppress("DEPRECATION")
+    override fun wifiNetworkName(): String? = runCatching {
+        wifi.connectionInfo?.ssid?.trim('"')?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
+    }.getOrNull()
+
+    @Suppress("DEPRECATION")
+    override fun setWifiEnabled(enabled: Boolean): ActionResult {
+        val ok = runCatching { wifi.setWifiEnabled(enabled) }.getOrDefault(false)
+        return if (ok) ActionResult.Done else openWifiSettings()
+    }
+
+    @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION")
+    override fun setBluetoothEnabled(enabled: Boolean): ActionResult {
+        val adapter = bluetoothAdapter
+        val ok = runCatching { if (enabled) adapter?.enable() else adapter?.disable() }.getOrNull() == true
+        return if (ok) ActionResult.Done else openBluetoothSettings()
+    }
+
+    /** Needs the Bluetooth connect permission on Android 12+; empty without it. */
+    @SuppressLint("MissingPermission")
+    override fun pairedBluetoothDevices(): List<String> = runCatching {
+        bluetoothAdapter?.bondedDevices.orEmpty().mapNotNull { it.name }.take(5)
+    }.getOrDefault(emptyList())
+
+    override fun tvInputs(): List<TvInputItem> = runCatching {
+        val manager = context.getSystemService(Context.TV_INPUT_SERVICE) as TvInputManager
+        manager.tvInputList
+            .filter { it.isPassthroughInput }
+            .map { TvInputItem(it.id, (it.loadCustomLabel(context) ?: it.loadLabel(context)).toString()) }
+    }.getOrDefault(emptyList())
+
+    override fun switchInput(id: String): ActionResult = try {
+        val uri = TvContract.buildChannelUriForPassthroughInput(id)
+        context.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        ActionResult.Done
+    } catch (_: Exception) {
+        ActionResult.Unavailable
+    }
 
     /**
      * Android TV does nothing for the system screenshot action, so take the picture ourselves

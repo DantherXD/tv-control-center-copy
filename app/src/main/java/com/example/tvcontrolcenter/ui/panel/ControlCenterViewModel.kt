@@ -142,6 +142,8 @@ class ControlCenterViewModel @Inject constructor(
             TileId.RECENTS -> handle(actions.showRecents(), dismissOnDone = true, tile = id)
             TileId.SCREENSHOT -> handle(actions.takeScreenshot(), dismissOnDone = true, tile = id)
             TileId.NOTIFICATIONS -> handle(actions.showNotifications(), dismissOnDone = true, tile = id)
+            // The panel host opens the Input page itself.
+            TileId.INPUT -> Unit
             TileId.EDIT -> _events.tryEmit(PanelEvent.OpenEditor)
             TileId.PROFILE -> handle(actions.openSettings(), dismissOnDone = true, tile = id)
         }
@@ -182,6 +184,16 @@ class ControlCenterViewModel @Inject constructor(
         _events.tryEmit(PanelEvent.NeedsCapability(Capability.NOTIFICATION_LISTENER))
         return false
     }
+
+    fun wifiEnabled() = actions.wifiEnabled()
+    fun wifiName() = actions.wifiNetworkName()
+    fun pairedBluetooth() = actions.pairedBluetoothDevices()
+    fun tvInputs() = actions.tvInputs()
+    fun onSetWifi(on: Boolean) = handle(actions.setWifiEnabled(on), tile = TileId.WIFI)
+    fun onSetBluetooth(on: Boolean) = handle(actions.setBluetoothEnabled(on), tile = TileId.BLUETOOTH)
+    fun onOpenWifiSettings() = handle(actions.openWifiSettings(), dismissOnDone = true, tile = TileId.WIFI)
+    fun onOpenBluetoothSettings() = handle(actions.openBluetoothSettings(), dismissOnDone = true, tile = TileId.BLUETOOTH)
+    fun onSwitchInput(id: String) = handle(actions.switchInput(id), dismissOnDone = true, tile = TileId.INPUT)
 
     /** Holding OK on a control. Profile opens the editor. */
     fun onTileLongPressed(id: TileId) {

@@ -36,6 +36,14 @@ object PanelDimens {
     val headerHeight = 44.dp
     /** Height of the now-playing card that replaces the grid on the music page. */
     val musicCardHeight = 150.dp
+
+    /** The big now-playing card (album picture fills it), about square like the grid is wide. */
+    val musicCardBigHeight = 236.dp
+
+    /** Wi-Fi, Bluetooth and Input pages. */
+    val subPageHeight = 214.dp
+
+    fun musicHeightFor(big: Boolean): Dp = if (big) musicCardBigHeight else musicCardHeight
     val topButton = 40.dp
 
     /** Header row: tall enough for the clock and for the top-bar buttons of [topSize] dp. */

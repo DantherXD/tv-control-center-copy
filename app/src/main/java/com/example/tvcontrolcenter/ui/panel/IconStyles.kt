@@ -29,6 +29,9 @@ import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Input
+import androidx.compose.material.icons.outlined.Input
+import androidx.compose.material.icons.rounded.Input
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.filled.Layers
@@ -120,6 +123,7 @@ internal object IconStyles {
         add(Icons.Filled.GraphicEq, Icons.Outlined.GraphicEq, Icons.Rounded.GraphicEq)
         add(Icons.Filled.Headphones, Icons.Outlined.Headphones, Icons.Rounded.Headphones)
         add(Icons.Filled.Home, Icons.Outlined.Home, Icons.Rounded.Home)
+        add(Icons.Filled.Input, Icons.Outlined.Input, Icons.Rounded.Input)
         add(Icons.Filled.Layers, Icons.Outlined.Layers, Icons.Rounded.Layers)
         add(Icons.Filled.Lock, Icons.Outlined.Lock, Icons.Rounded.Lock)
         add(Icons.Filled.Menu, Icons.Outlined.Menu, Icons.Rounded.Menu)
