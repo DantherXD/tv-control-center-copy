@@ -52,19 +52,23 @@ fun AppWallpaper(style: Wallpaper, modifier: Modifier = Modifier) {
 }
 
 /**
- * The same wallpaper, blurred as strongly as [level] blurs the real screen, for the live
- * preview of the panel. The editor draws it behind the controls, so changing the blur strength
- * or the wallpaper shows up at once.
+ * The wallpaper for the live preview: the screen as it is, and the blurred copy the glass
+ * samples. The panel normally keeps the screen sharp around the controls and blurs only inside
+ * the glass, so the preview needs both to look like the real thing.
  */
-internal fun previewWallpaper(style: Wallpaper, width: Int, height: Int, level: Int): ImageBitmap {
+internal class PreviewWallpaper(val sharp: ImageBitmap, val blurred: ImageBitmap?)
+
+/** Built from one painting; [level] 0 gives no blurred copy, as on a device that cannot blur. */
+internal fun previewWallpaper(style: Wallpaper, width: Int, height: Int, level: Int): PreviewWallpaper {
     val (w, h) = targetSize(width.toFloat(), height.toFloat(), PREVIEW_WIDTH)
-    val sharp = paintWallpaper(style, w, h)
-    if (level <= 0) return sharp.asImageBitmap()
+    val painted = paintWallpaper(style, w, h)
+    // Not recycled: [sharp] wraps these pixels.
+    val sharp = painted.asImageBitmap()
+    if (level <= 0) return PreviewWallpaper(sharp, null)
     val pixels = IntArray(w * h)
-    sharp.getPixels(pixels, 0, w, 0, 0, w, h)
-    sharp.recycle()
+    painted.getPixels(pixels, 0, w, 0, 0, w, h)
     boxBlur(pixels, w, h, BlurLevels.boxRadius(level))
-    return Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888).asImageBitmap()
+    return PreviewWallpaper(sharp, Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888).asImageBitmap())
 }
 
 private fun targetSize(width: Float, height: Float, max: Float): Pair<Int, Int> {

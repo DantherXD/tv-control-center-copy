@@ -15,8 +15,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.example.tvcontrolcenter.domain.model.BlurMethod
 import com.example.tvcontrolcenter.domain.model.Placed
 import com.example.tvcontrolcenter.domain.model.TileId
+import com.example.tvcontrolcenter.ui.background.PreviewWallpaper
 import com.example.tvcontrolcenter.ui.background.previewWallpaper
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
@@ -40,10 +41,11 @@ import kotlin.math.roundToInt
 /**
  * A small picture of the panel, over a blurred screen, for the home page and the editor.
  *
- * It is the same [PanelContent] the real panel draws, with the same glass: the wallpaper is
- * blurred as strongly as the blur setting says and put behind the controls exactly like the
- * screenshot is on the TV. Because the blur is recomputed whenever the wallpaper, the blur
- * strength or the size changes, every setting shows up here at once.
+ * It is the same [PanelContent] the real panel draws, with the same glass: the wallpaper stands
+ * in for the screen, its blurred copy for the screenshot, and the scrim, the sheet and the
+ * per-tile crops follow the same rules as the host. Because all of it is rebuilt whenever the
+ * wallpaper, the blur strength, the method or the size changes, every setting shows up here at
+ * once — including what "Whole screen" changes.
  */
 @Composable
 internal fun LivePanel(
@@ -59,20 +61,29 @@ internal fun LivePanel(
     var previewSize by remember { mutableStateOf(IntSize.Zero) }
     val level = state.settings.effectiveBlur
     // Blurring is real work: keep it off the frame that draws the controls.
-    val screen by produceState<ImageBitmap?>(null, state.settings.wallpaper, level, previewSize) {
+    val wallpaper by produceState<PreviewWallpaper?>(null, state.settings.wallpaper, level, previewSize) {
         val w = previewSize.width
         val h = previewSize.height
         value = if (w <= 0 || h <= 0) null
         else withContext(Dispatchers.Default) { previewWallpaper(state.settings.wallpaper, w, h, level) }
     }
     val wholeScreen = state.settings.blurMethod == BlurMethod.WINDOW
-    // Blur off: the picture is still drawn behind, but no glass samples it (as on the TV).
-    val mapped = remember(screen, previewSize, level) {
-        if (level <= 0) null else screen?.let { Backdrop(it, previewSize.width, previewSize.height) }
+    // The blurred copy the glass samples. None when blur is off, so the glass falls back to the
+    // plain frosted look, exactly like a device without a screenshot.
+    val mapped = remember(wallpaper, previewSize, level) {
+        val blurred = wallpaper?.blurred
+        if (level <= 0 || blurred == null) null else Backdrop(blurred, previewSize.width, previewSize.height)
     }
     // Same rule as the panel: a sheet only when the glass has no blurred screen to show, or
     // when the card was asked for.
     val sheet = mapped == null || state.settings.card
+    // Whole screen blurs everything behind the panel. Every other method keeps the screen sharp
+    // and blurs only inside the glass, which is what the panel really looks like.
+    val screen = if (wholeScreen && level > 0) {
+        wallpaper?.blurred ?: wallpaper?.sharp
+    } else {
+        wallpaper?.sharp
+    }
     val density = LocalDensity.current
     Box(
         modifier
@@ -85,11 +96,16 @@ internal fun LivePanel(
                     dstSize = IntSize(size.width.roundToInt().coerceAtLeast(1), size.height.roundToInt().coerceAtLeast(1)),
                     filterQuality = FilterQuality.Medium,
                 )
+                // The panel dims the screen behind it; without the same scrim the preview reads
+                // brighter and flatter than the real thing.
+                drawRect(Color.Black.copy(alpha = if (level > 0) 0.22f else 0.32f))
             }
             .padding(PanelDimens.sheetPadding),
     ) {
         CompositionLocalProvider(
-            LocalLiteGlass provides true,
+            // The preview must draw the real glass. The editor page around it is lite, and that
+            // local would otherwise reach these controls, whose lite path skips the backdrop.
+            LocalLiteGlass provides false,
             LocalFrostStyle provides state.settings.frost,
             LocalInvertFocus provides state.settings.invertFocus,
             LocalOverBlur provides (mapped != null),
@@ -111,7 +127,7 @@ internal fun LivePanel(
                     actions = TileActions(),
                     // Whole screen: the blurred picture is the background and the controls are
                     // plain glass on it. Otherwise each control shows its own piece of it.
-                    backdrop = if (wholeScreen) null else mapped,
+                    backdrop = if (wholeScreen || level <= 0) null else mapped,
                     origin = with(density) {
                         Offset(PanelDimens.sheetPadding.toPx(), PanelDimens.sheetPadding.toPx())
                     },
