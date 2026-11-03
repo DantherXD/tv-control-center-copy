@@ -213,6 +213,7 @@ internal fun MusicCard(
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun MusicControls(np: NowPlaying?, actions: TileActions, focus: MusicFocus, up: FocusRequester) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
