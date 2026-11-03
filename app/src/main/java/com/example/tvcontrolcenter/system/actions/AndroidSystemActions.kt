@@ -57,10 +57,15 @@ class AndroidSystemActions @Inject constructor(
 
     override fun openWifiSettings() = launchSettings(Settings.ACTION_WIFI_SETTINGS)
 
-    override fun openBluetoothSettings() = launchSettings(Settings.ACTION_BLUETOOTH_SETTINGS)
+    // Google TV and Android TV call this page "Remotes & accessories"; the TV settings app has its
+    // own screen for it, so try that first and the standard Bluetooth action after.
+    override fun openBluetoothSettings() = launchFirst(
+        tvSettings("com.android.tv.settings"),
+        tvSettings("com.google.android.tvsettings"),
+        Intent(Settings.ACTION_BLUETOOTH_SETTINGS),
+    )
 
-    override fun openGameControllerSettings() =
-        launchSettings("android.settings.BLUETOOTH_SETTINGS")
+    override fun openGameControllerSettings() = openBluetoothSettings()
 
     override fun openAccessibilitySettings() = launchSettings(Settings.ACTION_ACCESSIBILITY_SETTINGS)
 
@@ -219,6 +224,21 @@ class AndroidSystemActions @Inject constructor(
         if (Build.VERSION.SDK_INT < minSdk) return ActionResult.Unavailable
         handler.postDelayed({ service.performGlobalAction(action) }, PANEL_CLOSE_DELAY_MILLIS)
         return ActionResult.Done
+    }
+
+    private fun tvSettings(pkg: String) = Intent().setClassName(pkg, "com.android.tv.settings.accessories.AddAccessoryActivity")
+
+    /** Tries each screen in turn, then the root settings. No visibility checks: starting is enough. */
+    private fun launchFirst(vararg intents: Intent): ActionResult {
+        for (intent in intents) {
+            try {
+                context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return ActionResult.Done
+            } catch (_: Exception) {
+                // Not on this TV: next one.
+            }
+        }
+        return launchSettings(Settings.ACTION_SETTINGS)
     }
 
     private fun launchSettings(action: String): ActionResult = try {

@@ -249,7 +249,7 @@ internal fun EqualizerIcon(playing: Boolean, size: Dp, modifier: Modifier = Modi
         rememberInfiniteTransition(label = "equalizer").animateFloat(
             initialValue = 0f,
             targetValue = 1f,
-            animationSpec = infiniteRepeatable(tween(1300, easing = LinearEasing)),
+            animationSpec = infiniteRepeatable(tween(1100, easing = LinearEasing)),
             label = "phase",
         )
     } else null
@@ -258,9 +258,9 @@ internal fun EqualizerIcon(playing: Boolean, size: Dp, modifier: Modifier = Modi
         val barWidth = this.size.width / (bars * 2f - 1f)
         val t = phase?.value ?: 0f
         for (i in 0 until bars) {
-            // Heights stay close to their resting shape; only a fifth of each bar moves.
+            // Each bar swings between half and full height, at its own pace.
             val sway = if (phase == null) 0.9f
-            else 0.78f + 0.22f * (0.5f + 0.5f * sin(2f * PI.toFloat() * (t * EQ_SPEED[i] + EQ_SHIFT[i])))
+            else 0.5f + 0.5f * (0.5f + 0.5f * sin(2f * PI.toFloat() * (t * EQ_SPEED[i] + EQ_SHIFT[i])))
             val h = (this.size.height * EQ_BASE[i] * sway).coerceAtLeast(barWidth)
             drawRoundRect(
                 ink,
@@ -272,9 +272,9 @@ internal fun EqualizerIcon(playing: Boolean, size: Dp, modifier: Modifier = Modi
     }
 }
 
-private val EQ_BASE = floatArrayOf(0.30f, 0.55f, 0.40f, 0.80f, 1.00f, 0.65f, 0.85f, 0.45f, 0.30f)
-private val EQ_SPEED = intArrayOf(2, 1, 3, 2, 1, 3, 2, 1, 3)
-private val EQ_SHIFT = floatArrayOf(0f, 0.2f, 0.4f, 0.1f, 0.6f, 0.3f, 0.8f, 0.5f, 0.7f)
+private val EQ_BASE = floatArrayOf(0.50f, 0.85f, 1.00f, 0.70f, 0.90f, 0.55f)
+private val EQ_SPEED = intArrayOf(2, 1, 3, 2, 1, 3)
+private val EQ_SHIFT = floatArrayOf(0f, 0.25f, 0.5f, 0.1f, 0.65f, 0.35f)
 
 /** Pops a card in when it appears: fades in, grows from 90% and settles down from just above. */
 @Composable

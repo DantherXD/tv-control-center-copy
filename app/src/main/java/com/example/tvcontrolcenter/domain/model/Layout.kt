@@ -197,6 +197,10 @@ enum class FrostStyle {
     MILKY,
     /** Almost clear: only a faint tint and the blur show. */
     CLEAR,
+    /** Tinted glass in a colour. */
+    OCEAN, AMETHYST, EMBER, FOREST, ROSE,
+    /** Nearly solid dark glass. */
+    MIDNIGHT,
 }
 
 /** Blur strength 0 (none) to [MAX]. Radii are for the 480 px screenshot and for the window blur. */
@@ -236,6 +240,8 @@ data class PanelSettings(
     val menuIsHome: Boolean = true,
     val iconStyle: IconStyle = IconStyle.FILLED,
     val musicStyle: MusicStyle = MusicStyle.COMPACT,
+    /** Wait longer and retry the screenshot, so the blur also works over video and moving scenes. */
+    val patientCapture: Boolean = false,
     /** 0 = no photo. Changes whenever a new photo is saved, so the picture reloads. */
     val profilePhotoVersion: Int = 0,
     /** Colour of the profile circle when there is no photo; index into the app's palette. */

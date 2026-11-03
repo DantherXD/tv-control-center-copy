@@ -121,33 +121,23 @@ private fun onOffText(on: Boolean) = stringResource(if (on) R.string.state_on el
 
 @Composable
 private fun WifiRows(state: ControlCenterUiState, actions: SubPageActions, first: FocusRequester) {
-    val scope = rememberCoroutineScope()
-    var on by remember { mutableStateOf(actions.wifiEnabled()) }
     val network = when (state.status.network) {
         NetworkKind.WIFI -> actions.wifiName() ?: stringResource(R.string.sub_connected)
         NetworkKind.ETHERNET -> "Ethernet"
         NetworkKind.NONE -> stringResource(R.string.sub_not_connected)
     }
-    SheetRow(stringResource(R.string.tile_wifi), onOffText(on), first) {
-        actions.setWifi(!on)
-        // Android may refuse to switch it (and open Settings instead), so read the real state back.
-        scope.launch {
-            delay(800L)
-            on = actions.wifiEnabled()
-        }
-    }
+    SheetInfo(stringResource(R.string.sub_status), onOffText(actions.wifiEnabled() || state.status.network == NetworkKind.WIFI))
     SheetInfo(stringResource(R.string.sub_network), network)
-    SheetRow(stringResource(R.string.sub_other_networks), null, null, actions.openWifiSettings)
+    SheetRow(stringResource(R.string.sub_open_wifi), null, first, actions.openWifiSettings)
 }
 
 @Composable
 private fun BluetoothRows(state: ControlCenterUiState, actions: SubPageActions, first: FocusRequester) {
-    val on = state.status.bluetoothEnabled
     val paired = remember { actions.pairedBluetooth() }
-    SheetRow(stringResource(R.string.tile_bluetooth), onOffText(on), first) { actions.setBluetooth(!on) }
+    SheetInfo(stringResource(R.string.sub_status), onOffText(state.status.bluetoothEnabled))
     SheetInfo(stringResource(R.string.sub_bt_audio), state.status.audioDeviceName ?: stringResource(R.string.sub_bt_none))
     paired.forEach { SheetInfo(stringResource(R.string.sub_paired), it) }
-    SheetRow(stringResource(R.string.sub_bt_pair), null, null, actions.openBluetoothSettings)
+    SheetRow(stringResource(R.string.sub_open_remotes), null, first, actions.openBluetoothSettings)
 }
 
 @Composable

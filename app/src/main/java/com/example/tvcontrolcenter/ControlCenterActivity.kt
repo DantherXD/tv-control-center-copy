@@ -61,7 +61,7 @@ class ControlCenterActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     val settings = ControlCenterEntryPoint.from(this@ControlCenterActivity).layoutRepository().settings.value
                     val level = settings.effectiveBlur
-                    backdrop = BackdropCapture.capture(level)
+                    backdrop = BackdropCapture.capture(level, settings.patientCapture)
                     // No screenshot (older Android, service off, protected video): ask the system to blur.
                     if (backdrop == null && settings.blurMethod != BlurMethod.SCREENSHOT) {
                         val p = window.attributes

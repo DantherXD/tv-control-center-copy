@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import com.example.tvcontrolcenter.system.trigger.ControlCenterAccessibilityService
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -35,6 +36,9 @@ import kotlin.coroutines.resume
 object BackdropCapture {
     private const val TARGET_WIDTH = 480
     private const val TIMEOUT_MS = 350L
+    private const val PATIENT_TIMEOUT_MS = 1_200L
+    private const val PATIENT_TRIES = 3
+    private const val PATIENT_PAUSE_MS = 150L
 
     private val executor by lazy { Executors.newSingleThreadExecutor() }
 
@@ -58,9 +62,16 @@ object BackdropCapture {
     }
 
     /** Blurred picture of whatever app is on screen, [level] 1..4. Null if off or not possible. */
-    suspend fun capture(level: Int): Backdrop? {
+    suspend fun capture(level: Int, patient: Boolean = false): Backdrop? {
         if (level <= 0 || !isSupported) return null
-        return withTimeoutOrNull(TIMEOUT_MS) { captureNow(level) }
+        if (!patient) return withTimeoutOrNull(TIMEOUT_MS) { captureNow(level) }
+        // Video and moving scenes make the system slow or refuse a screenshot: wait longer, try again.
+        repeat(PATIENT_TRIES) {
+            val picture = withTimeoutOrNull(PATIENT_TIMEOUT_MS) { captureNow(level) }
+            if (picture != null) return picture
+            delay(PATIENT_PAUSE_MS)
+        }
+        return null
     }
 
     /**

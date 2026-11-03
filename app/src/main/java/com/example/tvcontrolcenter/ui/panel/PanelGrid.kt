@@ -157,7 +157,8 @@ internal fun PanelContent(
                                 else -> false
                             },
                             radius = top / 2,
-                            flat = state.settings.topBorderless,
+                            // Menu and profile follow the setting; the music button never has a border.
+                            flat = state.settings.topBorderless || p.id == TileId.NOW_PLAYING,
                             longPress = if (interactive && p.id == TileId.PROFILE) ({ onLongPress(p.id) }) else null,
                             modifier = Modifier.size(top),
                         )

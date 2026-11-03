@@ -42,12 +42,30 @@ private val Grain: ShaderBrush by lazy {
 }
 
 /** How dark and how white a glass layer is. Plain numbers, so a style costs nothing to draw. */
-private class Tint(val dark: Float, val veilTop: Float, val veilBottom: Float)
+private class Tint(
+    val dark: Float,
+    val veilTop: Float,
+    val veilBottom: Float,
+    /** Colour of the dark base layer (black for the plain styles). */
+    val base: Color = Color.Black,
+    /** Colour of the light veil (white for the plain styles). */
+    val veil: Color = Color.White,
+)
+
+/** A coloured glass: [base] tints the dark layer and [veil] the light one. */
+private fun colored(base: Long, veil: Long, dark: Float, top: Float, bottom: Float) =
+    Tint(dark, top, bottom, Color(base), Color(veil))
 
 private fun FrostStyle.sheetTint() = when (this) {
     FrostStyle.SMOKE -> Tint(GlassTokens.sheetBaseAlpha, GlassTokens.sheetVeilTop, GlassTokens.sheetVeilBottom)
     FrostStyle.MILKY -> Tint(0.14f, 0.34f, 0.18f)
     FrostStyle.CLEAR -> Tint(0.22f, 0.10f, 0.04f)
+    FrostStyle.OCEAN -> colored(0xFF0B2E66, 0xFFA8D0FF, 0.46f, 0.20f, 0.10f)
+    FrostStyle.AMETHYST -> colored(0xFF2A0F55, 0xFFC8A8FF, 0.46f, 0.20f, 0.10f)
+    FrostStyle.EMBER -> colored(0xFF4A1A08, 0xFFFFB27A, 0.46f, 0.20f, 0.10f)
+    FrostStyle.FOREST -> colored(0xFF0B3A24, 0xFFA8F0C8, 0.46f, 0.20f, 0.10f)
+    FrostStyle.ROSE -> colored(0xFF4A0F2A, 0xFFFFB0D0, 0.46f, 0.20f, 0.10f)
+    FrostStyle.MIDNIGHT -> Tint(0.80f, 0.03f, 0.01f)
 }
 
 private fun FrostStyle.tileTint(overBlur: Boolean) = if (overBlur) {
@@ -55,12 +73,24 @@ private fun FrostStyle.tileTint(overBlur: Boolean) = if (overBlur) {
         FrostStyle.SMOKE -> Tint(0.20f, 0.10f, 0.06f)
         FrostStyle.MILKY -> Tint(0.04f, 0.34f, 0.26f)
         FrostStyle.CLEAR -> Tint(0.06f, 0.06f, 0.03f)
+        FrostStyle.OCEAN -> colored(0xFF0B2E66, 0xFFA8D0FF, 0.34f, 0.18f, 0.10f)
+        FrostStyle.AMETHYST -> colored(0xFF2A0F55, 0xFFC8A8FF, 0.34f, 0.18f, 0.10f)
+        FrostStyle.EMBER -> colored(0xFF4A1A08, 0xFFFFB27A, 0.34f, 0.18f, 0.10f)
+        FrostStyle.FOREST -> colored(0xFF0B3A24, 0xFFA8F0C8, 0.34f, 0.18f, 0.10f)
+        FrostStyle.ROSE -> colored(0xFF4A0F2A, 0xFFFFB0D0, 0.34f, 0.18f, 0.10f)
+        FrostStyle.MIDNIGHT -> Tint(0.62f, 0.04f, 0.02f)
     }
 } else {
     when (this) {
         FrostStyle.SMOKE -> Tint(GlassTokens.tileBaseAlpha, GlassTokens.tileVeilTop, GlassTokens.tileVeilBottom)
         FrostStyle.MILKY -> Tint(0.08f, 0.40f, 0.28f)
         FrostStyle.CLEAR -> Tint(0.12f, 0.10f, 0.05f)
+        FrostStyle.OCEAN -> colored(0xFF0B2E66, 0xFFA8D0FF, 0.40f, 0.22f, 0.12f)
+        FrostStyle.AMETHYST -> colored(0xFF2A0F55, 0xFFC8A8FF, 0.40f, 0.22f, 0.12f)
+        FrostStyle.EMBER -> colored(0xFF4A1A08, 0xFFFFB27A, 0.40f, 0.22f, 0.12f)
+        FrostStyle.FOREST -> colored(0xFF0B3A24, 0xFFA8F0C8, 0.40f, 0.22f, 0.12f)
+        FrostStyle.ROSE -> colored(0xFF4A0F2A, 0xFFFFB0D0, 0.40f, 0.22f, 0.12f)
+        FrostStyle.MIDNIGHT -> Tint(0.70f, 0.05f, 0.02f)
     }
 }
 
@@ -86,10 +116,10 @@ fun Modifier.frostedSheet(
         drawRoundRect(Color.Black.copy(alpha = 0.38f), topLeft, box, r)
         return@drawBehind
     }
-    drawRoundRect(Color.Black.copy(alpha = t.dark), topLeft, box, r)
+    drawRoundRect(t.base.copy(alpha = t.dark), topLeft, box, r)
     drawRoundRect(
         Brush.verticalGradient(
-            listOf(Color.White.copy(alpha = t.veilTop), Color.White.copy(alpha = t.veilBottom)),
+            listOf(t.veil.copy(alpha = t.veilTop), t.veil.copy(alpha = t.veilBottom)),
             startY = topLeft.y,
             endY = topLeft.y + box.height,
         ),
@@ -132,6 +162,8 @@ fun Modifier.frostedTile(
     if (flat) {
         return@drawWithCache onDrawBehind {
             val f = focus()
+            // The open page keeps a soft highlight even without glass.
+            if (active) drawRoundRect(Color.White.copy(alpha = 0.22f), cornerRadius = r)
             when {
                 solid -> drawRoundRect(Color.White.copy(alpha = 0.97f), cornerRadius = r)
                 f > 0.01f && invert -> drawRoundRect(Color.White.copy(alpha = 0.97f * f), cornerRadius = r)
@@ -172,12 +204,12 @@ fun Modifier.frostedTile(
         if (backdrop != null) {
             clipPath(shape) { drawBackdropCrop(backdrop, origin) }
         }
-        drawRoundRect(Color.Black.copy(alpha = tint.dark * (1f - 0.5f * f)), cornerRadius = r)
+        drawRoundRect(tint.base.copy(alpha = tint.dark * (1f - 0.5f * f)), cornerRadius = r)
         drawRoundRect(
             Brush.verticalGradient(
                 listOf(
-                    Color.White.copy(alpha = (tint.veilTop + boost).coerceAtMost(0.7f)),
-                    Color.White.copy(alpha = (tint.veilBottom + boost * 0.6f).coerceAtMost(0.7f)),
+                    tint.veil.copy(alpha = (tint.veilTop + boost).coerceAtMost(0.7f)),
+                    tint.veil.copy(alpha = (tint.veilBottom + boost * 0.6f).coerceAtMost(0.7f)),
                 ),
             ),
             cornerRadius = r,

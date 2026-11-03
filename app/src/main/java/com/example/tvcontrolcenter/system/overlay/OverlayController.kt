@@ -117,7 +117,7 @@ class OverlayController(
                     LaunchedEffect(Unit) {
                         val settings = ControlCenterEntryPoint.from(context).layoutRepository().settings.value
                         val level = settings.effectiveBlur
-                        backdrop = BackdropCapture.capture(level)
+                        backdrop = BackdropCapture.capture(level, settings.patientCapture)
                         // No picture (old Android, DRM video, slow device) -> ask the system to blur the screen.
                         if (backdrop == null && settings.blurMethod != BlurMethod.SCREENSHOT && !windowBlurOn) {
                             val p = windowParams

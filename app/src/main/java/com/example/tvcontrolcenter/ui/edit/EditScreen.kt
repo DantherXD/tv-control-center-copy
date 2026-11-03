@@ -132,6 +132,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
     val firstAction = remember { FocusRequester() }
     var selected by remember { mutableStateOf<TileId?>(null) }
     var returnTo by remember { mutableStateOf<TileId?>(null) }
+    var tab by remember { mutableStateOf(EditTab.CONTROLS) }
 
     LaunchedEffect(Unit) {
         withFrameNanos { }
@@ -172,123 +173,20 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
             horizontalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             Column(
-                Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                Modifier.weight(1f).fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                BasicText(stringResource(R.string.edit_title), style = PanelType.title.copy(color = GlassTokens.textPrimary))
                 val settings = state.settings
-
-                val item = selected?.let { layout.item(it) }
-                if (item == null) {
-                    Hint(stringResource(R.string.edit_hint_pick))
-                    Hint(stringResource(R.string.edit_howto))
-                } else {
-                    Section(stringResource(lookOf(item.id).label))
-                    val sizes = TileSize.entries.filter {
-                        it != TileSize.TOP || item.id == TileId.EDIT || item.id == TileId.PROFILE || item.id == TileId.NOW_PLAYING
+                BasicText(stringResource(R.string.edit_title), style = PanelType.title.copy(color = GlassTokens.textPrimary))
+                Hint(stringResource(R.string.edit_live))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    EditTab.entries.forEach { t ->
+                        EditChip(stringResource(t.label), highlighted = tab == t, width = 108.dp) { tab = t }
                     }
-                    StepRow(
-                        stringResource(R.string.edit_size),
-                        stringResource(sizeLabel(item.size)),
-                        requester = firstAction,
-                    ) { d -> vm.setTileSize(item.id, sizes.step(item.size, d)) }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        EditChip(stringResource(R.string.edit_move_earlier), width = 132.dp) { vm.moveTile(item.id, -1) }
-                        EditChip(stringResource(R.string.edit_move_later), width = 132.dp) { vm.moveTile(item.id, 1) }
-                        EditChip(stringResource(R.string.edit_hide), width = 100.dp) {
-                            vm.setTileVisible(item.id, false)
-                            returnTo = currentPlaced.firstOrNull { it.id != item.id }?.id
-                            selected = null
-                        }
-                    }
+                    EditChip(stringResource(R.string.edit_done), width = 84.dp, onClick = onDone)
                 }
 
-                val hidden = layout.hiddenItems()
-                if (hidden.isNotEmpty()) {
-                    Section(stringResource(R.string.edit_add))
-                    hidden.chunked(3).forEach { row ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            row.forEach { hiddenItem ->
-                                AddChip(hiddenItem.id) {
-                                    vm.setTileVisible(hiddenItem.id, true)
-                                    selected = hiddenItem.id
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Section(stringResource(R.string.edit_look))
-                StepRow(stringResource(R.string.edit_panel_size), "${(settings.uiScale * 100).roundToInt()}%") { d ->
-                    vm.setUiScale(UiScaleSteps.step(settings.uiScale, d))
-                }
-                StepRow(stringResource(R.string.edit_text_size), "${(settings.textScale * 100).roundToInt()}%") { d ->
-                    vm.updateSettings { it.copy(textScale = TextScaleSteps.step(it.textScale, d)) }
-                }
-                StepRow(
-                    stringResource(R.string.edit_position),
-                    TopOffsetSteps.indexOf(settings.topOffset).let { if (it <= 0) stringResource(R.string.edit_pos_top) else "$it" },
-                ) { d -> vm.updateSettings { it.copy(topOffset = TopOffsetSteps.step(it.topOffset, d)) } }
-                StepRow(stringResource(R.string.edit_header_gap), "${settings.headerGap}") { d ->
-                    vm.updateSettings { it.copy(headerGap = HeaderGapSteps.step(it.headerGap, d)) }
-                }
-                StepRow(
-                    stringResource(R.string.edit_invert),
-                    stringResource(if (settings.invertFocus) R.string.invert_yes else R.string.invert_no),
-                ) { vm.updateSettings { it.copy(invertFocus = !it.invertFocus) } }
-                StepRow(
-                    stringResource(R.string.edit_edge),
-                    if (settings.edgeWidth <= 0f) stringResource(R.string.edge_none) else "${settings.edgeWidth}",
-                ) { d -> vm.updateSettings { it.copy(edgeWidth = EdgeWidthSteps.step(it.edgeWidth, d)) } }
-                val iconNames = listOf(
-                    IconStyle.FILLED to R.string.icons_filled,
-                    IconStyle.OUTLINED to R.string.icons_outlined,
-                    IconStyle.ROUNDED to R.string.icons_rounded,
-                )
-                StepRow(
-                    stringResource(R.string.edit_icons),
-                    stringResource(iconNames.first { it.first == settings.iconStyle }.second),
-                ) { d ->
-                    val next = iconNames[Math.floorMod(iconNames.indexOfFirst { it.first == settings.iconStyle } + d, iconNames.size)].first
-                    vm.updateSettings { it.copy(iconStyle = next) }
-                }
-
-                Section(stringResource(R.string.edit_header_buttons))
-                listOf(TileId.EDIT to R.string.edit_btn_menu, TileId.PROFILE to R.string.edit_btn_profile).forEach { (id, name) ->
-                    val on = layout.item(id)?.visible == true
-                    StepRow(stringResource(name), onOff(on)) { vm.setTileVisible(id, !on) }
-                }
-                val music = layout.item(TileId.NOW_PLAYING)
-                val musicOn = music?.visible == true && music.size == TileSize.TOP
-                StepRow(stringResource(R.string.edit_btn_music), onOff(musicOn)) {
-                    if (musicOn) vm.setTileSize(TileId.NOW_PLAYING, TileSize.FULL)
-                    else {
-                        vm.setTileVisible(TileId.NOW_PLAYING, true)
-                        vm.setTileSize(TileId.NOW_PLAYING, TileSize.TOP)
-                    }
-                }
-                StepRow(stringResource(R.string.edit_top_size), "${settings.topSize}") { d ->
-                    vm.updateSettings { it.copy(topSize = TopSizeSteps.step(it.topSize, d)) }
-                }
-                StepRow(stringResource(R.string.edit_top_flat), onOff(settings.topBorderless)) {
-                    vm.updateSettings { it.copy(topBorderless = !it.topBorderless) }
-                }
-                StepRow(stringResource(R.string.edit_menu_home), onOff(settings.menuIsHome)) {
-                    vm.updateSettings { it.copy(menuIsHome = !it.menuIsHome) }
-                }
-                val musicStyles = listOf(MusicStyle.COMPACT to R.string.music_compact, MusicStyle.BIG to R.string.music_big)
-                StepRow(
-                    stringResource(R.string.edit_music_style),
-                    stringResource(musicStyles.first { it.first == settings.musicStyle }.second),
-                ) { d ->
-                    val next = musicStyles[Math.floorMod(musicStyles.indexOfFirst { it.first == settings.musicStyle } + d, musicStyles.size)].first
-                    vm.updateSettings { it.copy(musicStyle = next) }
-                }
-                Hint(stringResource(R.string.edit_menu_note))
-                Hint(stringResource(R.string.edit_music_note))
-                Hint(stringResource(R.string.edit_longpress_note))
-
-                Section(stringResource(R.string.edit_photo))
+                // Photo pickers live here so they are not re-created when the tab changes.
                 val context = LocalContext.current
                 val picked = { uri: Uri? ->
                     if (uri != null) {
@@ -299,77 +197,190 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                 }
                 val openDoc = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument(), picked)
                 val getContent = rememberLauncherForActivityResult(ActivityResultContracts.GetContent(), picked)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    EditChip(stringResource(R.string.edit_photo_choose), width = 124.dp) {
-                        try {
-                            openDoc.launch(arrayOf("image/*"))
-                        } catch (_: ActivityNotFoundException) {
-                            try {
-                                getContent.launch("image/*")
-                            } catch (_: ActivityNotFoundException) {
-                                Toast.makeText(context, R.string.edit_photo_no_picker, Toast.LENGTH_LONG).show()
+
+                Column(
+                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    when (tab) {
+                        EditTab.CONTROLS -> {
+                            val item = selected?.let { layout.item(it) }
+                            if (item == null) {
+                                Hint(stringResource(R.string.edit_hint_pick))
+                            } else {
+                                Section(stringResource(lookOf(item.id).label))
+                                val sizes = TileSize.entries.filter {
+                                    it != TileSize.TOP || item.id == TileId.EDIT || item.id == TileId.PROFILE || item.id == TileId.NOW_PLAYING
+                                }
+                                StepRow(
+                                    stringResource(R.string.edit_size),
+                                    stringResource(sizeLabel(item.size)),
+                                    requester = firstAction,
+                                ) { d -> vm.setTileSize(item.id, sizes.step(item.size, d)) }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    EditChip(stringResource(R.string.edit_move_earlier), width = 132.dp) { vm.moveTile(item.id, -1) }
+                                    EditChip(stringResource(R.string.edit_move_later), width = 132.dp) { vm.moveTile(item.id, 1) }
+                                    EditChip(stringResource(R.string.edit_hide), width = 100.dp) {
+                                        vm.setTileVisible(item.id, false)
+                                        returnTo = currentPlaced.firstOrNull { it.id != item.id }?.id
+                                        selected = null
+                                    }
+                                }
+                            }
+                            val hidden = layout.hiddenItems()
+                            if (hidden.isNotEmpty()) {
+                                Section(stringResource(R.string.edit_add))
+                                hidden.chunked(3).forEach { row ->
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        row.forEach { hiddenItem ->
+                                            AddChip(hiddenItem.id) {
+                                                vm.setTileVisible(hiddenItem.id, true)
+                                                selected = hiddenItem.id
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            EditChip(stringResource(R.string.edit_reset), width = 160.dp) {
+                                vm.resetLayout()
+                                selected = null
                             }
                         }
-                    }
-                    EditChip(stringResource(R.string.edit_photo_remove), width = 104.dp) {
-                        ProfilePhoto.clear(context)
-                        vm.updateSettings { it.copy(profilePhotoVersion = 0) }
-                    }
-                }
-                StepRow(
-                    stringResource(R.string.edit_photo_color),
-                    "${settings.profileColor.mod(AvatarColors.size) + 1}",
-                    swatch = AvatarColors[settings.profileColor.mod(AvatarColors.size)],
-                ) { d -> vm.updateSettings { it.copy(profileColor = Math.floorMod(it.profileColor + d, AvatarColors.size)) } }
 
-                Section(stringResource(R.string.edit_blur_title))
-                val blurNames = listOf(R.string.blur_off, R.string.blur_light, R.string.blur_medium, R.string.blur_strong, R.string.blur_max)
-                    .map { stringResource(it) }
-                StepRow(stringResource(R.string.edit_blur_level), blurNames[settings.effectiveBlur]) { d ->
-                    val level = Math.floorMod(settings.effectiveBlur + d, blurNames.size)
-                    vm.updateSettings { it.copy(blurBehind = level > 0, blurLevel = level) }
-                }
-                val methods = listOf(
-                    BlurMethod.AUTO to R.string.method_auto,
-                    BlurMethod.SCREENSHOT to R.string.method_screenshot,
-                    BlurMethod.WINDOW to R.string.method_window,
-                )
-                StepRow(
-                    stringResource(R.string.edit_blur_method),
-                    stringResource(methods.first { it.first == settings.blurMethod }.second),
-                ) { d ->
-                    val next = methods[Math.floorMod(methods.indexOfFirst { it.first == settings.blurMethod } + d, methods.size)].first
-                    vm.updateSettings { it.copy(blurMethod = next) }
-                }
-                Hint(stringResource(R.string.blur_whole_note))
-                Hint(
-                    stringResource(
-                        when (BackdropCapture.status()) {
-                            BackdropCapture.Status.READY -> R.string.blur_status_ready
-                            BackdropCapture.Status.NEEDS_SERVICE -> R.string.blur_status_service
-                            BackdropCapture.Status.NEEDS_ANDROID_11 -> R.string.blur_status_old
-                        },
-                    ),
-                )
-                val frosts = listOf(
-                    FrostStyle.SMOKE to R.string.frost_smoke,
-                    FrostStyle.MILKY to R.string.frost_milky,
-                    FrostStyle.CLEAR to R.string.frost_clear,
-                )
-                StepRow(
-                    stringResource(R.string.edit_frost),
-                    stringResource(frosts.first { it.first == settings.frost }.second),
-                ) { d ->
-                    val next = frosts[Math.floorMod(frosts.indexOfFirst { it.first == settings.frost } + d, frosts.size)].first
-                    vm.updateSettings { it.copy(frost = next) }
-                }
+                        EditTab.LOOK -> {
+                            StepRow(stringResource(R.string.edit_frost), stringResource(frostLabel(settings.frost))) { d ->
+                                vm.updateSettings { it.copy(frost = FrostStyle.entries.step(it.frost, d)) }
+                            }
+                            StepRow(stringResource(R.string.edit_panel_size), "${(settings.uiScale * 100).roundToInt()}%") { d ->
+                                vm.setUiScale(UiScaleSteps.step(settings.uiScale, d))
+                            }
+                            StepRow(stringResource(R.string.edit_text_size), "${(settings.textScale * 100).roundToInt()}%") { d ->
+                                vm.updateSettings { it.copy(textScale = TextScaleSteps.step(it.textScale, d)) }
+                            }
+                            StepRow(
+                                stringResource(R.string.edit_position),
+                                TopOffsetSteps.indexOf(settings.topOffset).let { if (it <= 0) stringResource(R.string.edit_pos_top) else "$it" },
+                            ) { d -> vm.updateSettings { it.copy(topOffset = TopOffsetSteps.step(it.topOffset, d)) } }
+                            StepRow(stringResource(R.string.edit_header_gap), "${settings.headerGap}") { d ->
+                                vm.updateSettings { it.copy(headerGap = HeaderGapSteps.step(it.headerGap, d)) }
+                            }
+                            StepRow(
+                                stringResource(R.string.edit_edge),
+                                if (settings.edgeWidth <= 0f) stringResource(R.string.edge_none) else "${settings.edgeWidth}",
+                            ) { d -> vm.updateSettings { it.copy(edgeWidth = EdgeWidthSteps.step(it.edgeWidth, d)) } }
+                            val iconNames = listOf(
+                                IconStyle.FILLED to R.string.icons_filled,
+                                IconStyle.OUTLINED to R.string.icons_outlined,
+                                IconStyle.ROUNDED to R.string.icons_rounded,
+                            )
+                            StepRow(
+                                stringResource(R.string.edit_icons),
+                                stringResource(iconNames.first { it.first == settings.iconStyle }.second),
+                            ) { d ->
+                                val next = iconNames[Math.floorMod(iconNames.indexOfFirst { it.first == settings.iconStyle } + d, iconNames.size)].first
+                                vm.updateSettings { it.copy(iconStyle = next) }
+                            }
+                            StepRow(
+                                stringResource(R.string.edit_invert),
+                                stringResource(if (settings.invertFocus) R.string.invert_yes else R.string.invert_no),
+                            ) { vm.updateSettings { it.copy(invertFocus = !it.invertFocus) } }
+                        }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                    EditChip(stringResource(R.string.edit_reset), width = 132.dp) {
-                        vm.resetLayout()
-                        selected = null
+                        EditTab.TOPBAR -> {
+                            listOf(TileId.EDIT to R.string.edit_btn_menu, TileId.PROFILE to R.string.edit_btn_profile).forEach { (id, name) ->
+                                val on = layout.item(id)?.visible == true
+                                StepRow(stringResource(name), onOff(on)) { vm.setTileVisible(id, !on) }
+                            }
+                            val music = layout.item(TileId.NOW_PLAYING)
+                            val musicOn = music?.visible == true && music.size == TileSize.TOP
+                            StepRow(stringResource(R.string.edit_btn_music), onOff(musicOn)) {
+                                if (musicOn) vm.setTileSize(TileId.NOW_PLAYING, TileSize.FULL)
+                                else {
+                                    vm.setTileVisible(TileId.NOW_PLAYING, true)
+                                    vm.setTileSize(TileId.NOW_PLAYING, TileSize.TOP)
+                                }
+                            }
+                            StepRow(stringResource(R.string.edit_top_size), "${settings.topSize}") { d ->
+                                vm.updateSettings { it.copy(topSize = TopSizeSteps.step(it.topSize, d)) }
+                            }
+                            StepRow(stringResource(R.string.edit_top_flat), onOff(settings.topBorderless)) {
+                                vm.updateSettings { it.copy(topBorderless = !it.topBorderless) }
+                            }
+                            StepRow(stringResource(R.string.edit_menu_home), onOff(settings.menuIsHome)) {
+                                vm.updateSettings { it.copy(menuIsHome = !it.menuIsHome) }
+                            }
+                            val musicStyles = listOf(MusicStyle.COMPACT to R.string.music_compact, MusicStyle.BIG to R.string.music_big)
+                            StepRow(
+                                stringResource(R.string.edit_music_style),
+                                stringResource(musicStyles.first { it.first == settings.musicStyle }.second),
+                            ) { d ->
+                                val next = musicStyles[Math.floorMod(musicStyles.indexOfFirst { it.first == settings.musicStyle } + d, musicStyles.size)].first
+                                vm.updateSettings { it.copy(musicStyle = next) }
+                            }
+                            Hint(stringResource(R.string.edit_menu_note))
+                            Hint(stringResource(R.string.edit_music_note))
+                            Hint(stringResource(R.string.edit_longpress_note))
+
+                            Section(stringResource(R.string.edit_photo))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                EditChip(stringResource(R.string.edit_photo_choose), width = 124.dp) {
+                                    try {
+                                        openDoc.launch(arrayOf("image/*"))
+                                    } catch (_: ActivityNotFoundException) {
+                                        try {
+                                            getContent.launch("image/*")
+                                        } catch (_: ActivityNotFoundException) {
+                                            Toast.makeText(context, R.string.edit_photo_no_picker, Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                }
+                                EditChip(stringResource(R.string.edit_photo_remove), width = 104.dp) {
+                                    ProfilePhoto.clear(context)
+                                    vm.updateSettings { it.copy(profilePhotoVersion = 0) }
+                                }
+                            }
+                            StepRow(
+                                stringResource(R.string.edit_photo_color),
+                                "${settings.profileColor.mod(AvatarColors.size) + 1}",
+                                swatch = AvatarColors[settings.profileColor.mod(AvatarColors.size)],
+                            ) { d -> vm.updateSettings { it.copy(profileColor = Math.floorMod(it.profileColor + d, AvatarColors.size)) } }
+                        }
+
+                        EditTab.BLUR -> {
+                            val blurNames = listOf(R.string.blur_off, R.string.blur_light, R.string.blur_medium, R.string.blur_strong, R.string.blur_max)
+                                .map { stringResource(it) }
+                            StepRow(stringResource(R.string.edit_blur_level), blurNames[settings.effectiveBlur]) { d ->
+                                val level = Math.floorMod(settings.effectiveBlur + d, blurNames.size)
+                                vm.updateSettings { it.copy(blurBehind = level > 0, blurLevel = level) }
+                            }
+                            val methods = listOf(
+                                BlurMethod.AUTO to R.string.method_auto,
+                                BlurMethod.SCREENSHOT to R.string.method_screenshot,
+                                BlurMethod.WINDOW to R.string.method_window,
+                            )
+                            StepRow(
+                                stringResource(R.string.edit_blur_method),
+                                stringResource(methods.first { it.first == settings.blurMethod }.second),
+                            ) { d ->
+                                val next = methods[Math.floorMod(methods.indexOfFirst { it.first == settings.blurMethod } + d, methods.size)].first
+                                vm.updateSettings { it.copy(blurMethod = next) }
+                            }
+                            Hint(stringResource(R.string.blur_whole_note))
+                            StepRow(stringResource(R.string.edit_patient), onOff(settings.patientCapture)) {
+                                vm.updateSettings { it.copy(patientCapture = !it.patientCapture) }
+                            }
+                            Hint(stringResource(R.string.edit_patient_note))
+                            Hint(
+                                stringResource(
+                                    when (BackdropCapture.status()) {
+                                        BackdropCapture.Status.READY -> R.string.blur_status_ready
+                                        BackdropCapture.Status.NEEDS_SERVICE -> R.string.blur_status_service
+                                        BackdropCapture.Status.NEEDS_ANDROID_11 -> R.string.blur_status_old
+                                    },
+                                ),
+                            )
+                        }
                     }
-                    EditChip(stringResource(R.string.edit_done), width = 88.dp, onClick = onDone)
                 }
             }
 
@@ -390,7 +401,10 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                     selected = selected,
                     appear = { _ -> { 1f } },
                     onFocused = {},
-                    onActivate = { selected = it },
+                    onActivate = {
+                        selected = it
+                        tab = EditTab.CONTROLS
+                    },
                     actions = TileActions(),
                     backdrop = null,
                     origin = Offset.Zero,
@@ -401,6 +415,25 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
             }
         }
     }
+}
+
+private enum class EditTab(val label: Int) {
+    CONTROLS(R.string.tab_controls),
+    LOOK(R.string.tab_look),
+    TOPBAR(R.string.tab_topbar),
+    BLUR(R.string.tab_blur),
+}
+
+private fun frostLabel(style: FrostStyle): Int = when (style) {
+    FrostStyle.SMOKE -> R.string.frost_smoke
+    FrostStyle.MILKY -> R.string.frost_milky
+    FrostStyle.CLEAR -> R.string.frost_clear
+    FrostStyle.OCEAN -> R.string.frost_ocean
+    FrostStyle.AMETHYST -> R.string.frost_amethyst
+    FrostStyle.EMBER -> R.string.frost_ember
+    FrostStyle.FOREST -> R.string.frost_forest
+    FrostStyle.ROSE -> R.string.frost_rose
+    FrostStyle.MIDNIGHT -> R.string.frost_midnight
 }
 
 private fun sizeLabel(size: TileSize): Int = when (size) {
@@ -444,6 +477,7 @@ private fun FlatButton(
     val r = requester ?: remember { FocusRequester() }
     val invert = LocalInvertFocus.current
     var focused by remember { mutableStateOf(false) }
+    val pressed = remember { booleanArrayOf(false) }
     val ink = if (focused && invert) GlassTokens.inkDark else Color.White
     Box(
         Modifier
@@ -453,8 +487,17 @@ private fun FlatButton(
             .onKeyEvent { e ->
                 when {
                     onKeyExtra(e) -> true
-                    e.type == KeyEventType.KeyUp && e.key.isSelectKey() -> { activate(); true }
-                    e.key.isSelectKey() -> true
+                    e.key.isSelectKey() && e.type == KeyEventType.KeyDown -> {
+                        // A repeat means OK was already held when this appeared (long press that
+                        // opened the editor): not a press.
+                        if (e.nativeKeyEvent.repeatCount == 0) pressed[0] = true
+                        true
+                    }
+                    e.key.isSelectKey() && e.type == KeyEventType.KeyUp -> {
+                        if (pressed[0]) activate()
+                        pressed[0] = false
+                        true
+                    }
                     else -> false
                 }
             }

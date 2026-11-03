@@ -92,6 +92,8 @@ fun GlassTile(
     val overBlur = LocalOverBlur.current
     val edge = LocalEdgeWidth.current
     val longFired = remember { booleanArrayOf(false) }
+    // A screen can open while OK is still held (long press); that release must not press anything.
+    val pressedHere = remember { booleanArrayOf(false) }
     val focusAmount = animateFloatAsState(
         targetValue = if (focused) 1f else 0f,
         animationSpec = if (lite) snap<Float>() else Motion.focusSpring<Float>(),
@@ -119,6 +121,11 @@ fun GlassTile(
             .onKeyEvent { event ->
                 when {
                     onKey(event) -> true
+                    event.key.isSelect() && event.type == KeyEventType.KeyDown &&
+                        event.nativeKeyEvent.repeatCount == 0 -> {
+                        pressedHere[0] = true
+                        true
+                    }
                     onLongPress != null && event.key.isSelect() && event.type == KeyEventType.KeyDown &&
                         event.nativeKeyEvent.repeatCount > 0 -> {
                         if (!longFired[0]) {
@@ -131,10 +138,11 @@ fun GlassTile(
                     event.type == KeyEventType.KeyUp && event.key.isSelect() -> {
                         if (longFired[0]) {
                             longFired[0] = false
-                        } else {
+                        } else if (pressedHere[0]) {
                             if (GlassTokens.soundCues) view.playSoundEffect(SoundEffectConstants.CLICK)
                             onActivate()
                         }
+                        pressedHere[0] = false
                         true
                     }
                     event.key.isSelect() -> true // swallow the matching key-down
