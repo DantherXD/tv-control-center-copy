@@ -50,6 +50,10 @@ private class Tint(
     val base: Color = Color.Black,
     /** Colour of the light veil (white for the plain styles). */
     val veil: Color = Color.White,
+    /** How much black is laid over the blurred picture inside the glass, dimming it. */
+    val cropDim: Float = 0f,
+    /** Strength of the glass edge line, relative to the setting's thickness. */
+    val rim: Float = 1f,
 )
 
 /** A coloured glass: [base] tints the dark layer and [veil] the light one. */
@@ -60,6 +64,7 @@ private fun FrostStyle.sheetTint() = when (this) {
     FrostStyle.SMOKE -> Tint(GlassTokens.sheetBaseAlpha, GlassTokens.sheetVeilTop, GlassTokens.sheetVeilBottom)
     FrostStyle.MILKY -> Tint(0.14f, 0.34f, 0.18f)
     FrostStyle.CLEAR -> Tint(0.22f, 0.10f, 0.04f)
+    FrostStyle.LENS -> Tint(0.30f, 0.10f, 0.03f, rim = 1.9f)
     FrostStyle.OCEAN -> colored(0xFF0B2E66, 0xFFA8D0FF, 0.46f, 0.20f, 0.10f)
     FrostStyle.AMETHYST -> colored(0xFF2A0F55, 0xFFC8A8FF, 0.46f, 0.20f, 0.10f)
     FrostStyle.EMBER -> colored(0xFF4A1A08, 0xFFFFB27A, 0.46f, 0.20f, 0.10f)
@@ -73,6 +78,8 @@ private fun FrostStyle.tileTint(overBlur: Boolean) = if (overBlur) {
         FrostStyle.SMOKE -> Tint(0.20f, 0.10f, 0.06f)
         FrostStyle.MILKY -> Tint(0.04f, 0.34f, 0.26f)
         FrostStyle.CLEAR -> Tint(0.06f, 0.06f, 0.03f)
+        // Dims the blurred picture and drops the white veil, so the edge and sheen carry the look.
+        FrostStyle.LENS -> Tint(0.14f, 0.08f, 0.03f, cropDim = 0.30f, rim = 1.9f)
         FrostStyle.OCEAN -> colored(0xFF0B2E66, 0xFFA8D0FF, 0.34f, 0.18f, 0.10f)
         FrostStyle.AMETHYST -> colored(0xFF2A0F55, 0xFFC8A8FF, 0.34f, 0.18f, 0.10f)
         FrostStyle.EMBER -> colored(0xFF4A1A08, 0xFFFFB27A, 0.34f, 0.18f, 0.10f)
@@ -85,6 +92,7 @@ private fun FrostStyle.tileTint(overBlur: Boolean) = if (overBlur) {
         FrostStyle.SMOKE -> Tint(GlassTokens.tileBaseAlpha, GlassTokens.tileVeilTop, GlassTokens.tileVeilBottom)
         FrostStyle.MILKY -> Tint(0.08f, 0.40f, 0.28f)
         FrostStyle.CLEAR -> Tint(0.12f, 0.10f, 0.05f)
+        FrostStyle.LENS -> Tint(0.34f, 0.16f, 0.06f, rim = 1.9f)
         FrostStyle.OCEAN -> colored(0xFF0B2E66, 0xFFA8D0FF, 0.40f, 0.22f, 0.12f)
         FrostStyle.AMETHYST -> colored(0xFF2A0F55, 0xFFC8A8FF, 0.40f, 0.22f, 0.12f)
         FrostStyle.EMBER -> colored(0xFF4A1A08, 0xFFFFB27A, 0.40f, 0.22f, 0.12f)
@@ -181,7 +189,7 @@ fun Modifier.frostedTile(
                 f > 0.01f && invert -> drawRoundRect(Color.White.copy(alpha = 0.97f * f), cornerRadius = r)
                 f > 0.01f -> drawRoundRect(Color.White.copy(alpha = 0.30f * f), cornerRadius = r)
             }
-            if (edge > 0.dp) drawRim(r, edge.toPx(), 1f)
+            if (edge > 0.dp) drawRim(r, edge.toPx(), tint.rim)
             if (selected) {
                 val w = 2.5.dp.toPx()
                 drawRoundRect(
@@ -202,7 +210,11 @@ fun Modifier.frostedTile(
 
         val boost = (if (active) GlassTokens.tileActiveBoost else 0f) + GlassTokens.tileFocusBoost * f
         if (backdrop != null) {
-            clipPath(shape) { drawBackdropCrop(backdrop, origin) }
+            clipPath(shape) {
+                drawBackdropCrop(backdrop, origin)
+                // Styles that dim the blur keep the glass, not the screen, as the bright thing.
+                if (tint.cropDim > 0f) drawRect(tint.base.copy(alpha = tint.cropDim))
+            }
         }
         drawRoundRect(tint.base.copy(alpha = tint.dark * (1f - 0.5f * f)), cornerRadius = r)
         drawRoundRect(
@@ -232,8 +244,8 @@ fun Modifier.frostedTile(
                 cornerRadius = r,
             )
         }
-        // Glass edge; thickness is a setting.
-        if (edge > 0.dp) drawRim(r, edge.toPx(), 1f)
+        // Glass edge; thickness is a setting, its brightness is the style's.
+        if (edge > 0.dp) drawRim(r, edge.toPx(), tint.rim)
 
         // Editor: the control being edited gets a solid outline.
         if (selected) {

@@ -439,6 +439,7 @@ private fun frostLabel(style: FrostStyle): Int = when (style) {
     FrostStyle.SMOKE -> R.string.frost_smoke
     FrostStyle.MILKY -> R.string.frost_milky
     FrostStyle.CLEAR -> R.string.frost_clear
+    FrostStyle.LENS -> R.string.frost_lens
     FrostStyle.OCEAN -> R.string.frost_ocean
     FrostStyle.AMETHYST -> R.string.frost_amethyst
     FrostStyle.EMBER -> R.string.frost_ember

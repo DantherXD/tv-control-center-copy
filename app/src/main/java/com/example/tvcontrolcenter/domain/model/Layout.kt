@@ -197,6 +197,11 @@ enum class FrostStyle {
     MILKY,
     /** Almost clear: only a faint tint and the blur show. */
     CLEAR,
+    /**
+     * Dark lens: the blurred picture behind the control is dimmed, so the glass edge and the
+     * sheen stand out instead of the brightness of the screen. The glassiest of the styles.
+     */
+    LENS,
     /** Tinted glass in a colour. */
     OCEAN, AMETHYST, EMBER, FOREST, ROSE,
     /** Nearly solid dark glass. */

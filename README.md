@@ -40,6 +40,10 @@ grid has Power, Wi-Fi, Do Not Disturb, Bluetooth, Sleep Timer, four shortcuts, N
 Settings, Home, Recent apps, Display, Sound, Captions, Screen saver, Apps, Screenshot and Notifications are available from the editor.
 The clock follows the TV's 12/24 hour setting. **Menu** opens the editor; **Profile** opens Android settings.
 
+**Hold OK** on Wi-Fi or Bluetooth for a small window with its status, the network or audio device in use and a row that opens the
+system settings; **press OK** on Input for the list of inputs, one row each. A window grows out of the control it was opened from,
+like an iOS control, and it is as tall as its rows so nothing hides below the fold (long lists scroll). Back closes it.
+
 **Edit Control Center:** open it from the **Menu** button in the panel, or from the demo screen. Pick a control with **OK**; the
 buttons on the left set its size, move it earlier or later, or hide it. "Add controls" lists hidden ones. Below that:
 
@@ -53,7 +57,8 @@ buttons on the left set its size, move it earlier or later, or hide it. "Add con
 * **Blur strength** Off, Light, Medium, Strong, Max.
 * **Blur method** Auto, Screenshot (blur only inside the glass) or Whole screen (the whole picture behind the panel is blurred from a screenshot, with no box around the controls; the system window blur is the fallback).
   A line under it says whether screenshot blur is ready.
-* **Glass style** Smoke (dark), Milky (light) or Clear.
+* **Glass style** Smoke (dark), Milky (light), Clear, Lens (the blur behind the controls is dimmed, so the edge and sheen read
+  instead of the bright screen), then Ocean, Amethyst, Ember, Forest, Rose and Midnight.
 * **Panel size** scales the panel (80 % to 175 %) on top of the automatic screen fit. "Reset layout" restores the default.
 
 Changes save immediately and every open panel follows.
@@ -73,7 +78,8 @@ Glass is now plain drawing, so it costs almost nothing per frame:
   On Android 12+ with cross-window blur it also asks the system to blur the whole screen behind it (blur method **Whole screen**, or Auto when no screenshot is possible).
 * **Performance.** Focus and open progress are read in draw/graphicsLayer lambdas, so moving focus recomposes nothing. Open/close
   animates per grid row (not per tile) on stiff springs and settles in about a quarter of a second. Nothing animates while idle.
-* **Wallpaper.** Static colourful boxes, drawn once per screen size. Nothing animates.
+* **Wallpaper.** Eight painted styles for the app's own pages (Boxes, Aurora, Sunset, Forest, Waves, Nebula, Grid, Charcoal),
+  drawn once per screen size. Nothing animates.
   screen size and scaled up by the GPU, so a 4K screen costs about as much as 640 x 360, and the position updates 25 times a second.
 
 ## Permissions and what degrades

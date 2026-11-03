@@ -40,8 +40,10 @@ object PanelDimens {
     /** The big now-playing card (album picture fills it), about square like the grid is wide. */
     val musicCardBigHeight = 388.dp
 
-    /** Wi-Fi, Bluetooth and Input pages. */
+    /** Wi-Fi, Bluetooth and Input pages: the shortest they get. */
     val subPageHeight = 214.dp
+    /** A window grows past [subPageHeight] to fit its rows, up to this; longer lists scroll. */
+    val subPageMaxHeight = 320.dp
 
     fun musicHeightFor(big: Boolean): Dp = if (big) musicCardBigHeight else musicCardHeight
     val topButton = 40.dp

@@ -1,11 +1,13 @@
 package com.example.tvcontrolcenter.ui.panel
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,10 +18,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,20 +31,25 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.NetworkKind
+import com.example.tvcontrolcenter.domain.model.Placed
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TvInputItem
 import com.example.tvcontrolcenter.ui.glass.Backdrop
@@ -50,8 +57,6 @@ import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalTileInk
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /** What the Wi-Fi, Bluetooth and Input pages can ask of the system. */
 internal class SubPageActions(
@@ -66,9 +71,42 @@ internal class SubPageActions(
     val switchInput: (String) -> Unit,
 )
 
+/** One line of a small window: a value, or something OK can press. */
+private sealed interface SubRow {
+    val label: String
+
+    /** Height this line needs; the window is sized from the sum of these. */
+    val height: Dp
+
+    data class Info(override val label: String, val value: String) : SubRow {
+        override val height: Dp get() = INFO_ROW
+    }
+
+    data class Action(override val label: String, val activate: () -> Unit) : SubRow {
+        override val height: Dp get() = ACTION_ROW
+    }
+}
+
+private val INFO_ROW = 30.dp
+private val ACTION_ROW = 38.dp
+private val TITLE_ROW = 30.dp
+private val ROW_GAP = 6.dp
+private val WINDOW_PADDING = 10.dp
+/** Everything that is not a row: the title line, the gap under it and the window's padding. */
+private val CHROME = TITLE_ROW + ROW_GAP + WINDOW_PADDING * 2
+
+/** The control a small window belongs to; the window grows out of it. */
+internal fun subTileOf(page: PanelPage): TileId = when (page) {
+    PanelPage.BLUETOOTH -> TileId.BLUETOOTH
+    PanelPage.INPUT -> TileId.INPUT
+    else -> TileId.WIFI
+}
+
 /**
  * The small window a long press on Wi-Fi or Bluetooth (or a press on Input) opens in place of the
- * grid: a title, then rows. The first row takes focus; Back closes the window.
+ * grid: a title, then one line per row. It grows out of [from], the control that opened it, so it
+ * is clear where it came from, and it is as tall as its rows so none of them hides below the fold.
+ * The first pressable row takes focus; Back closes the window.
  */
 @Composable
 internal fun SubPageCard(
@@ -79,24 +117,36 @@ internal fun SubPageCard(
     backdrop: Backdrop?,
     origin: Offset,
     sheet: Boolean,
+    from: Placed? = null,
     modifier: Modifier = Modifier,
 ) {
     val glass = cardGlass(backdrop, origin, sheet)
-    val tile = when (page) {
-        PanelPage.BLUETOOTH -> TileId.BLUETOOTH
-        PanelPage.INPUT -> TileId.INPUT
-        else -> TileId.WIFI
+    val tile = subTileOf(page)
+    // Read once per window: both lists come from the system, and the height depends on them.
+    val paired = remember(page) { if (page == PanelPage.BLUETOOTH) actions.pairedBluetooth() else emptyList() }
+    val inputs = remember(page) { if (page == PanelPage.INPUT) actions.inputs() else emptyList() }
+    val rows = when (page) {
+        PanelPage.WIFI -> WifiRows(state, actions)
+        PanelPage.BLUETOOTH -> BluetoothRows(state, paired, actions)
+        else -> InputRows(inputs, actions)
     }
+    val rowsHeight = rows.fold(0.dp) { sum, row -> sum + row.height } +
+        ROW_GAP * (rows.size - 1).coerceAtLeast(0)
+    // Tall enough for every row at once, up to a cap; past that the rows scroll.
+    val height = (CHROME + rowsHeight).coerceIn(PanelDimens.subPageHeight, PanelDimens.subPageMaxHeight)
+    val firstRow = rows.indexOfFirst { it is SubRow.Action }
     Column(
         modifier
-            .popIn()
-            .size(PanelDimens.gridWidth, PanelDimens.subPageHeight)
+            .expandFromTile(from, PanelDimens.gridWidth, height)
+            .size(PanelDimens.gridWidth, height)
+            // Nothing to press (no inputs found): the window itself takes focus, so Back works.
+            .then(if (firstRow < 0) Modifier.focusRequester(first).focusable() else Modifier)
             .then(glass)
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(WINDOW_PADDING),
+        verticalArrangement = Arrangement.spacedBy(ROW_GAP),
     ) {
         Row(
-            Modifier.fillMaxWidth().height(30.dp).padding(horizontal = 6.dp),
+            Modifier.fillMaxWidth().height(TITLE_ROW).padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -105,52 +155,100 @@ internal fun SubPageCard(
         }
         Column(
             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(ROW_GAP),
         ) {
-            when (page) {
-                PanelPage.WIFI -> WifiRows(state, actions, first)
-                PanelPage.BLUETOOTH -> BluetoothRows(state, actions, first)
-                else -> InputRows(actions, first)
+            rows.forEachIndexed { index, row ->
+                when (row) {
+                    is SubRow.Info -> SheetInfo(row.label, row.value)
+                    is SubRow.Action -> SheetRow(row.label, null, if (index == firstRow) first else null, row.activate)
+                }
             }
         }
     }
 }
 
+/**
+ * Grows the window out of the control that opened it, the way iOS opens a control's detail: it
+ * starts as exactly that control and springs to its full size. The first frame is the tile, so
+ * nothing is composed twice and focus exists from the start.
+ */
+@Composable
+private fun Modifier.expandFromTile(from: Placed?, width: Dp, height: Dp): Modifier {
+    if (from == null) return this
+    val density = LocalDensity.current
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        progress.animateTo(1f, spring(dampingRatio = 0.88f, stiffness = 520f))
+    }
+    val start = with(density) {
+        Start(
+            x = (PanelDimens.cell + PanelDimens.gap).toPx() * from.col,
+            y = (PanelDimens.cell + PanelDimens.gap).toPx() * from.row,
+            scaleX = span(from.cols).toPx() / width.toPx(),
+            scaleY = span(from.rows).toPx() / height.toPx(),
+        )
+    }
+    return this.graphicsLayer {
+        val p = progress.value
+        val s = p.coerceIn(0f, 1f)
+        val sx = start.scaleX + (1f - start.scaleX) * s
+        val sy = start.scaleY + (1f - start.scaleY) * s
+        transformOrigin = TransformOrigin(0f, 0f)
+        scaleX = sx
+        scaleY = sy
+        // Maps the window's own rect onto the tile's rect at the first frame: same place, small.
+        translationX = start.x * (1f - s)
+        translationY = start.y * (1f - s)
+        alpha = (p * 4f).coerceIn(0f, 1f)
+    }
+}
+
+/** Where the window starts: the opened control's top-left corner and the scale that fits it. */
+private class Start(val x: Float, val y: Float, val scaleX: Float, val scaleY: Float)
+
 @Composable
 private fun onOffText(on: Boolean) = stringResource(if (on) R.string.state_on else R.string.state_off)
 
 @Composable
-private fun WifiRows(state: ControlCenterUiState, actions: SubPageActions, first: FocusRequester) {
+private fun WifiRows(state: ControlCenterUiState, actions: SubPageActions): List<SubRow> {
     val network = when (state.status.network) {
         NetworkKind.WIFI -> actions.wifiName() ?: stringResource(R.string.sub_connected)
         NetworkKind.ETHERNET -> "Ethernet"
         NetworkKind.NONE -> stringResource(R.string.sub_not_connected)
     }
-    SheetInfo(stringResource(R.string.sub_status), onOffText(actions.wifiEnabled() || state.status.network == NetworkKind.WIFI))
-    SheetInfo(stringResource(R.string.sub_network), network)
-    SheetRow(stringResource(R.string.sub_open_wifi), null, first, actions.openWifiSettings)
+    val on = actions.wifiEnabled() || state.status.network == NetworkKind.WIFI
+    return listOf(
+        SubRow.Info(stringResource(R.string.sub_status), onOffText(on)),
+        SubRow.Info(stringResource(R.string.sub_network), network),
+        SubRow.Action(stringResource(R.string.sub_open_wifi)) { actions.openWifiSettings() },
+    )
 }
 
 @Composable
-private fun BluetoothRows(state: ControlCenterUiState, actions: SubPageActions, first: FocusRequester) {
-    val paired = remember { actions.pairedBluetooth() }
-    SheetInfo(stringResource(R.string.sub_status), onOffText(state.status.bluetoothEnabled))
-    SheetInfo(stringResource(R.string.sub_bt_audio), state.status.audioDeviceName ?: stringResource(R.string.sub_bt_none))
-    paired.forEach { SheetInfo(stringResource(R.string.sub_paired), it) }
-    SheetRow(stringResource(R.string.sub_open_remotes), null, first, actions.openBluetoothSettings)
+private fun BluetoothRows(
+    state: ControlCenterUiState,
+    paired: List<String>,
+    actions: SubPageActions,
+): List<SubRow> = buildList {
+    add(SubRow.Info(stringResource(R.string.sub_status), onOffText(state.status.bluetoothEnabled)))
+    add(
+        SubRow.Info(
+            stringResource(R.string.sub_bt_audio),
+            state.status.audioDeviceName ?: stringResource(R.string.sub_bt_none),
+        ),
+    )
+    paired.forEach { add(SubRow.Info(stringResource(R.string.sub_paired), it)) }
+    add(SubRow.Action(stringResource(R.string.sub_open_remotes)) { actions.openBluetoothSettings() })
 }
 
+/** Every input is its own row, so they all show at once. */
 @Composable
-private fun InputRows(actions: SubPageActions, first: FocusRequester) {
-    val inputs = remember { actions.inputs() }
+private fun InputRows(inputs: List<TvInputItem>, actions: SubPageActions): List<SubRow> =
     if (inputs.isEmpty()) {
-        SheetInfo(stringResource(R.string.sub_input_none), "")
+        listOf(SubRow.Info(stringResource(R.string.sub_input_none), ""))
     } else {
-        inputs.forEachIndexed { i, input ->
-            SheetRow(input.label, null, if (i == 0) first else null) { actions.switchInput(input.id) }
-        }
+        inputs.map { input -> SubRow.Action(input.label) { actions.switchInput(input.id) } }
     }
-}
 
 /** A focusable row: name on the left, value on the right. White when focused, like the other controls. */
 @Composable
@@ -165,7 +263,7 @@ private fun SheetRow(label: String, value: String?, requester: FocusRequester?, 
     Box(
         Modifier
             .fillMaxWidth()
-            .height(38.dp)
+            .height(ACTION_ROW)
             .focusRequester(r)
             .onFocusChanged { focused = it.isFocused }
             .onKeyEvent { e ->
@@ -215,7 +313,7 @@ private fun SheetRow(label: String, value: String?, requester: FocusRequester?, 
 @Composable
 private fun SheetInfo(label: String, value: String) {
     Row(
-        Modifier.fillMaxWidth().height(30.dp).padding(horizontal = 14.dp),
+        Modifier.fillMaxWidth().height(INFO_ROW).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

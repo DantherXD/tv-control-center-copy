@@ -187,6 +187,8 @@ internal fun PanelContent(
                 backdrop = backdrop,
                 origin = gridOrigin,
                 sheet = sheet,
+                // Where the window grows from: the control that opened it.
+                from = grid.firstOrNull { it.id == subTileOf(page) },
             )
         } else TileGrid(
             onLongPress = onLongPress,

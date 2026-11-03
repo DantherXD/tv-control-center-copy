@@ -94,6 +94,7 @@
     <string name="frost_smoke">Smoke</string>
     <string name="frost_milky">Milky</string>
     <string name="frost_clear">Clear</string>
+    <string name="frost_lens">Lens</string>
 
     <string name="edit_header_gap">Gap under the top bar</string>
     <string name="edit_invert">Selected control colors</string>
