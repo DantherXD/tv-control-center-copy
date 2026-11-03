@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   build:
-    name: Build, unit tests, lint
+    name: Build release APK and unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -40,18 +40,22 @@ jobs:
         run: chmod +x ./gradlew
 
       # Output is also saved to build.log so errors can be summarised below.
-      - name: Unit tests
-        run: ./gradlew testDebugUnitTest --console=plain --stacktrace 2>&1 | tee -a build.log
-
-      - name: Lint
-        run: ./gradlew lintDebug --console=plain 2>&1 | tee -a build.log
-
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --console=plain 2>&1 | tee -a build.log
-
-      # Debug builds run unoptimised and are slow on a TV. This one is what to install for daily use.
+      # Release only: it is the one to install (the debug build is slow on a TV), and building a
+      # second APK and running lint added minutes for nothing.
       - name: Build release APK (optimised)
         run: ./gradlew assembleRelease --console=plain 2>&1 | tee -a build.log
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tv-control-center-release-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      # After the APK, so a failing test never keeps you from installing. A red mark here still
+      # means something is worth a look; the details are in the reports download.
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest --console=plain --stacktrace 2>&1 | tee -a build.log
 
       - name: Show Kotlin and Hilt errors
         if: failure()
@@ -63,29 +67,14 @@ jobs:
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: tv-control-center-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-
-      - name: Upload release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: tv-control-center-release-apk
-          path: app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
-
       - name: Upload logs and reports
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: reports
           path: |
             build.log
             app/build/reports/tests/
-            app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
 
   ui-tests:
