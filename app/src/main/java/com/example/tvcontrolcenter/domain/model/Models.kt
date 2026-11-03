@@ -10,6 +10,8 @@ enum class TileId {
     HOME, RECENTS, SCREENSHOT, NOTIFICATIONS,
     // Opens a list of the TV's inputs (HDMI and so on).
     INPUT,
+    // Keeps the screen on while it is switched on.
+    CAFFEINE,
     // Opens the layout editor.
     EDIT,
     // Round button next to the clock; shows the profile picture.

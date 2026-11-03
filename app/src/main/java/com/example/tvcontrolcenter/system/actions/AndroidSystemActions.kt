@@ -168,7 +168,16 @@ class AndroidSystemActions @Inject constructor(
         manager.tvInputList
             .filter { it.isPassthroughInput }
             .map { TvInputItem(it.id, (it.loadCustomLabel(context) ?: it.loadLabel(context)).toString()) }
+            .sortedWith { a, b -> naturalCompare(a.label, b.label) }
     }.getOrDefault(emptyList())
+
+    override fun caffeineOn(): Boolean = Caffeine.isOn
+
+    override fun toggleCaffeine(): ActionResult {
+        val service = ControlCenterAccessibilityService.instance
+            ?: return ActionResult.NeedsCapability(Capability.ACCESSIBILITY_SERVICE)
+        return if (runCatching { Caffeine.toggle(service) }.isSuccess) ActionResult.Done else ActionResult.Unavailable
+    }
 
     override fun switchInput(id: String): ActionResult = try {
         val uri = TvContract.buildChannelUriForPassthroughInput(id)
@@ -229,4 +238,19 @@ class AndroidSystemActions @Inject constructor(
         /** Slightly longer than the panel's close spring, so it is gone before the action runs. */
         const val PANEL_CLOSE_DELAY_MILLIS = 600L
     }
+}
+
+/** "HDMI 2" before "HDMI 10": compares runs of digits as numbers. */
+internal fun naturalCompare(a: String, b: String): Int {
+    val x = Regex("\\d+|\\D+").findAll(a).map { it.value }.toList()
+    val y = Regex("\\d+|\\D+").findAll(b).map { it.value }.toList()
+    for (i in 0 until minOf(x.size, y.size)) {
+        val p = x[i]
+        val q = y[i]
+        val c = if (p[0].isDigit() && q[0].isDigit()) {
+            p.toBigInteger().compareTo(q.toBigInteger())
+        } else p.compareTo(q, ignoreCase = true)
+        if (c != 0) return c
+    }
+    return x.size - y.size
 }

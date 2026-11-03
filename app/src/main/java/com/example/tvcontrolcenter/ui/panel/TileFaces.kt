@@ -82,6 +82,10 @@ internal fun faceOf(id: TileId, state: ControlCenterUiState): Face {
             val name = bt?.detail
             Face(look.icon, name ?: title, if (name == null) (if (bt?.active == true) on else off) else null, bt?.active == true)
         }
+        TileId.CAFFEINE -> {
+            val awake = state.tiles[TileId.CAFFEINE]?.active == true
+            Face(look.icon, title, if (awake) on else off, awake)
+        }
         TileId.SLEEP_TIMER -> {
             val sleep = state.tiles[TileId.SLEEP_TIMER]
             Face(look.icon, title, sleep?.detail ?: off, sleep?.active == true)

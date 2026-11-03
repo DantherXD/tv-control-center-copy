@@ -126,4 +126,5 @@
     <string name="sub_paired">Paired</string>
     <string name="sub_bt_pair">Pair a new device…</string>
     <string name="sub_input_none">No inputs found</string>
+    <string name="tile_caffeine">Caffeine</string>
 </resources>

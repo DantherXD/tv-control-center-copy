@@ -89,6 +89,7 @@ internal fun SubPageCard(
     }
     Column(
         modifier
+            .popIn()
             .size(PanelDimens.gridWidth, PanelDimens.subPageHeight)
             .then(glass)
             .padding(10.dp),
@@ -168,6 +169,9 @@ private fun SheetRow(label: String, value: String?, requester: FocusRequester?, 
     val invert = LocalInvertFocus.current
     val dark = focused && invert
     val r = requester ?: remember { FocusRequester() }
+    // The window opens while OK is still held (long press), so the release lands on this row.
+    // Only a press that started here counts, or opening Wi-Fi would also toggle it.
+    val pressed = remember { booleanArrayOf(false) }
     Box(
         Modifier
             .fillMaxWidth()
@@ -176,8 +180,16 @@ private fun SheetRow(label: String, value: String?, requester: FocusRequester?, 
             .onFocusChanged { focused = it.isFocused }
             .onKeyEvent { e ->
                 when {
-                    e.type == KeyEventType.KeyUp && e.key.isOk() -> { activate(); true }
-                    e.key.isOk() -> true
+                    e.key.isOk() && e.type == KeyEventType.KeyDown -> {
+                        // Repeats come from a key still held since before this row existed: not a press.
+                        if (e.nativeKeyEvent.repeatCount == 0) pressed[0] = true
+                        true
+                    }
+                    e.key.isOk() && e.type == KeyEventType.KeyUp -> {
+                        if (pressed[0]) activate()
+                        pressed[0] = false
+                        true
+                    }
                     else -> false
                 }
             }

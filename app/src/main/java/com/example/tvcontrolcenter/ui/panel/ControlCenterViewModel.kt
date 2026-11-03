@@ -94,17 +94,25 @@ class ControlCenterViewModel @Inject constructor(
         )
     }
 
+    private val caffeine = MutableStateFlow(false)
+
     val uiState: StateFlow<ControlCenterUiState> = combine(
         live,
         layoutRepository.layout,
         layoutRepository.settings,
-    ) { base, layout, settings ->
-        base.copy(layout = layout, settings = settings)
+        caffeine,
+    ) { base, layout, settings, awake ->
+        base.copy(
+            tiles = base.tiles + (TileId.CAFFEINE to TileState(TileId.CAFFEINE, active = awake)),
+            layout = layout,
+            settings = settings,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ControlCenterUiState())
 
     /** Called each time the panel appears. */
     fun onOpened() {
         nowPlayingSource.refresh()
+        caffeine.value = actions.caffeineOn()
     }
 
     /** Tile that held focus last time. The panel falls back to its first tile if it is not shown. */
@@ -144,6 +152,10 @@ class ControlCenterViewModel @Inject constructor(
             TileId.NOTIFICATIONS -> handle(actions.showNotifications(), dismissOnDone = true, tile = id)
             // The panel host opens the Input page itself.
             TileId.INPUT -> Unit
+            TileId.CAFFEINE -> {
+                handle(actions.toggleCaffeine(), tile = id)
+                caffeine.value = actions.caffeineOn()
+            }
             TileId.EDIT -> _events.tryEmit(PanelEvent.OpenEditor)
             TileId.PROFILE -> handle(actions.openSettings(), dismissOnDone = true, tile = id)
         }

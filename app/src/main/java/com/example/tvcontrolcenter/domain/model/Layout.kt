@@ -17,6 +17,7 @@ import com.example.tvcontrolcenter.domain.model.TileId.POWER
 import com.example.tvcontrolcenter.domain.model.TileId.PROFILE
 import com.example.tvcontrolcenter.domain.model.TileId.RECENTS
 import com.example.tvcontrolcenter.domain.model.TileId.SCREENSAVER
+import com.example.tvcontrolcenter.domain.model.TileId.CAFFEINE
 import com.example.tvcontrolcenter.domain.model.TileId.INPUT
 import com.example.tvcontrolcenter.domain.model.TileId.SCREENSHOT
 import com.example.tvcontrolcenter.domain.model.TileId.SEARCH
@@ -139,6 +140,7 @@ data class PanelLayout(val items: List<ControlItem>) {
                 ControlItem(CAPTIONS, TileSize.SMALL, visible = false),
                 ControlItem(SCREENSAVER, TileSize.SMALL, visible = false),
                 ControlItem(INPUT, TileSize.SMALL, visible = false),
+                ControlItem(CAFFEINE, TileSize.SMALL, visible = false),
             ),
         )
 

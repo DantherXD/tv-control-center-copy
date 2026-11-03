@@ -56,6 +56,10 @@ interface SystemActions {
     fun pairedBluetoothDevices(): List<String> = emptyList()
     fun tvInputs(): List<com.example.tvcontrolcenter.domain.model.TvInputItem> = emptyList()
     fun switchInput(id: String): ActionResult = ActionResult.Unavailable
+
+    /** Caffeine: keeps the screen on (and so the screensaver away) until switched off. */
+    fun caffeineOn(): Boolean = false
+    fun toggleCaffeine(): ActionResult = ActionResult.Unavailable
 }
 
 interface NowPlayingSource {

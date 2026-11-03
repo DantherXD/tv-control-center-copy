@@ -75,6 +75,8 @@ fun GlassTile(
     solid: Boolean = false,
     /** Borderless: no glass until focused. */
     flat: Boolean = false,
+    /** Icon and text are greyed until focused (top-bar buttons that are not the open page). */
+    dimIdle: Boolean = false,
     /** Held OK. When set, a short press still activates, a long one calls this instead. */
     onLongPress: (() -> Unit)? = null,
     backdrop: Backdrop? = null,
@@ -97,7 +99,11 @@ fun GlassTile(
     )
     val view = LocalView.current
     // Content colour changes at once on focus; the white fill fades in over it in the draw phase.
-    val ink = if (solid || (invert && focused)) GlassTokens.inkDark else Color.White
+    val ink = when {
+        solid || (invert && focused) -> GlassTokens.inkDark
+        dimIdle && !focused -> Color.White.copy(alpha = 0.6f)
+        else -> Color.White
+    }
 
     Box(
         modifier = modifier

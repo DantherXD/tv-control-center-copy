@@ -351,8 +351,9 @@ private fun PanelTile(
         onActivate = onActivate,
         modifier = modifier,
         stateText = stateText,
-        active = face.active,
-        solid = pageOpen,
+        // Top-bar buttons: the open page is highlighted (not white), the rest are grey until focused.
+        active = if (p.row == GridPacker.TOP_ROW) pageOpen else face.active,
+        dimIdle = p.row == GridPacker.TOP_ROW && !pageOpen,
         flat = flat,
         onLongPress = longPress,
         selected = selected,

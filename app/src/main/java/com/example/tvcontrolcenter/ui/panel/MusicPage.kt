@@ -3,6 +3,10 @@ package com.example.tvcontrolcenter.ui.panel
 import android.graphics.Bitmap
 import android.os.SystemClock
 import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -150,43 +154,28 @@ internal fun MusicCard(
 ) {
     val glass = cardGlass(backdrop, origin, sheet)
     if (big) {
-        val image = remember(np?.artwork) { np?.artwork?.asImageBitmap() }
-        Box(
+        // Like the iOS card: square cover on top, then title and artist, progress, and controls.
+        Column(
             modifier
+                .popIn()
                 .size(PanelDimens.gridWidth, PanelDimens.musicCardBigHeight)
                 .then(glass)
-                .clip(RoundedCornerShape(PanelDimens.sheetRadius)),
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            if (image != null) {
-                Image(image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            } else {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    TileIcon(Icons.Filled.MusicNote, 64.dp, Color.White.copy(alpha = 0.35f))
-                }
-            }
-            // Darkens the lower part so the text and buttons stay readable on any picture.
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        0.35f to Color.Transparent,
-                        1f to Color.Black.copy(alpha = 0.78f),
-                    ),
-                ),
-            )
-            Column(
-                Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
+            Artwork(np?.artwork, PanelDimens.gridWidth - 32.dp, radius = 14.dp, iconSize = 56.dp)
+            Column(Modifier.fillMaxWidth().padding(top = 4.dp)) {
                 Label(np?.title ?: stringResource(R.string.nothing_playing), maxLines = 1)
                 np?.artist?.let { Detail(it) }
-                Progress(np)
-                MusicControls(np, actions, focus, up)
             }
+            Progress(np, thick = true)
+            MusicControls(np, actions, focus, up, large = true)
         }
         return
     }
     Column(
         modifier
+            .popIn()
             .size(PanelDimens.gridWidth, PanelDimens.musicCardHeight)
             .then(glass)
             .padding(10.dp),
@@ -215,7 +204,11 @@ internal fun MusicCard(
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun MusicControls(np: NowPlaying?, actions: TileActions, focus: MusicFocus, up: FocusRequester) {
+private fun MusicControls(np: NowPlaying?, actions: TileActions, focus: MusicFocus, up: FocusRequester, large: Boolean = false) {
+    val side = if (large) 52.dp else 44.dp
+    val sideIcon = if (large) 30.dp else 24.dp
+    val mainBox = if (large) 60.dp else 44.dp
+    val mainIcon = if (large) 40.dp else 24.dp
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
         TransportButton(
             icon = Icons.Filled.FastRewind,
@@ -223,6 +216,7 @@ private fun MusicControls(np: NowPlaying?, actions: TileActions, focus: MusicFoc
             requester = focus.previous,
             upTarget = up, leftTarget = FocusRequester.Cancel, rightTarget = focus.play,
             activate = actions.onSkipPrevious,
+            box = side, iconSize = sideIcon,
         )
         TransportButton(
             icon = if (np?.isPlaying == true) Icons.Filled.Pause else Icons.Filled.PlayArrow,
@@ -230,6 +224,7 @@ private fun MusicControls(np: NowPlaying?, actions: TileActions, focus: MusicFoc
             requester = focus.play,
             upTarget = up, leftTarget = focus.previous, rightTarget = focus.next,
             activate = actions.onPlayPause,
+            box = mainBox, iconSize = mainIcon,
         )
         TransportButton(
             icon = Icons.Filled.FastForward,
@@ -237,13 +232,15 @@ private fun MusicControls(np: NowPlaying?, actions: TileActions, focus: MusicFoc
             requester = focus.next,
             upTarget = up, leftTarget = focus.play, rightTarget = FocusRequester.Cancel,
             activate = actions.onSkipNext,
+            box = side, iconSize = sideIcon,
         )
     }
 }
 
 /**
- * The music button's icon: four bars that rise and fall while something plays and rest when it
- * stops, like tvOS. The motion is read while drawing, so it never recomposes.
+ * The music button's icon, like tvOS: a row of thin bars of different heights. While something
+ * plays they sway gently; when it stops they rest. The motion is read while drawing, so it never
+ * recomposes.
  */
 @Composable
 internal fun EqualizerIcon(playing: Boolean, size: Dp, modifier: Modifier = Modifier) {
@@ -252,21 +249,19 @@ internal fun EqualizerIcon(playing: Boolean, size: Dp, modifier: Modifier = Modi
         rememberInfiniteTransition(label = "equalizer").animateFloat(
             initialValue = 0f,
             targetValue = 1f,
-            animationSpec = infiniteRepeatable(tween(1600, easing = LinearEasing)),
+            animationSpec = infiniteRepeatable(tween(1300, easing = LinearEasing)),
             label = "phase",
         )
     } else null
-    Canvas(modifier.size(size)) {
-        val bars = 4
+    Canvas(modifier.size(size * 0.9f, size * 0.7f)) {
+        val bars = EQ_BASE.size
         val barWidth = this.size.width / (bars * 2f - 1f)
-        val rest = floatArrayOf(0.35f, 0.6f, 0.45f, 0.3f)
-        val speed = intArrayOf(2, 3, 1, 4)
-        val shift = floatArrayOf(0f, 0.3f, 0.65f, 0.15f)
         val t = phase?.value ?: 0f
         for (i in 0 until bars) {
-            val level = if (phase == null) rest[i]
-            else 0.25f + 0.75f * (0.5f + 0.5f * sin(2f * PI.toFloat() * (t * speed[i] + shift[i])))
-            val h = this.size.height * level
+            // Heights stay close to their resting shape; only a fifth of each bar moves.
+            val sway = if (phase == null) 0.9f
+            else 0.78f + 0.22f * (0.5f + 0.5f * sin(2f * PI.toFloat() * (t * EQ_SPEED[i] + EQ_SHIFT[i])))
+            val h = (this.size.height * EQ_BASE[i] * sway).coerceAtLeast(barWidth)
             drawRoundRect(
                 ink,
                 topLeft = Offset(i * 2f * barWidth, (this.size.height - h) / 2f),
@@ -277,24 +272,46 @@ internal fun EqualizerIcon(playing: Boolean, size: Dp, modifier: Modifier = Modi
     }
 }
 
+private val EQ_BASE = floatArrayOf(0.30f, 0.55f, 0.40f, 0.80f, 1.00f, 0.65f, 0.85f, 0.45f, 0.30f)
+private val EQ_SPEED = intArrayOf(2, 1, 3, 2, 1, 3, 2, 1, 3)
+private val EQ_SHIFT = floatArrayOf(0f, 0.2f, 0.4f, 0.1f, 0.6f, 0.3f, 0.8f, 0.5f, 0.7f)
+
+/** Pops a card in when it appears: fades in, grows from 90% and settles down from just above. */
 @Composable
-private fun Artwork(bitmap: Bitmap?, size: Dp) {
+internal fun Modifier.popIn(): Modifier {
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        progress.animateTo(1f, spring(dampingRatio = 0.78f, stiffness = 380f))
+    }
+    return this.graphicsLayer {
+        val p = progress.value
+        alpha = p.coerceIn(0f, 1f)
+        val scale = 0.9f + 0.1f * p
+        scaleX = scale
+        scaleY = scale
+        translationY = (1f - p) * -14.dp.toPx()
+        transformOrigin = TransformOrigin(0.5f, 0f)
+    }
+}
+
+@Composable
+private fun Artwork(bitmap: Bitmap?, size: Dp, radius: Dp = 8.dp, iconSize: Dp = 18.dp) {
     val image = remember(bitmap) { bitmap?.asImageBitmap() }
     Box(
-        Modifier.size(size).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.18f)),
+        Modifier.size(size).clip(RoundedCornerShape(radius)).background(Color.White.copy(alpha = 0.18f)),
         contentAlignment = Alignment.Center,
     ) {
         if (image != null) {
             Image(image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         } else {
-            TileIcon(Icons.Filled.MusicNote, 18.dp, Color.White)
+            TileIcon(Icons.Filled.MusicNote, iconSize, Color.White)
         }
     }
 }
 
 /** Bar plus elapsed and remaining time. Ticks twice a second, and only while something plays. */
 @Composable
-private fun Progress(np: NowPlaying?) {
+private fun Progress(np: NowPlaying?, thick: Boolean = false) {
     val playing = np?.isPlaying == true
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     LaunchedEffect(playing, np?.positionUpdatedAt, np?.positionMs) {
@@ -316,9 +333,9 @@ private fun Progress(np: NowPlaying?) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(4.dp)
+                .height(if (thick) 7.dp else 4.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.28f))
+                .background(Color.White.copy(alpha = if (thick) 0.34f else 0.28f))
                 .drawBehind { drawRect(Color.White, size = Size(size.width * fraction, size.height)) },
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -349,13 +366,15 @@ private fun TransportButton(
     leftTarget: FocusRequester,
     rightTarget: FocusRequester,
     activate: () -> Unit,
+    box: Dp = 44.dp,
+    iconSize: Dp = 24.dp,
 ) {
     var focused by remember { mutableStateOf(false) }
     val invert = LocalInvertFocus.current
     val dark = focused && invert
     Box(
         Modifier
-            .size(44.dp)
+            .size(box)
             .focusRequester(requester)
             .focusProperties {
                 this.up = upTarget
@@ -388,7 +407,7 @@ private fun TransportButton(
         contentAlignment = Alignment.Center,
     ) {
         CompositionLocalProvider(LocalTileInk provides if (dark) GlassTokens.inkDark else Color.White) {
-            FadingIcon(icon, 24.dp)
+            FadingIcon(icon, iconSize)
         }
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Input
 import androidx.compose.material.icons.filled.Layers
@@ -56,6 +57,7 @@ internal fun lookOf(id: TileId): TileLook = when (id) {
     TileId.SCREENSHOT -> TileLook(Icons.Filled.CameraAlt, R.string.tile_screenshot)
     TileId.NOTIFICATIONS -> TileLook(Icons.Filled.Notifications, R.string.tile_notifications)
     TileId.INPUT -> TileLook(Icons.Filled.Input, R.string.tile_input)
+    TileId.CAFFEINE -> TileLook(Icons.Filled.Coffee, R.string.tile_caffeine)
     TileId.EDIT -> TileLook(Icons.Filled.Menu, R.string.tile_edit)
     TileId.PROFILE -> TileLook(Icons.Filled.Person, R.string.tile_profile)
 }
