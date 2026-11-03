@@ -49,6 +49,10 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --console=plain 2>&1 | tee -a build.log
 
+      # Debug builds run unoptimised and are slow on a TV. This one is what to install for daily use.
+      - name: Build release APK (optimised)
+        run: ./gradlew assembleRelease --console=plain 2>&1 | tee -a build.log
+
       - name: Show Kotlin and Hilt errors
         if: failure()
         run: |
@@ -64,6 +68,13 @@ jobs:
         with:
           name: tv-control-center-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tv-control-center-release-apk
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
       - name: Upload logs and reports
