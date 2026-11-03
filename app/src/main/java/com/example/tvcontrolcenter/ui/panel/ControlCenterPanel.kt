@@ -147,6 +147,8 @@ private fun HostBody(
     // Tile to give focus back to when a small window closes.
     var returnTo by remember { mutableStateOf<TileId?>(null) }
     var page by remember { mutableStateOf(PanelPage.GRID) }
+    // A small window is shrinking back into its control; the page follows when it has landed.
+    var closingSub by remember { mutableStateOf(false) }
     val musicOnTop = pinned.any { it.id == TileId.NOW_PLAYING }
 
     val currentPlaced by rememberUpdatedState(placed)
@@ -164,6 +166,7 @@ private fun HostBody(
         if (visible) {
             hasOpened[0] = true
             page = PanelPage.GRID
+            closingSub = false
             viewModel.onOpened()
             launch {
                 for (row in 0 until ROW_SLOTS) {
@@ -240,7 +243,13 @@ private fun HostBody(
     }
     val openSub: (PanelPage, TileId) -> Unit = { target, from ->
         returnTo = from
+        closingSub = false
         page = target
+    }
+    // The window has shrunk back onto its control: the grid takes over from here.
+    val closeSub: () -> Unit = {
+        closingSub = false
+        page = PanelPage.GRID
     }
     val subActions = remember(viewModel) {
         SubPageActions(
@@ -314,14 +323,21 @@ private fun HostBody(
             .onPreviewKeyEvent { event ->
                 if (event.key == Key.Back || event.key == Key.Escape) {
                     if (event.type == KeyEventType.KeyUp) {
-                        if (page != PanelPage.GRID) {
-                            // First Back leaves the music page or small window, the next one closes the panel.
-                            val leaving = page
-                            page = PanelPage.GRID
-                            if (leaving == PanelPage.MUSIC) {
-                                runCatching { requesters.getValue(TileId.NOW_PLAYING).requestFocus() }
+                        when {
+                            // The window is already on its way home: Back closes the panel, as before.
+                            closingSub -> dismiss()
+                            page != PanelPage.GRID -> {
+                                if (page.isSub) {
+                                    // First Back shrinks the window into its control.
+                                    closingSub = true
+                                } else {
+                                    // The music page closes at once.
+                                    page = PanelPage.GRID
+                                    runCatching { requesters.getValue(TileId.NOW_PLAYING).requestFocus() }
+                                }
                             }
-                        } else dismiss()
+                            else -> dismiss()
+                        }
                     }
                     true
                 } else false
@@ -380,6 +396,8 @@ private fun HostBody(
                     sheet = glassCard,
                     page = page,
                     musicFocus = musicFocus,
+                    subClosing = closingSub,
+                    onSubClosed = closeSub,
                 )
                 }
             }

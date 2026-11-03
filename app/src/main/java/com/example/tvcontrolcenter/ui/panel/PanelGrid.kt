@@ -102,6 +102,8 @@ internal fun PanelContent(
     musicFocus: MusicFocus? = null,
     subFocus: FocusRequester? = null,
     subActions: SubPageActions? = null,
+    subClosing: Boolean = false,
+    onSubClosed: () -> Unit = {},
     onLongPress: (TileId) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -117,6 +119,28 @@ internal fun PanelContent(
     val header = PanelDimens.headerFor(state.settings.topSize)
     val gridOrigin = origin + with(density) {
         Offset(0f, (header + gap).toPx())
+    }
+    val sheetModifier = if (sheet) {
+        Modifier.frostedSheet(PanelDimens.sheetRadius, LocalFrostStyle.current, PanelDimens.sheetPadding, LocalLiteGlass.current)
+    } else Modifier
+    val gridLayer: @Composable (Modifier) -> Unit = { m ->
+        TileGrid(
+            onLongPress = onLongPress,
+            placed = grid,
+            navigation = navigation,
+            state = state,
+            requesters = requesters,
+            interactive = interactive,
+            trapEdges = trapEdges,
+            selected = selected,
+            appear = appear,
+            onFocused = onFocused,
+            onActivate = onActivate,
+            actions = actions,
+            backdrop = backdrop,
+            origin = gridOrigin,
+            modifier = m,
+        )
     }
     Column(modifier.width(PanelDimens.gridWidth)) {
         Row(
@@ -178,37 +202,26 @@ internal fun PanelContent(
                 sheet = sheet,
                 big = state.settings.musicStyle == MusicStyle.BIG,
             )
-        } else if (sub && subFocus != null && subActions != null) {
-            SubPageCard(
-                page = page,
-                state = state,
-                actions = subActions,
-                first = subFocus,
-                backdrop = backdrop,
-                origin = gridOrigin,
-                sheet = sheet,
-                // Where the window grows from: the control that opened it.
-                from = grid.firstOrNull { it.id == subTileOf(page) },
-            )
-        } else TileGrid(
-            onLongPress = onLongPress,
-            placed = grid,
-            navigation = navigation,
-            state = state,
-            requesters = requesters,
-            interactive = interactive,
-            trapEdges = trapEdges,
-            selected = selected,
-            appear = appear,
-            onFocused = onFocused,
-            onActivate = onActivate,
-            actions = actions,
-            backdrop = backdrop,
-            origin = gridOrigin,
-            modifier = if (sheet) {
-                Modifier.frostedSheet(PanelDimens.sheetRadius, LocalFrostStyle.current, PanelDimens.sheetPadding, LocalLiteGlass.current)
-            } else Modifier,
-        )
+        } else Box {
+            // A closing window has the grid back underneath already, so it shrinks onto its
+            // control in front of it instead of everything reappearing in one frame.
+            if (!sub || subClosing) gridLayer(sheetModifier)
+            if (sub && subFocus != null && subActions != null) {
+                SubPageCard(
+                    page = page,
+                    state = state,
+                    actions = subActions,
+                    first = subFocus,
+                    backdrop = backdrop,
+                    origin = gridOrigin,
+                    sheet = sheet,
+                    // Where the window grows from: the control that opened it.
+                    from = grid.firstOrNull { it.id == subTileOf(page) },
+                    closing = subClosing,
+                    onClosed = onSubClosed,
+                )
+            }
+        }
     }
 }
 

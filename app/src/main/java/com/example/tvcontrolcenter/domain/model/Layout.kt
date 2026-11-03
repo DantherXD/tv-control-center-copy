@@ -269,7 +269,7 @@ data class PanelSettings(
     /** Thickness of the glass edge line in dp (see [EdgeWidthSteps]); 0 draws none. */
     val edgeWidth: Float = 1.5f,
     /** Size of the round top-bar buttons in dp (see [TopSizeSteps]). */
-    val topSize: Int = 40,
+    val topSize: Int = 44,
     /** Top-bar buttons have no glass until focused. */
     val topBorderless: Boolean = false,
     /** Menu button is the main page: it leaves the music page, and the music button only opens it. */
@@ -293,7 +293,7 @@ val TopOffsetSteps: List<Int> = listOf(0, 24, 48, 72, 96, 120)
 
 val EdgeWidthSteps: List<Float> = listOf(0f, 0.8f, 1.5f, 2.5f, 3.5f, 5f)
 
-val TopSizeSteps: List<Int> = listOf(28, 32, 36, 40, 44)
+val TopSizeSteps: List<Int> = listOf(32, 36, 40, 44, 48)
 
 val TextScaleSteps: List<Float> = listOf(0.8f, 0.9f, 1f, 1.15f, 1.3f)
 

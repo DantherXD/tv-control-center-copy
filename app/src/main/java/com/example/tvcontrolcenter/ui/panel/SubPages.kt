@@ -118,6 +118,8 @@ internal fun SubPageCard(
     origin: Offset,
     sheet: Boolean,
     from: Placed? = null,
+    closing: Boolean = false,
+    onClosed: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val glass = cardGlass(backdrop, origin, sheet)
@@ -137,7 +139,7 @@ internal fun SubPageCard(
     val firstRow = rows.indexOfFirst { it is SubRow.Action }
     Column(
         modifier
-            .expandFromTile(from, PanelDimens.gridWidth, height)
+            .expandFromTile(from, PanelDimens.gridWidth, height, closing, onClosed)
             .size(PanelDimens.gridWidth, height)
             // Nothing to press (no inputs found): the window itself takes focus, so Back works.
             .then(if (firstRow < 0) Modifier.focusRequester(first).focusable() else Modifier)
@@ -160,7 +162,13 @@ internal fun SubPageCard(
             rows.forEachIndexed { index, row ->
                 when (row) {
                     is SubRow.Info -> SheetInfo(row.label, row.value)
-                    is SubRow.Action -> SheetRow(row.label, null, if (index == firstRow) first else null, row.activate)
+                    // While the window is on its way home, a press does nothing: it is leaving.
+                    is SubRow.Action -> SheetRow(
+                        label = row.label,
+                        value = null,
+                        requester = if (index == firstRow) first else null,
+                        activate = if (closing) NoActivate else row.activate,
+                    )
                 }
             }
         }
@@ -171,14 +179,33 @@ internal fun SubPageCard(
  * Grows the window out of the control that opened it, the way iOS opens a control's detail: it
  * starts as exactly that control and springs to its full size. The first frame is the tile, so
  * nothing is composed twice and focus exists from the start.
+ *
+ * [closing] runs the same motion backwards, so the window shrinks onto its control and dissolves;
+ * [onClosed] fires when it has landed, and only then does the host drop the window.
  */
 @Composable
-private fun Modifier.expandFromTile(from: Placed?, width: Dp, height: Dp): Modifier {
-    if (from == null) return this
+private fun Modifier.expandFromTile(
+    from: Placed?,
+    width: Dp,
+    height: Dp,
+    closing: Boolean,
+    onClosed: () -> Unit,
+): Modifier {
+    if (from == null) {
+        // Nothing to shrink onto: still finish the close, or Back would leave the window stuck.
+        LaunchedEffect(closing) { if (closing) onClosed() }
+        return this
+    }
     val density = LocalDensity.current
     val progress = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         progress.animateTo(1f, spring(dampingRatio = 0.88f, stiffness = 520f))
+    }
+    // Closing reverses the open, from wherever it got to; the running open is cancelled.
+    LaunchedEffect(closing) {
+        if (!closing) return@LaunchedEffect
+        progress.animateTo(0f, spring(dampingRatio = 0.9f, stiffness = 700f))
+        onClosed()
     }
     val start = with(density) {
         Start(
@@ -199,7 +226,8 @@ private fun Modifier.expandFromTile(from: Placed?, width: Dp, height: Dp): Modif
         // Maps the window's own rect onto the tile's rect at the first frame: same place, small.
         translationX = start.x * (1f - s)
         translationY = start.y * (1f - s)
-        alpha = (p * 4f).coerceIn(0f, 1f)
+        // Open fades in over the first frames; closing stays solid until it is nearly home.
+        alpha = (p * (if (closing) 1.4f else 4f)).coerceIn(0f, 1f)
     }
 }
 
@@ -323,3 +351,6 @@ private fun SheetInfo(label: String, value: String) {
 }
 
 private fun Key.isOk() = this == Key.DirectionCenter || this == Key.Enter || this == Key.NumPadEnter
+
+/** A row that has stopped listening: the window it belongs to is closing. */
+private val NoActivate: () -> Unit = {}

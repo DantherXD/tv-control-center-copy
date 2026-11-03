@@ -42,7 +42,8 @@ The clock follows the TV's 12/24 hour setting. **Menu** opens the editor; **Prof
 
 **Hold OK** on Wi-Fi or Bluetooth for a small window with its status, the network or audio device in use and a row that opens the
 system settings; **press OK** on Input for the list of inputs, one row each. A window grows out of the control it was opened from,
-like an iOS control, and it is as tall as its rows so nothing hides below the fold (long lists scroll). Back closes it.
+like an iOS control, and it is as tall as its rows so nothing hides below the fold (long lists scroll). Back shrinks it back into
+that control, with the grid already there again, and the next Back closes the panel.
 
 **Edit Control Center:** open it from the **Menu** button in the panel, or from the demo screen. Pick a control with **OK**; the
 buttons on the left set its size, move it earlier or later, or hide it. "Add controls" lists hidden ones. Below that:

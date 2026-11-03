@@ -117,7 +117,7 @@ class PreferencesLayoutRepository @Inject constructor(
             card = prefs.getBoolean(KEY_CARD, false),
             textScale = prefs.getFloat(KEY_TEXT, 1f),
             edgeWidth = prefs.getFloat(KEY_EDGE, 1.5f),
-            topSize = prefs.getInt(KEY_TOP_SIZE, 40),
+            topSize = prefs.getInt(KEY_TOP_SIZE, 44),
             topBorderless = prefs.getBoolean(KEY_TOP_FLAT, false),
             menuIsHome = prefs.getBoolean(KEY_MENU_HOME, true),
             patientCapture = prefs.getBoolean(KEY_PATIENT, false),
