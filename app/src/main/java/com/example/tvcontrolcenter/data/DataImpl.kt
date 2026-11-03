@@ -10,6 +10,7 @@ import com.example.tvcontrolcenter.domain.model.PanelLayout
 import com.example.tvcontrolcenter.domain.model.PanelSettings
 import com.example.tvcontrolcenter.domain.model.SleepTimerPresets
 import com.example.tvcontrolcenter.domain.model.TileId
+import com.example.tvcontrolcenter.domain.model.Wallpaper
 import com.example.tvcontrolcenter.domain.repository.FocusMemory
 import com.example.tvcontrolcenter.domain.repository.LayoutRepository
 import com.example.tvcontrolcenter.domain.repository.SleepTimerRepository
@@ -109,6 +110,7 @@ class PreferencesLayoutRepository @Inject constructor(
             blurLevel = BlurLevels.clamp(prefs.getInt(KEY_BLUR_LEVEL, 3)),
             blurMethod = BlurMethod.entries.firstOrNull { it.name == prefs.getString(KEY_BLUR_METHOD, null) } ?: BlurMethod.AUTO,
             frost = FrostStyle.entries.firstOrNull { it.name == prefs.getString(KEY_FROST, null) } ?: FrostStyle.SMOKE,
+            wallpaper = Wallpaper.entries.firstOrNull { it.name == prefs.getString(KEY_WALLPAPER, null) } ?: Wallpaper.BOXES,
             topOffset = prefs.getInt(KEY_TOP, 48),
             headerGap = prefs.getInt(KEY_GAP, 8),
             invertFocus = prefs.getBoolean(KEY_INVERT, true),
@@ -159,6 +161,7 @@ class PreferencesLayoutRepository @Inject constructor(
             .putInt(KEY_BLUR_LEVEL, next.blurLevel)
             .putString(KEY_BLUR_METHOD, next.blurMethod.name)
             .putString(KEY_FROST, next.frost.name)
+            .putString(KEY_WALLPAPER, next.wallpaper.name)
             .putInt(KEY_TOP, next.topOffset)
             .putInt(KEY_GAP, next.headerGap)
             .putBoolean(KEY_INVERT, next.invertFocus)
@@ -180,6 +183,7 @@ class PreferencesLayoutRepository @Inject constructor(
         const val KEY_BLUR_LEVEL = "blur_level"
         const val KEY_BLUR_METHOD = "blur_method"
         const val KEY_FROST = "frost"
+        const val KEY_WALLPAPER = "wallpaper"
         const val KEY_TOP = "top_offset"
         const val KEY_GAP = "header_gap"
         const val KEY_INVERT = "invert_focus"

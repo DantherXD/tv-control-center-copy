@@ -12,6 +12,7 @@ import com.example.tvcontrolcenter.domain.model.PanelEvent
 import com.example.tvcontrolcenter.domain.model.SystemStatus
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
+import com.example.tvcontrolcenter.domain.model.Wallpaper
 import com.example.tvcontrolcenter.fakes.FakeActions
 import com.example.tvcontrolcenter.fakes.FakeFocusMemory
 import com.example.tvcontrolcenter.fakes.FakeLayoutRepository
@@ -93,6 +94,7 @@ class ControlCenterViewModelTest {
         assertEquals(8, vm.uiState.value.settings.headerGap)
         assertTrue(vm.uiState.value.settings.invertFocus)
         assertFalse(vm.uiState.value.settings.card)
+        assertEquals(Wallpaper.BOXES, vm.uiState.value.settings.wallpaper)
         vm.updateSettings { it.copy(headerGap = 0, invertFocus = false) }
         assertEquals(0, vm.uiState.value.settings.headerGap)
         assertFalse(vm.uiState.value.settings.invertFocus)

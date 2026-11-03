@@ -203,6 +203,30 @@ enum class FrostStyle {
     MIDNIGHT,
 }
 
+/**
+ * Background of the app's own pages: the home page and the editor. All of them are painted on
+ * the device into one image, so they cost a single draw per frame and nothing else. The panel
+ * over other apps blurs the real screen instead and ignores this.
+ */
+enum class Wallpaper {
+    /** Flat saturated squares, the look the app started with. */
+    BOXES,
+    /** Night sky with teal and violet curtains. */
+    AURORA,
+    /** Warm horizon under a purple evening. */
+    SUNSET,
+    /** Dark green canopy. */
+    FOREST,
+    /** Rings rolling out of a corner. */
+    WAVES,
+    /** Dark sky with colour clouds and stars. */
+    NEBULA,
+    /** Quiet technical grid. */
+    GRID,
+    /** One dark tone, the quietest choice. */
+    PLAIN,
+}
+
 /** Blur strength 0 (none) to [MAX]. Radii are for the 480 px screenshot and for the window blur. */
 object BlurLevels {
     const val MAX = 4
@@ -222,6 +246,8 @@ data class PanelSettings(
     val blurLevel: Int = 3,
     val blurMethod: BlurMethod = BlurMethod.AUTO,
     val frost: FrostStyle = FrostStyle.SMOKE,
+    /** Background of the app's own pages (home page and editor). */
+    val wallpaper: Wallpaper = Wallpaper.BOXES,
     /** Gap above the panel, in reference dp (see [TopOffsetSteps]). */
     val topOffset: Int = 48,
     /** Gap between the top bar (clock and round buttons) and the controls, in reference dp (see [HeaderGapSteps]). */

@@ -27,7 +27,9 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.TileId
 
@@ -61,3 +63,12 @@ internal fun lookOf(id: TileId): TileLook = when (id) {
     TileId.EDIT -> TileLook(Icons.Filled.Menu, R.string.tile_edit)
     TileId.PROFILE -> TileLook(Icons.Filled.Person, R.string.tile_profile)
 }
+
+/**
+ * The resting icon of [id], as a composable so a drawable can be used. The Menu button draws
+ * the on/off switches from `ic_menu_toggles.xml`; the other controls use the Material icons
+ * that [IconStyles] can swap for outlined or rounded twins.
+ */
+@Composable
+internal fun lookIcon(id: TileId): ImageVector =
+    if (id == TileId.EDIT) ImageVector.vectorResource(R.drawable.ic_menu_toggles) else lookOf(id).icon

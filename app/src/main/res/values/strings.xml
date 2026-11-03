@@ -80,6 +80,16 @@
     <string name="blur_status_ready">Screenshot blur is ready.</string>
     <string name="blur_status_service">Screenshot blur needs the accessibility service. Switch it off and on in Android settings.</string>
     <string name="blur_status_old">Screenshot blur needs Android 11 or newer. Use Whole screen.</string>
+    <string name="edit_wallpaper">Wallpaper</string>
+    <string name="edit_wallpaper_note">Behind the app\'s own pages: the home page and this editor. The panel over other apps blurs whatever is on screen instead.</string>
+    <string name="wall_boxes">Colour blocks</string>
+    <string name="wall_aurora">Aurora</string>
+    <string name="wall_sunset">Sunset</string>
+    <string name="wall_forest">Forest</string>
+    <string name="wall_waves">Waves</string>
+    <string name="wall_nebula">Nebula</string>
+    <string name="wall_grid">Grid</string>
+    <string name="wall_plain">Charcoal</string>
     <string name="edit_frost">Glass style</string>
     <string name="frost_smoke">Smoke</string>
     <string name="frost_milky">Milky</string>

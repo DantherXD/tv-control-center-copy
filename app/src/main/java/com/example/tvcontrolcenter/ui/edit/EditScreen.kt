@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
 import com.example.tvcontrolcenter.domain.model.TextScaleSteps
-import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
@@ -83,14 +82,14 @@ import com.example.tvcontrolcenter.domain.model.GridPacker
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
 import com.example.tvcontrolcenter.domain.model.UiScaleSteps
-import com.example.tvcontrolcenter.ui.background.BoxesBackground
-import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
+import com.example.tvcontrolcenter.domain.model.Wallpaper
+import com.example.tvcontrolcenter.ui.background.AppWallpaper
 import com.example.tvcontrolcenter.ui.panel.ControlCenterUiState
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
 import com.example.tvcontrolcenter.ui.panel.Label
-import com.example.tvcontrolcenter.ui.panel.TileActions
-import com.example.tvcontrolcenter.ui.panel.PanelContent
+import com.example.tvcontrolcenter.ui.panel.LivePanel
 import com.example.tvcontrolcenter.ui.panel.TileIcon
+import com.example.tvcontrolcenter.ui.panel.lookIcon
 import com.example.tvcontrolcenter.ui.panel.gridHeight
 import com.example.tvcontrolcenter.ui.panel.lookOf
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
@@ -169,7 +168,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                 } else false
             },
     ) {
-        BoxesBackground(Modifier.fillMaxSize())
+        AppWallpaper(state.settings.wallpaper, Modifier.fillMaxSize())
         Row(
             Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 28.dp),
             horizontalArrangement = Arrangement.spacedBy(32.dp),
@@ -250,6 +249,10 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                         }
 
                         EditTab.LOOK -> {
+                            StepRow(stringResource(R.string.edit_wallpaper), stringResource(wallpaperLabel(settings.wallpaper))) { d ->
+                                vm.updateSettings { it.copy(wallpaper = Wallpaper.entries.step(it.wallpaper, d)) }
+                            }
+                            Hint(stringResource(R.string.edit_wallpaper_note))
                             StepRow(stringResource(R.string.edit_frost), stringResource(frostLabel(settings.frost))) { d ->
                                 vm.updateSettings { it.copy(frost = FrostStyle.entries.step(it.frost, d)) }
                             }
@@ -396,35 +399,20 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                 }
             }
 
-            Box(
-                Modifier
-                    .align(Alignment.Top)
-                    .padding(PanelDimens.sheetPadding),
-            ) {
-                CompositionLocalProvider(LocalFrostStyle provides state.settings.frost) {
-                ProvideTextScale(state.settings.textScale) {
-                PanelContent(
-                    grid = placed,
-                    pinned = pinned,
-                    state = state,
-                    requesters = tileRequesters,
-                    interactive = false,
-                    trapEdges = false,
-                    selected = selected,
-                    appear = { _ -> { 1f } },
-                    onFocused = {},
-                    onActivate = {
-                        selected = it
-                        tab = EditTab.CONTROLS
-                    },
-                    actions = TileActions(),
-                    backdrop = null,
-                    origin = Offset.Zero,
-                    sheet = true,
-                )
-                }
-                }
-            }
+            // The real panel over a blurred screen: every setting shows here as you change it.
+            LivePanel(
+                state = state,
+                grid = placed,
+                pinned = pinned,
+                requesters = tileRequesters,
+                selected = selected,
+                interactive = false,
+                onActivate = {
+                    selected = it
+                    tab = EditTab.CONTROLS
+                },
+                modifier = Modifier.align(Alignment.Top),
+            )
         }
     }
 }
@@ -434,6 +422,17 @@ private enum class EditTab(val label: Int) {
     LOOK(R.string.tab_look),
     TOPBAR(R.string.tab_topbar),
     BLUR(R.string.tab_blur),
+}
+
+private fun wallpaperLabel(style: Wallpaper): Int = when (style) {
+    Wallpaper.BOXES -> R.string.wall_boxes
+    Wallpaper.AURORA -> R.string.wall_aurora
+    Wallpaper.SUNSET -> R.string.wall_sunset
+    Wallpaper.FOREST -> R.string.wall_forest
+    Wallpaper.WAVES -> R.string.wall_waves
+    Wallpaper.NEBULA -> R.string.wall_nebula
+    Wallpaper.GRID -> R.string.wall_grid
+    Wallpaper.PLAIN -> R.string.wall_plain
 }
 
 private fun frostLabel(style: FrostStyle): Int = when (style) {
@@ -616,7 +615,7 @@ private fun AddChip(id: TileId, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            TileIcon(look.icon, 18.dp)
+            TileIcon(lookIcon(id), 18.dp)
             Label(label, style = PanelType.label, maxLines = 1)
         }
     }

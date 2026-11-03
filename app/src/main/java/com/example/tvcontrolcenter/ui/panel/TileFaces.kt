@@ -60,6 +60,7 @@ internal class Face(
 @Composable
 internal fun faceOf(id: TileId, state: ControlCenterUiState): Face {
     val look = lookOf(id)
+    val icon = lookIcon(id)
     val title = stringResource(look.label)
     val on = stringResource(R.string.state_on)
     val off = stringResource(R.string.state_off)
@@ -71,26 +72,26 @@ internal fun faceOf(id: TileId, state: ControlCenterUiState): Face {
                 NetworkKind.ETHERNET -> "Ethernet"
                 NetworkKind.NONE -> off
             }
-            Face(if (net == NetworkKind.NONE) Icons.Filled.WifiOff else look.icon, title, detail, net != NetworkKind.NONE)
+            Face(if (net == NetworkKind.NONE) Icons.Filled.WifiOff else icon, title, detail, net != NetworkKind.NONE)
         }
         TileId.DND -> {
             val dnd = state.status.dndEnabled
-            Face(look.icon, title, if (dnd) on else off, dnd)
+            Face(icon, title, if (dnd) on else off, dnd)
         }
         TileId.BLUETOOTH -> {
             val bt = state.tiles[TileId.BLUETOOTH]
             val name = bt?.detail
-            Face(look.icon, name ?: title, if (name == null) (if (bt?.active == true) on else off) else null, bt?.active == true)
+            Face(icon, name ?: title, if (name == null) (if (bt?.active == true) on else off) else null, bt?.active == true)
         }
         TileId.CAFFEINE -> {
             val awake = state.tiles[TileId.CAFFEINE]?.active == true
-            Face(look.icon, title, if (awake) on else off, awake)
+            Face(icon, title, if (awake) on else off, awake)
         }
         TileId.SLEEP_TIMER -> {
             val sleep = state.tiles[TileId.SLEEP_TIMER]
-            Face(look.icon, title, sleep?.detail ?: off, sleep?.active == true)
+            Face(icon, title, sleep?.detail ?: off, sleep?.active == true)
         }
-        else -> Face(look.icon, title, null, false)
+        else -> Face(icon, title, null, false)
     }
 }
 

@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,7 +22,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -40,21 +38,16 @@ import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.system.openCapabilitySettings
 import com.example.tvcontrolcenter.system.overlay.OverlayService
 import com.example.tvcontrolcenter.system.trigger.ControlCenterAccessibilityService
-import com.example.tvcontrolcenter.ui.background.BoxesBackground
+import com.example.tvcontrolcenter.ui.background.AppWallpaper
 import com.example.tvcontrolcenter.ui.glass.Backdrop
-import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
-import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
-import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
-import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
+import com.example.tvcontrolcenter.ui.panel.Detail
 import com.example.tvcontrolcenter.ui.panel.GlassTile
-import com.example.tvcontrolcenter.ui.panel.LocalIconStyle
-import com.example.tvcontrolcenter.ui.panel.PanelContent
-import com.example.tvcontrolcenter.ui.panel.TileActions
+import com.example.tvcontrolcenter.ui.panel.Label
+import com.example.tvcontrolcenter.ui.panel.LivePanel
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
 import com.example.tvcontrolcenter.ui.theme.PanelType
-import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
 import com.example.tvcontrolcenter.ui.theme.ProvideUiScale
 
 /**
@@ -73,9 +66,10 @@ fun DemoScreen(
     val context = LocalContext.current
     val openRequester = remember { FocusRequester() }
     val setup = rememberSetupState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Box(Modifier.fillMaxSize()) {
-        BoxesBackground(Modifier.fillMaxSize())
+        AppWallpaper(state.settings.wallpaper, Modifier.fillMaxSize())
 
         // Fits the screen but ignores the user's panel size: the home page is not the panel.
         ProvideUiScale(1f) {
@@ -173,7 +167,7 @@ private fun HomeButton(label: String, requester: FocusRequester?, onClick: () ->
         onActivate = onClick,
         modifier = Modifier.size(width = 300.dp, height = 44.dp),
     ) {
-        BasicText(label, Modifier.align(Alignment.Center), style = PanelType.label.copy(color = GlassTokens.textPrimary), maxLines = 1)
+        Label(label, Modifier.align(Alignment.Center), maxLines = 1)
     }
 }
 
@@ -196,8 +190,8 @@ private fun SetupRow(label: String, ok: Boolean, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Box(Modifier.size(10.dp).background(if (ok) Color(0xFF4CD964) else Color(0xFFFFB340), CircleShape))
-            BasicText(label, Modifier.weight(1f), style = PanelType.label.copy(color = GlassTokens.textPrimary), maxLines = 1)
-            BasicText(status, style = PanelType.hint.copy(color = GlassTokens.textSecondary), maxLines = 1)
+            Label(label, Modifier.weight(1f), maxLines = 1)
+            Detail(status)
         }
     }
 }
@@ -209,32 +203,14 @@ private fun LivePreview(viewModel: ControlCenterViewModel) {
     val placed = remember(layout) { GridPacker.pack(layout.visibleItems()) }
     val pinned = remember(layout) { GridPacker.pinned(layout.visibleItems()) }
     val requesters = remember { TileId.entries.associateWith { FocusRequester() } }
-    Box(Modifier.padding(com.example.tvcontrolcenter.ui.theme.PanelDimens.sheetPadding)) {
-        CompositionLocalProvider(
-            LocalFrostStyle provides state.settings.frost,
-            LocalInvertFocus provides state.settings.invertFocus,
-            LocalEdgeWidth provides state.settings.edgeWidth.dp,
-            LocalIconStyle provides state.settings.iconStyle,
-            LocalLiteGlass provides true,
-        ) {
-            ProvideTextScale(state.settings.textScale) {
-                PanelContent(
-                    grid = placed,
-                    pinned = pinned,
-                    state = state,
-                    requesters = requesters,
-                    interactive = false,
-                    trapEdges = false,
-                    selected = null,
-                    appear = { _ -> { 1f } },
-                    onFocused = {},
-                    onActivate = {},
-                    actions = TileActions(),
-                    backdrop = null,
-                    origin = Offset.Zero,
-                    sheet = true,
-                )
-            }
-        }
-    }
+    // The real panel over a blurred screen, so the blur settings show here too.
+    LivePanel(
+        state = state,
+        grid = placed,
+        pinned = pinned,
+        requesters = requesters,
+        selected = null,
+        interactive = false,
+        onActivate = {},
+    )
 }
