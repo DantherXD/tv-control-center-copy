@@ -14,6 +14,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.State
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.CornerRadius
 import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
 import kotlin.math.PI
@@ -150,15 +151,21 @@ internal fun MusicCard(
     origin: Offset,
     sheet: Boolean,
     big: Boolean = false,
+    closing: Boolean = false,
+    onClosed: () -> Unit = {},
+    from: MusicOrigin? = null,
     modifier: Modifier = Modifier,
 ) {
     val glass = cardGlass(backdrop, origin, sheet)
+    val height = if (big) PanelDimens.musicCardBigHeight else PanelDimens.musicCardHeight
+    // Pops in on the way here; on the way back it shrinks into the button that opened it.
+    val motion = Modifier.shrinkInto(from, PanelDimens.gridWidth, height, closing, onClosed).popIn()
     if (big) {
         // Like the iOS card: square cover on top, then title and artist, progress, and controls.
         Column(
             modifier
-                .popIn()
-                .size(PanelDimens.gridWidth, PanelDimens.musicCardBigHeight)
+                .then(motion)
+                .size(PanelDimens.gridWidth, height)
                 .then(glass)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -175,8 +182,8 @@ internal fun MusicCard(
     }
     Column(
         modifier
-            .popIn()
-            .size(PanelDimens.gridWidth, PanelDimens.musicCardHeight)
+            .then(motion)
+            .size(PanelDimens.gridWidth, height)
             .then(glass)
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -275,6 +282,49 @@ internal fun EqualizerIcon(playing: Boolean, size: Dp, modifier: Modifier = Modi
 private val EQ_BASE = floatArrayOf(0.50f, 0.85f, 1.00f, 0.70f, 0.90f, 0.55f)
 private val EQ_SPEED = intArrayOf(2, 1, 3, 2, 1, 3)
 private val EQ_SHIFT = floatArrayOf(0f, 0.25f, 0.5f, 0.1f, 0.65f, 0.35f)
+
+/**
+ * Where the music card collapses to: the top-bar button that opened it, as the button's top-left
+ * and size measured in dp from the card's own top-left.
+ */
+internal class MusicOrigin(val left: Dp, val top: Dp, val size: Dp)
+
+/**
+ * Runs the card's motion backwards when [closing]: it shrinks onto the button it came from and
+ * fades out as it lands, then [onClosed] hands the page back to the grid. Opening stays [popIn].
+ */
+@Composable
+private fun Modifier.shrinkInto(
+    from: MusicOrigin?,
+    width: Dp,
+    height: Dp,
+    closing: Boolean,
+    onClosed: () -> Unit,
+): Modifier {
+    val progress = remember { Animatable(1f) }
+    LaunchedEffect(closing) {
+        if (!closing) return@LaunchedEffect
+        // Nothing to shrink onto: still finish the close, or the page would be stuck on the card.
+        if (from != null) progress.animateTo(0f, spring(dampingRatio = 0.9f, stiffness = 700f))
+        onClosed()
+    }
+    val to = from ?: return this
+    val density = LocalDensity.current
+    val endX = with(density) { to.size.toPx() / width.toPx() }
+    val endY = with(density) { to.size.toPx() / height.toPx() }
+    return this.graphicsLayer {
+        val p = progress.value
+        val s = p.coerceIn(0f, 1f)
+        transformOrigin = TransformOrigin(0f, 0f)
+        scaleX = endX + (1f - endX) * s
+        scaleY = endY + (1f - endY) * s
+        // The card's top-left travels onto the button's while it shrinks.
+        translationX = to.left.toPx() * (1f - s)
+        translationY = to.top.toPx() * (1f - s)
+        // Solid for most of the way, so it reads as one card going home, not a fade.
+        alpha = (p * 1.4f).coerceIn(0f, 1f)
+    }
+}
 
 /** Pops a card in when it appears: fades in, grows from 90% and settles down from just above. */
 @Composable

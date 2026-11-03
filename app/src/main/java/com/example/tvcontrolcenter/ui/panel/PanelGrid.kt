@@ -104,6 +104,8 @@ internal fun PanelContent(
     subActions: SubPageActions? = null,
     subClosing: Boolean = false,
     onSubClosed: () -> Unit = {},
+    musicClosing: Boolean = false,
+    onMusicClosed: () -> Unit = {},
     onLongPress: (TileId) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -120,6 +122,15 @@ internal fun PanelContent(
     val gridOrigin = origin + with(density) {
         Offset(0f, (header + gap).toPx())
     }
+    // The button a closing music card shrinks into, as its top-left and size from the card's own.
+    val musicButtonIndex = pinned.indexOfFirst { it.id == TileId.NOW_PLAYING }
+    val musicFrom = if (musicButtonIndex < 0) null else MusicOrigin(
+        left = PanelDimens.gridWidth -
+            (top + PanelDimens.topButtonGap) * (pinned.size - musicButtonIndex) +
+            PanelDimens.topButtonGap,
+        top = (header - top) / 2 - header - gap,
+        size = top,
+    )
     val sheetModifier = if (sheet) {
         Modifier.frostedSheet(PanelDimens.sheetRadius, LocalFrostStyle.current, PanelDimens.sheetPadding, LocalLiteGlass.current)
     } else Modifier
@@ -191,21 +202,25 @@ internal fun PanelContent(
             }
         }
         Spacer(Modifier.height(gap))
-        if (music && musicFocus != null) {
-            MusicCard(
-                np = state.nowPlaying,
-                actions = actions,
-                focus = musicFocus,
-                up = requesters.getValue(TileId.NOW_PLAYING),
-                backdrop = backdrop,
-                origin = gridOrigin,
-                sheet = sheet,
-                big = state.settings.musicStyle == MusicStyle.BIG,
-            )
-        } else Box {
-            // A closing window has the grid back underneath already, so it shrinks onto its
-            // control in front of it instead of everything reappearing in one frame.
-            if (!sub || subClosing) gridLayer(sheetModifier)
+        Box {
+            // A card on its way home has the grid back underneath already, so the grid is there
+            // by the time the card lands instead of appearing all at once behind it.
+            if ((!music && !sub) || subClosing || musicClosing) gridLayer(sheetModifier)
+            if (music && musicFocus != null) {
+                MusicCard(
+                    np = state.nowPlaying,
+                    actions = actions,
+                    focus = musicFocus,
+                    up = requesters.getValue(TileId.NOW_PLAYING),
+                    backdrop = backdrop,
+                    origin = gridOrigin,
+                    sheet = sheet,
+                    big = state.settings.musicStyle == MusicStyle.BIG,
+                    closing = musicClosing,
+                    onClosed = onMusicClosed,
+                    from = musicFrom,
+                )
+            }
             if (sub && subFocus != null && subActions != null) {
                 SubPageCard(
                     page = page,

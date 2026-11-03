@@ -149,6 +149,8 @@ private fun HostBody(
     var page by remember { mutableStateOf(PanelPage.GRID) }
     // A small window is shrinking back into its control; the page follows when it has landed.
     var closingSub by remember { mutableStateOf(false) }
+    // Same for the music page, which goes back into the button that opened it.
+    var closingMusic by remember { mutableStateOf(false) }
     val musicOnTop = pinned.any { it.id == TileId.NOW_PLAYING }
 
     val currentPlaced by rememberUpdatedState(placed)
@@ -167,6 +169,7 @@ private fun HostBody(
             hasOpened[0] = true
             page = PanelPage.GRID
             closingSub = false
+            closingMusic = false
             viewModel.onOpened()
             launch {
                 for (row in 0 until ROW_SLOTS) {
@@ -239,16 +242,26 @@ private fun HostBody(
     val profileShown = pinned.any { it.id == TileId.PROFILE }
     // Nothing playing any more: the music page has nothing to show.
     LaunchedEffect(state.hasNowPlaying) {
-        if (!state.hasNowPlaying && page == PanelPage.MUSIC) page = PanelPage.GRID
+        if (!state.hasNowPlaying && page == PanelPage.MUSIC) {
+            closingMusic = false
+            page = PanelPage.GRID
+        }
     }
     val openSub: (PanelPage, TileId) -> Unit = { target, from ->
         returnTo = from
         closingSub = false
+        closingMusic = false
         page = target
     }
     // The window has shrunk back onto its control: the grid takes over from here.
     val closeSub: () -> Unit = {
         closingSub = false
+        page = PanelPage.GRID
+    }
+    // The music card has shrunk back into its button: focus goes there too.
+    val closeMusic: () -> Unit = {
+        closingMusic = false
+        returnTo = TileId.NOW_PLAYING
         page = PanelPage.GRID
     }
     val subActions = remember(viewModel) {
@@ -286,8 +299,9 @@ private fun HostBody(
             id == TileId.NOW_PLAYING && musicOnTop -> {
                 if (page == PanelPage.MUSIC) {
                     // With Menu as the main page, the music button only opens the music page.
-                    if (!menuIsHome) page = PanelPage.GRID
+                    if (!menuIsHome) closeMusic()
                 } else if (viewModel.onMusicPageRequested()) {
+                    closingMusic = false
                     page = PanelPage.MUSIC
                 }
             }
@@ -324,18 +338,11 @@ private fun HostBody(
                 if (event.key == Key.Back || event.key == Key.Escape) {
                     if (event.type == KeyEventType.KeyUp) {
                         when {
-                            // The window is already on its way home: Back closes the panel, as before.
-                            closingSub -> dismiss()
-                            page != PanelPage.GRID -> {
-                                if (page.isSub) {
-                                    // First Back shrinks the window into its control.
-                                    closingSub = true
-                                } else {
-                                    // The music page closes at once.
-                                    page = PanelPage.GRID
-                                    runCatching { requesters.getValue(TileId.NOW_PLAYING).requestFocus() }
-                                }
-                            }
+                            // A card is already on its way home: Back closes the panel, as before.
+                            closingSub || closingMusic -> dismiss()
+                            // First Back shrinks the card back into the control it came from.
+                            page.isSub -> closingSub = true
+                            page == PanelPage.MUSIC -> closingMusic = true
                             else -> dismiss()
                         }
                     }
@@ -398,6 +405,8 @@ private fun HostBody(
                     musicFocus = musicFocus,
                     subClosing = closingSub,
                     onSubClosed = closeSub,
+                    musicClosing = closingMusic,
+                    onMusicClosed = closeMusic,
                 )
                 }
             }
