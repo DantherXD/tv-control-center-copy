@@ -1,0 +1,186 @@
+# Handoff: TV Control Center (Android TV, tvOS-style panel)
+
+_Written 2026-11-03. Supersedes the older handoff, which described a repo state (zips, `apply.sh`,
+`BoxesBackground.kt`, `ui/background/AppBackground.kt`) that no longer exists. Everything below was
+checked against the repo at `fd383b4` plus the uncommitted work described in "Just changed"._
+
+## What this is
+
+An Android TV app that recreates the tvOS Control Center: Kotlin, Compose for TV, MVVM + StateFlow,
+Hilt, one activity, D-pad only, minSdk 26 (compileSdk/targetSdk 35). It must stay smooth on a weak
+2 GB box and scale to 4K. Package `com.example.tvcontrolcenter`.
+
+The owner is GitHub user **DantherXD**, repo **`DantherXD/tv-control-center-copy`**, branch **`main`**.
+They test on a real Android TV (Android 14) and report back in messages, sometimes with adb/logcat.
+They install the CI release APK with `adb install -r` and pre-compile it with
+`adb shell cmd package compile -m speed -f com.example.tvcontrolcenter`.
+
+## How you work here
+
+- Commit straight to `main`, short imperative subject, Codebuff footer. Repo-local identity is
+  already set: `DantherXD <citymujrm@gmail.com>`.
+- **The owner's standing instruction: after pushing, do not wait for CI.** Push with `cloud_git`
+  (`operation: push`, `branch: main`); it sends the current HEAD without force.
+- The cloud worktree (`/workspace/chats/<id>`, branch `freebuff/<id>`) starts from `main`. `gh` is
+  **not authenticated** in the cloud sandbox, and there is no Android SDK and no sudo, so:
+  **nothing compiles locally and CI results cannot be read from here.** CI is the only compiler.
+  Say so plainly in the report instead of claiming a build passed.
+
+## CI
+
+`.github/workflows/android.yml`, on push to `main`, PRs, and manual dispatch:
+
+1. `assembleRelease` (optimised; signed with the committed fixed key `app/debug.keystore`) →
+   artifact `tv-control-center-release-apk`. APK first so a failing test never blocks installing.
+2. `testDebugUnitTest` (note: unit tests still build the debug variant).
+3. No lint, no debug APK. A failing step dumps `e:` / Hilt errors into the job summary and uploads
+   `build.log` + test reports as artifact `reports`.
+4. A separate `ui-tests` job (Android TV emulator, `connectedDebugAndroidTest`) runs only on manual
+   dispatch with `run_ui_tests` ticked, and is slow (~45 min cap).
+
+Error output looks like `e: file:///home/runner/work/.../MusicPage.kt:85:50 Unresolved reference…`.
+
+## Source map (`app/src/main/java/com/example/tvcontrolcenter/`)
+
+**Entry / DI**
+- `MainActivity.kt`: home page or editor, captures its own window for blur before opening the panel.
+- `ControlCenterActivity.kt`: transparent activity that opens the panel over any app.
+- `TvControlCenterApp.kt`: Application / Hilt root.
+- `di/AppModule.kt`: bindings.
+
+**Domain / data**
+- `domain/model/Models.kt`: `TileId` (Power, Wi-Fi, DND, Bluetooth, Sleep Timer, Gamepad,
+  Accessibility, Lock, Search, Now Playing, Volume, the Google-TV quick actions, Home, Recents,
+  Screenshot, Notifications, Input, Caffeine, Edit, Profile), `SystemStatus`, `NowPlaying`
+  (artwork + duration/position/speed), `TvInputItem`, `Capability`, `ActionResult`, `TileState`.
+- `domain/model/Layout.kt`: `TileSize` (Small/Wide/Tall/Large/Full), `ControlItem`, `PanelLayout`,
+  `GridPacker`, `GridNav`, `MAX_PINNED = 3`, `PanelSettings`, the `*Steps` lists, `BlurLevels`,
+  and enums `BlurMethod`, `FrostStyle`, `Wallpaper`, `IconStyle`, `MusicStyle`.
+- `domain/repository/Contracts.kt`: interfaces, including `SystemActions` and `SleepTimerRepository`.
+- `data/DataImpl.kt`: SharedPreferences-backed layout/settings (`PanelSettings` is read field by
+  field, so a changed data-class default only reaches users who never touched that setting) plus
+  `SleepTimerRepositoryImpl` (cycles 0/15/30/60/90 min presets).
+- `data/ProfilePhoto.kt`: save/load/clear the profile picture (256 px, in app storage).
+
+**System**
+- `system/media/NowPlaying.kt`: media sessions via the notification listener; artwork, position.
+- `system/CapabilityIntents.kt`: settings screens for the permissions/services.
+- `system/actions/AndroidSystemActions.kt`: real system actions; screenshot via the accessibility
+  service; caffeine; Wi-Fi/Bluetooth state; the Bluetooth "Remotes & accessories" launch chain;
+  natural-sorted TV inputs.
+- `system/actions/AndroidSystemStatusSource.kt`: polls status every 2 s while the panel is open.
+- `system/actions/Caffeine.kt`: keeps the screen on with an invisible 1 px accessibility overlay.
+- `system/backdrop/BackdropCapture.kt`: screenshot or window capture, then blur; patient mode;
+  `screenshotFull()`; `blurBitmap()` (consumes its source).
+- `system/backdrop/BoxBlur.kt`, `system/backdrop/ScreenshotSaver.kt`.
+- `system/trigger/ControlCenterAccessibilityService.kt`: trigger keys + `takeScreenshot`.
+- `system/overlay/OverlayController.kt`, `system/overlay/OverlayService.kt`, `system/WindowBackdrop.kt`.
+
+**UI**
+- `ui/theme/Tokens.kt`: `PanelDimens`, `GlassTokens`, `Motion`, type styles, `headerFor()`,
+  `musicHeightFor()`.
+- `ui/theme/UiScale.kt`: 4K density override, `ProvideTextScale`.
+- `ui/glass/FrostedGlass.kt`: sheet/tile drawing, LENS crops, edge width, invert/flat/lite modes,
+  composition locals `LocalInvertFocus`, `LocalLiteGlass`, `LocalOverBlur`, `LocalTileInk`,
+  `LocalEdgeWidth`, `LocalFrostStyle`.
+- `ui/glass/Backdrop.kt`: blurred-screen holder.
+- `ui/background/AppWallpaper.kt`: the eight painted wallpapers for the app's own pages.
+- `ui/panel/ControlCenterViewModel.kt`: UI state, tile activation, long press, caffeine,
+  Wi-Fi/Bluetooth/input helpers, music page request.
+- `ui/panel/ControlCenterPanel.kt`: host; open/close animation, backdrop + scrim, `page`,
+  `closingSub`, `closingMusic`, `returnTo`, focus restore, Back handling.
+- `ui/panel/PanelGrid.kt`: `PanelContent` (header, grid, page switching, `gridLayer`),
+  `TileGrid`, `PanelTile`, focus properties, `span()`, `gridHeight()`.
+- `ui/panel/MusicPage.kt`: `PanelPage` enum, `MusicFocus`, `MusicOrigin`, `cardGlass()`,
+  `MusicCard` (Compact 150 dp / Big 388 dp), `popIn()`, `shrinkInto()`, transport buttons.
+- `ui/panel/SubPages.kt`: Wi-Fi/Bluetooth/Input windows, `SubPageCard`, `expandFromTile`, `Start`,
+  `SubRow`/`SubRow.Info`/`SubRow.Action`, row builders, `subTileOf`.
+- `ui/panel/GlassTile.kt`, `TileCatalog.kt` (icons; Edit uses `res/drawable/ic_menu_toggles.xml`),
+  `TileFaces.kt`, `ProfileAvatar.kt`, `IconStyles.kt` (Filled/Outlined/Rounded table),
+  `LivePanel.kt` (the demo/editor preview, reuses `PanelContent` with defaults).
+- `ui/edit/EditScreen.kt`: tabbed editor (Controls, Look, Top bar, Blur) with one-row steppers and a
+  live preview, incl. the "Top bar button size" stepper.
+- `ui/demo/DemoScreen.kt`: home page with a live preview, setup checklist, Open/Edit buttons.
+
+**Tests** (`app/src/test`, `app/src/androidTest`, `app/src/sharedTest`): `LayoutTest` (every TileId in
+the default layout, fixed default positions), `BoxBlurTest`, `ControlCenterViewModelTest`,
+`SleepTimerRepositoryTest`, `fakes/Fakes.kt`, and `PanelFocusNavigationTest` (Compose, emulator only).
+
+## Current feature state
+
+**Grid and top bar.** Clock plus round Menu / Profile buttons (Now Playing optional, `MAX_PINNED = 3`),
+then a 4-column grid of Small/Wide/Tall/Large/Full controls. Round buttons are `topSize` dp
+(**default 44**, steps 32–48); the header row is `maxOf(44 dp, topSize)` so nothing shifts at the
+default. Menu is the main page (`menuIsHome`), so the music button only opens the music page, and
+Menu still opens the editor if Profile is hidden (can't lock yourself out).
+
+**Small windows (Wi-Fi, Bluetooth, Input).** Grow out of their own tile on a spring (0.88 / 520);
+height is the sum of their rows (min `subPageHeight` 214, max `subPageMaxHeight` 320, scroll past the
+cap). Back runs the same motion backwards (0.9 / 700) and dissolves onto the tile; the host keeps
+`page` until the card has landed (`closingSub` → `closeSub`). The grid is composed underneath for the
+whole close so it is already there when the card lands, and rows ignore presses while closing. Back
+during the shrink closes the panel, so Back-Back still dismisses.
+
+**Music page.** Opened from the Now Playing top-bar button when `menuIsHome` is on. Opens with
+`popIn()` (fade + 0.9→1 scale, settles from -14 dp, 0.78 / 380). **Back now shrinks the card into that
+top-bar button** (`closingMusic` → `closeMusic`), with `MusicOrigin` computed in `PanelGrid` from
+`topSize`, `header`, `gap` and the button's index; the grid is underneath, focus returns to Now
+Playing through the existing `returnTo` path. Pressing the music button to leave the page (only when
+`menuIsHome` is off) uses the same close; **Menu pressed as home still leaves instantly** (it would
+otherwise steal focus from Menu).
+
+**Glass and blur.** Ten `FrostStyle`s (Smoke, Milky, Clear, Lens, Ocean, Amethyst, Ember, Forest,
+Rose, Midnight). Blur method AUTO (screenshot, window blur fallback), SCREENSHOT (blur only inside the
+glass), WINDOW (whole screen). Patient capture (1.2 s, 3 tries) for video. Whole-screen mode draws the
+blurred screenshot full screen with no box. Fallback when nothing can blur: frosted sheet/card.
+Customisable: blur strength, frost style, edge width, invert focus, card on/off, text scale, panel
+size, position, header gap, icon style, music style, wallpapers (eight, app pages only), profile
+photo/colour.
+
+**Other.** Sleep Timer tile cycles the presets; Caffeine keeps the screen on (hidden by default);
+Screenshot tile captures through the accessibility service; overlay + accessibility trigger paths for
+opening the panel; demo/home page with a live preview.
+
+## Deliberate decisions (don't "fix" these)
+
+- Release APK only in CI, tests after the upload.
+- Editor is one row per setting (OK next, Left previous), grouped in tabs, because per-tile rows were
+  slow on the TV.
+- Whole-screen blur draws the screenshot with no box; system window blur is only a fallback.
+- The panelless frosted fallback exists on purpose (many TVs can't blur).
+- Palette-only icons (no SF Symbols: Apple licence). Inter is bundled (OFL, `FONT_LICENSE_Inter.txt`).
+- A key release only counts on the control where the press started.
+- Wi-Fi/Bluetooth on/off toggles were removed: Android blocks apps from switching those radios.
+- `PanelSettings` values persist individually, so bumping a default is safe for existing installs.
+
+## Traps that have cost builds
+
+- **A duplicate `import` is a compile error**, and a missing import is too. After editing, grep the
+  import block: `grep "^import" file.kt | sort -k2 | uniq -d -f1`.
+- `FocusRequester.Cancel` needs `@OptIn(ExperimentalComposeUiApi::class)`.
+- A parameter named `onClick` collides with the semantics `onClick(label)`; use `activate`.
+- `Dp` arithmetic: `Dp * Int`, `Dp / Int`, `Dp / Dp` exist, but a `graphicsLayer`'s `size` may not be
+  the node's final size if `size()` comes later in the chain — pass dimensions explicitly instead.
+- An `if` expression inside an arithmetic expression needs parens to stay readable:
+  `(p * (if (closing) 1.4f else 4f))`.
+- Tool-based edits have silently mangled quoting before; always re-read the edited region.
+
+## Open items
+
+1. **Verify the last two pushes in CI.** `fd383b4` (closing animations for small windows + round
+   buttons 40 → 44 dp default, steps 32–48) and the music-page work on top of it. Neither has been
+   compiled. Most likely failure points: the composable lambda `gridLayer`, `Dp` arithmetic in
+   `musicFrom`, and `LocalDensity` plumbing in `MusicPage.shrinkInto`.
+2. **Music page: transport presses still work during the ~250 ms shrink.** The small windows got a
+   `NoActivate` guard for their rows; the transport buttons do not have one yet.
+3. **"A lot of tiles have no action"** — the owner reported it without naming them. Ask which. Then:
+   `adb shell am start -a android.settings.<ACTION>`, followed by
+   `adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity"`, and fix
+   the launch chains in `AndroidSystemActions.kt`.
+4. **Bluetooth page** may not open on their TV; the settings-component names there are guesses.
+5. **README is partly stale.** The status banner still says "not compiled or run" and the CI section
+   still claims "unit tests, lint, then assembleDebug". The feature sections (windows, music page,
+   glass, wallpapers, size steps) have been kept current.
+6. Housekeeping: tests for Caffeine, Input, `naturalCompare`, and the newer settings defaults.
+7. Still unmeasured: frame time on a 2 GB box. No performance claim should be made without a
+   measurement.
