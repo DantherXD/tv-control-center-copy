@@ -73,6 +73,7 @@ private const val STAGGER_ROWS = 8
  * @param backdrop blurred copy of the screen to show inside the glass. Without it the panel
  *   draws its own frosted sheet instead.
  * @param scrimAlpha darkens everything behind the panel.
+ * @param windowBlur true when the system is blurring what is behind the window for us.
  */
 @Composable
 fun ControlCenterHost(
@@ -85,6 +86,7 @@ fun ControlCenterHost(
     onOpenEditor: () -> Unit = {},
     backdrop: Backdrop? = null,
     scrimAlpha: Float = 0f,
+    windowBlur: Boolean = false,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val shown = remember(state.layout, state.hasNowPlaying) {
@@ -111,6 +113,7 @@ fun ControlCenterHost(
             onCapability = onCapability,
             onOpenEditor = onOpenEditor,
             scrimAlpha = scrimAlpha,
+            windowBlur = windowBlur,
             modifier = modifier,
         )
     }
@@ -129,6 +132,7 @@ private fun HostBody(
     onCapability: (Capability) -> Unit,
     onOpenEditor: () -> Unit,
     scrimAlpha: Float,
+    windowBlur: Boolean,
     modifier: Modifier,
 ) {
     val context = LocalContext.current
@@ -224,6 +228,9 @@ private fun HostBody(
     val wholeScreen = state.settings.blurMethod == BlurMethod.WINDOW
     val fullBackdrop = if (wholeScreen) backdrop else null
     val tileBackdrop = if (wholeScreen) null else mapped
+    // Nothing can blur this screen: no screenshot, and the system will not blur behind the
+    // window. Draw the card then, so the controls never float on a sharp picture.
+    val glassCard = mapped == null && (state.settings.card || !windowBlur)
 
     val menuIsHome = state.settings.menuIsHome
     val profileShown = pinned.any { it.id == TileId.PROFILE }
@@ -370,7 +377,7 @@ private fun HostBody(
                     ),
                     backdrop = tileBackdrop,
                     origin = origin,
-                    sheet = !wholeScreen && mapped == null,
+                    sheet = glassCard,
                     page = page,
                     musicFocus = musicFocus,
                 )

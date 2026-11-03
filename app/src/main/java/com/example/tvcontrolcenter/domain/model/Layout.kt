@@ -228,6 +228,11 @@ data class PanelSettings(
     val headerGap: Int = 8,
     /** The focused control turns white and its icon and text turn dark, like tvOS. */
     val invertFocus: Boolean = true,
+    /**
+     * Glass card behind all the controls. Off, the controls float on the blurred screen like
+     * tvOS. The card is drawn even when this is off if nothing can blur the screen.
+     */
+    val card: Boolean = false,
     /** Size of the text in the panel, on top of the panel size (see [TextScaleSteps]). */
     val textScale: Float = 1f,
     /** Thickness of the glass edge line in dp (see [EdgeWidthSteps]); 0 draws none. */

@@ -112,6 +112,7 @@ class PreferencesLayoutRepository @Inject constructor(
             topOffset = prefs.getInt(KEY_TOP, 48),
             headerGap = prefs.getInt(KEY_GAP, 8),
             invertFocus = prefs.getBoolean(KEY_INVERT, true),
+            card = prefs.getBoolean(KEY_CARD, false),
             textScale = prefs.getFloat(KEY_TEXT, 1f),
             edgeWidth = prefs.getFloat(KEY_EDGE, 1.5f),
             topSize = prefs.getInt(KEY_TOP_SIZE, 40),
@@ -161,6 +162,7 @@ class PreferencesLayoutRepository @Inject constructor(
             .putInt(KEY_TOP, next.topOffset)
             .putInt(KEY_GAP, next.headerGap)
             .putBoolean(KEY_INVERT, next.invertFocus)
+            .putBoolean(KEY_CARD, next.card)
             .putFloat(KEY_TEXT, next.textScale)
             .putFloat(KEY_EDGE, next.edgeWidth)
             .putInt(KEY_TOP_SIZE, next.topSize)
@@ -181,6 +183,7 @@ class PreferencesLayoutRepository @Inject constructor(
         const val KEY_TOP = "top_offset"
         const val KEY_GAP = "header_gap"
         const val KEY_INVERT = "invert_focus"
+        const val KEY_CARD = "card"
         const val KEY_TEXT = "text_scale"
         const val KEY_EDGE = "edge_width"
         const val KEY_TOP_SIZE = "top_size"

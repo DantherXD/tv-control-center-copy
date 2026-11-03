@@ -92,6 +92,10 @@
     <string name="edit_btn_music">Music button</string>
     <string name="edit_music_note">With the music button on, it opens a now-playing page. With it off, Now Playing is an ordinary control in the grid.</string>
     <string name="blur_whole_note">Whole screen blurs everything behind the panel from a screenshot, with no box around the controls.</string>
+    <string name="blur_whole_ok">This device blurs behind windows, so Whole screen works without a screenshot.</string>
+    <string name="blur_whole_unsupported">This device does not blur behind windows. Whole screen falls back to a screenshot, and if none can be taken the panel shows the glass card.</string>
+    <string name="edit_card">Card behind the controls</string>
+    <string name="edit_card_note">Off: the controls float on the blurred screen, like tvOS. The card is still drawn when nothing can blur the screen.</string>
     <string name="music_previous">Previous</string>
     <string name="music_play">Play</string>
     <string name="music_pause">Pause</string>

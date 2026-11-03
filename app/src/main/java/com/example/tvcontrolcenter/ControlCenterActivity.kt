@@ -49,6 +49,9 @@ class ControlCenterActivity : ComponentActivity() {
     private var panelOpen by mutableStateOf(false)
     private var backdrop by mutableStateOf<Backdrop?>(null)
 
+    /** The system is blurring what is behind the window (no screenshot was possible). */
+    private var windowBlur by mutableStateOf(false)
+
     /** The panel opens once the screenshot is ready. A second launch before that cancels it. */
     private var openWhenReady = true
     private var everOpened = false
@@ -65,7 +68,8 @@ class ControlCenterActivity : ComponentActivity() {
                     // No screenshot (older Android, service off, protected video): ask the system to blur.
                     if (backdrop == null && settings.blurMethod != BlurMethod.SCREENSHOT) {
                         val p = window.attributes
-                        if (p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))) window.attributes = p
+                        windowBlur = p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))
+                        if (windowBlur) window.attributes = p
                     }
                     if (openWhenReady) {
                         everOpened = true
@@ -81,6 +85,7 @@ class ControlCenterActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     backdrop = backdrop,
                     scrimAlpha = if (backdrop != null) 0.22f else 0.32f,
+                    windowBlur = windowBlur,
                     onOpenEditor = {
                         startActivity(
                             Intent(this, MainActivity::class.java)

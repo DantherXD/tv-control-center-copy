@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tvcontrolcenter.R
+import com.example.tvcontrolcenter.system.wholeScreenBlurSupported
 import com.example.tvcontrolcenter.domain.model.GridPacker
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
@@ -265,6 +266,10 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                             StepRow(stringResource(R.string.edit_header_gap), "${settings.headerGap}") { d ->
                                 vm.updateSettings { it.copy(headerGap = HeaderGapSteps.step(it.headerGap, d)) }
                             }
+                            StepRow(stringResource(R.string.edit_card), onOff(settings.card)) {
+                                vm.updateSettings { it.copy(card = !it.card) }
+                            }
+                            Hint(stringResource(R.string.edit_card_note))
                             StepRow(
                                 stringResource(R.string.edit_edge),
                                 if (settings.edgeWidth <= 0f) stringResource(R.string.edge_none) else "${settings.edgeWidth}",
@@ -367,6 +372,12 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 vm.updateSettings { it.copy(blurMethod = next) }
                             }
                             Hint(stringResource(R.string.blur_whole_note))
+                            Hint(
+                                stringResource(
+                                    if (wholeScreenBlurSupported(context)) R.string.blur_whole_ok
+                                    else R.string.blur_whole_unsupported,
+                                ),
+                            )
                             StepRow(stringResource(R.string.edit_patient), onOff(settings.patientCapture)) {
                                 vm.updateSettings { it.copy(patientCapture = !it.patientCapture) }
                             }

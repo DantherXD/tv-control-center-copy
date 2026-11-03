@@ -1,5 +1,6 @@
 package com.example.tvcontrolcenter.system
 
+import android.content.Context
 import android.os.Build
 import android.view.WindowManager
 
@@ -19,3 +20,12 @@ internal fun WindowManager.LayoutParams.applyBlurFallback(windowManager: WindowM
     blurBehindRadius = radiusPx
     return true
 }
+
+/**
+ * True when the system will really blur what is behind the window: Android 12+ with
+ * cross-window blur switched on. Whole screen only works then; otherwise the panel needs a
+ * screenshot, or it falls back to the glass card.
+ */
+internal fun wholeScreenBlurSupported(context: Context): Boolean =
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+        (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).isCrossWindowBlurEnabled

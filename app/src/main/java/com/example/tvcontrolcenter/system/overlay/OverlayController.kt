@@ -84,7 +84,7 @@ class OverlayController(
     private var visible by mutableStateOf(false)
     private var backdrop by mutableStateOf<Backdrop?>(null)
     private var windowParams: WindowManager.LayoutParams? = null
-    private var windowBlurOn = false
+    private var windowBlurOn by mutableStateOf(false)
 
     /** False once [hide] was called, so a screenshot that arrives late cannot reopen the panel. */
     private var wanted = false
@@ -147,6 +147,7 @@ class OverlayController(
                         },
                         backdrop = backdrop,
                         scrimAlpha = if (backdrop != null) SCRIM_WITH_BACKDROP else SCRIM_WITHOUT_BACKDROP,
+                        windowBlur = windowBlurOn,
                     )
                 }
             }
