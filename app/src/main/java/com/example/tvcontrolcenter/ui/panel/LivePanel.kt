@@ -56,19 +56,19 @@ internal fun LivePanel(
     onActivate: (TileId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var size by remember { mutableStateOf(IntSize.Zero) }
+    var previewSize by remember { mutableStateOf(IntSize.Zero) }
     val level = state.settings.effectiveBlur
     // Blurring is real work: keep it off the frame that draws the controls.
-    val screen by produceState<ImageBitmap?>(null, state.settings.wallpaper, level, size) {
-        val w = size.width
-        val h = size.height
+    val screen by produceState<ImageBitmap?>(null, state.settings.wallpaper, level, previewSize) {
+        val w = previewSize.width
+        val h = previewSize.height
         value = if (w <= 0 || h <= 0) null
         else withContext(Dispatchers.Default) { previewWallpaper(state.settings.wallpaper, w, h, level) }
     }
     val wholeScreen = state.settings.blurMethod == BlurMethod.WINDOW
     // Blur off: the picture is still drawn behind, but no glass samples it (as on the TV).
-    val mapped = remember(screen, size, level) {
-        if (level <= 0) null else screen?.let { Backdrop(it, size.width, size.height) }
+    val mapped = remember(screen, previewSize, level) {
+        if (level <= 0) null else screen?.let { Backdrop(it, previewSize.width, previewSize.height) }
     }
     // Same rule as the panel: a sheet only when the glass has no blurred screen to show, or
     // when the card was asked for.
@@ -77,7 +77,7 @@ internal fun LivePanel(
     Box(
         modifier
             .clip(RoundedCornerShape(PanelDimens.sheetRadius))
-            .onSizeChanged { size = it }
+            .onSizeChanged { previewSize = it }
             .drawBehind {
                 val image = screen ?: return@drawBehind
                 drawImage(
