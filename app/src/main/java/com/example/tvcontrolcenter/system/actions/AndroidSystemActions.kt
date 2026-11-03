@@ -10,6 +10,14 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.widget.Toast
+import com.example.tvcontrolcenter.R
+import com.example.tvcontrolcenter.system.backdrop.ScreenshotSaver
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.example.tvcontrolcenter.domain.model.ActionResult
 import com.example.tvcontrolcenter.domain.model.Capability
 import com.example.tvcontrolcenter.domain.repository.SystemActions
@@ -114,8 +122,30 @@ class AndroidSystemActions @Inject constructor(
 
     override fun showRecents() = global(AccessibilityService.GLOBAL_ACTION_RECENTS)
 
-    override fun takeScreenshot() =
-        global(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT, minSdk = Build.VERSION_CODES.P)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    /**
+     * Android TV does nothing for the system screenshot action, so take the picture ourselves
+     * (accessibility screenshot, Android 11+) once the panel has closed, and save it to Pictures.
+     */
+    override fun takeScreenshot(): ActionResult {
+        if (ControlCenterAccessibilityService.instance == null) {
+            return ActionResult.NeedsCapability(Capability.ACCESSIBILITY_SERVICE)
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            return global(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT, minSdk = Build.VERSION_CODES.P)
+        }
+        scope.launch {
+            delay(PANEL_CLOSE_DELAY_MILLIS)
+            val saved = ScreenshotSaver.takeAndSave(context)
+            Toast.makeText(
+                context,
+                if (saved) R.string.screenshot_saved else R.string.screenshot_failed,
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+        return ActionResult.Done
+    }
 
     override fun showNotifications() = global(AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS)
 

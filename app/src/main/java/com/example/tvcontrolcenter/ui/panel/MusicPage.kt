@@ -286,7 +286,7 @@ private fun TransportButton(
         contentAlignment = Alignment.Center,
     ) {
         CompositionLocalProvider(LocalTileInk provides if (dark) GlassTokens.inkDark else Color.White) {
-            TileIcon(icon, 24.dp)
+            FadingIcon(icon, 24.dp)
         }
     }
 }

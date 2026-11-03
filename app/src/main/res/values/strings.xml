@@ -101,4 +101,16 @@
     <string name="edit_howto">OK changes a setting to its next value, Left goes back one, Right jumps to the controls.</string>
     <string name="edit_look">Look</string>
     <string name="edit_blur_title">Blur and glass</string>
+    <string name="edit_edge">Glass edge thickness</string>
+    <string name="edge_none">None</string>
+    <string name="edit_icons">Icon style</string>
+    <string name="icons_filled">Filled</string>
+    <string name="icons_outlined">Outlined</string>
+    <string name="icons_rounded">Rounded</string>
+    <string name="edit_top_size">Top bar button size</string>
+    <string name="edit_top_flat">Borderless top bar</string>
+    <string name="edit_menu_home">Menu button is the main page</string>
+    <string name="edit_longpress_note">Hold OK on the Profile button to open this editor.</string>
+    <string name="screenshot_saved">Screenshot saved to Pictures/Screenshots</string>
+    <string name="screenshot_failed">Could not take the screenshot</string>
 </resources>

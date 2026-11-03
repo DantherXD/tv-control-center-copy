@@ -122,9 +122,23 @@ fun Modifier.frostedTile(
     solid: Boolean = false,
     /** Flat fills only: no gradient, grain or glint. Used by the editor, which has many controls. */
     lite: Boolean = false,
+    /** Thickness of the glass edge line. */
+    edge: Dp = 0.8.dp,
+    /** Borderless: no glass at rest, only the white focus or page fill. */
+    flat: Boolean = false,
 ): Modifier = drawWithCache {
     val tint = style.tileTint(overBlur = overBlur)
     val r = CornerRadius(cornerRadius.toPx())
+    if (flat) {
+        return@drawWithCache onDrawBehind {
+            val f = focus()
+            when {
+                solid -> drawRoundRect(Color.White.copy(alpha = 0.97f), cornerRadius = r)
+                f > 0.01f && invert -> drawRoundRect(Color.White.copy(alpha = 0.97f * f), cornerRadius = r)
+                f > 0.01f -> drawRoundRect(Color.White.copy(alpha = 0.30f * f), cornerRadius = r)
+            }
+        }
+    }
     if (lite) {
         return@drawWithCache onDrawBehind {
             val f = focus()
@@ -135,6 +149,7 @@ fun Modifier.frostedTile(
                 f > 0.01f && invert -> drawRoundRect(Color.White.copy(alpha = 0.97f * f), cornerRadius = r)
                 f > 0.01f -> drawRoundRect(Color.White.copy(alpha = 0.30f * f), cornerRadius = r)
             }
+            if (edge > 0.dp) drawRim(r, edge.toPx(), 1f)
             if (selected) {
                 val w = 2.5.dp.toPx()
                 drawRoundRect(
@@ -185,8 +200,8 @@ fun Modifier.frostedTile(
                 cornerRadius = r,
             )
         }
-        // Hairline only: the glass edge is felt, not drawn as a frame.
-        drawRim(r, 0.8.dp.toPx(), 1f)
+        // Glass edge; thickness is a setting.
+        if (edge > 0.dp) drawRim(r, edge.toPx(), 1f)
 
         // Editor: the control being edited gets a solid outline.
         if (selected) {
@@ -246,6 +261,12 @@ private fun DrawScope.drawRim(
 
 /** The frost style every tile below draws with. Provided by the panel and the editor. */
 val LocalFrostStyle = compositionLocalOf { FrostStyle.SMOKE }
+
+/** Setting: thickness of the glass edge line. */
+val LocalEdgeWidth = compositionLocalOf { 0.8.dp }
+
+/** Setting: top-bar buttons have no glass at rest. */
+val LocalTopBorderless = compositionLocalOf { false }
 
 /** Setting: focused controls turn white with dark content. */
 val LocalInvertFocus = compositionLocalOf { true }

@@ -43,6 +43,7 @@ import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
 import androidx.compose.ui.graphics.FilterQuality
 import kotlin.math.roundToInt
+import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
 import com.example.tvcontrolcenter.ui.glass.Backdrop
@@ -86,17 +87,15 @@ fun ControlCenterHost(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val shown = remember(state.layout, state.hasNowPlaying) {
-        // The grid tile appears only while something plays; the top-bar button is always there.
-        state.layout.visibleItems().filter {
-            it.id != TileId.NOW_PLAYING || it.size == TileSize.TOP || state.hasNowPlaying
-        }
+        // Now Playing (grid tile or top-bar button) appears only while something plays.
+        state.layout.visibleItems().filter { it.id != TileId.NOW_PLAYING || state.hasNowPlaying }
     }
     val placed = remember(shown) { GridPacker.pack(shown) }
     val pinned = remember(shown) { GridPacker.pinned(shown) }
     val musicOnTop = pinned.any { it.id == TileId.NOW_PLAYING }
     val body = maxOf(gridHeight(GridPacker.rowCount(placed)), if (musicOnTop) PanelDimens.musicCardHeight else 0.dp)
     val needed = state.settings.topOffset.dp + PanelDimens.sheetPadding * 2 +
-        PanelDimens.headerHeight + state.settings.headerGap.dp + PanelDimens.sheetPadding +
+        PanelDimens.headerFor(state.settings.topSize) + state.settings.headerGap.dp + PanelDimens.sheetPadding +
         body + PanelDimens.edgeInset
     ProvideUiScale(state.settings.uiScale, neededHeight = needed) {
         HostBody(
@@ -222,15 +221,31 @@ private fun HostBody(
     val fullBackdrop = if (wholeScreen) backdrop else null
     val tileBackdrop = if (wholeScreen) null else mapped
 
+    val menuIsHome = state.settings.menuIsHome
+    val profileShown = pinned.any { it.id == TileId.PROFILE }
+    // Nothing playing any more: the music page has nothing to show.
+    LaunchedEffect(state.hasNowPlaying) {
+        if (!state.hasNowPlaying && page == PanelPage.MUSIC) page = PanelPage.GRID
+    }
     val onActivate: (TileId) -> Unit = { id ->
-        if (id == TileId.NOW_PLAYING && musicOnTop) {
-            if (page == PanelPage.MUSIC) {
-                page = PanelPage.GRID
-            } else if (viewModel.onMusicPageRequested()) {
-                page = PanelPage.MUSIC
+        when {
+            id == TileId.NOW_PLAYING && musicOnTop -> {
+                if (page == PanelPage.MUSIC) {
+                    // With Menu as the main page, the music button only opens the music page.
+                    if (!menuIsHome) page = PanelPage.GRID
+                } else if (viewModel.onMusicPageRequested()) {
+                    page = PanelPage.MUSIC
+                }
             }
-        } else {
-            viewModel.onTileActivated(id)
+            id == TileId.EDIT && menuIsHome -> {
+                if (page != PanelPage.GRID) {
+                    page = PanelPage.GRID
+                } else if (!profileShown) {
+                    // Long-press on Profile opens the editor; without that button Menu still does.
+                    viewModel.onTileActivated(id)
+                }
+            }
+            else -> viewModel.onTileActivated(id)
         }
     }
 
@@ -281,6 +296,8 @@ private fun HostBody(
                 LocalFrostStyle provides state.settings.frost,
                 LocalInvertFocus provides state.settings.invertFocus,
                 LocalOverBlur provides (backdrop != null),
+                LocalEdgeWidth provides state.settings.edgeWidth.dp,
+                LocalIconStyle provides state.settings.iconStyle,
             ) {
                 ProvideTextScale(state.settings.textScale) {
                 PanelContent(
@@ -294,6 +311,7 @@ private fun HostBody(
                     appear = { p -> { rowProgress[(p.row + 1).coerceIn(0, ROW_SLOTS - 1)].value } },
                     onFocused = viewModel::onFocused,
                     onActivate = onActivate,
+                    onLongPress = viewModel::onTileLongPressed,
                     actions = TileActions(
                         onVolumeStep = viewModel::onVolumeStep,
                         onSkipNext = viewModel::onSkipNext,

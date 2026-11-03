@@ -50,6 +50,13 @@ object BackdropCapture {
         else -> Status.READY
     }
 
+    /** Full-size picture of the screen for saving. Null if not possible (no service, Android 10-, protected video). */
+    suspend fun screenshotFull(): Bitmap? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+        val service = ControlCenterAccessibilityService.instance ?: return null
+        return withTimeoutOrNull(2_000L) { screenshot(service) }
+    }
+
     /** Blurred picture of whatever app is on screen, [level] 1..4. Null if off or not possible. */
     suspend fun capture(level: Int): Backdrop? {
         if (level <= 0 || !isSupported) return null

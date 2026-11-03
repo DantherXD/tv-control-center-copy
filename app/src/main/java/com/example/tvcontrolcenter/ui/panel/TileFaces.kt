@@ -1,5 +1,9 @@
 package com.example.tvcontrolcenter.ui.panel
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -146,14 +150,14 @@ internal fun VolumeFace(percent: Int, muted: Boolean, size: TileSize) {
     val ink = LocalTileInk.current
     when (size) {
         TileSize.SMALL, TileSize.TOP -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            TileIcon(icon, PanelDimens.iconSmall)
+            FadingIcon(icon, PanelDimens.iconSmall)
         }
         TileSize.WIDE, TileSize.FULL -> Row(
             Modifier.fillMaxSize().padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            TileIcon(icon, PanelDimens.iconSmall)
+            FadingIcon(icon, PanelDimens.iconSmall)
             VolumeBar(fill, Modifier.weight(1f).height(7.dp), ink = ink)
         }
         TileSize.TALL -> Column(
@@ -162,13 +166,13 @@ internal fun VolumeFace(percent: Int, muted: Boolean, size: TileSize) {
         ) {
             VolumeBar(fill, Modifier.weight(1f).width(7.dp), vertical = true, ink = ink)
             Spacer(Modifier.height(8.dp))
-            TileIcon(icon, PanelDimens.iconSmall)
+            FadingIcon(icon, PanelDimens.iconSmall)
         }
         TileSize.LARGE -> Column(
             Modifier.fillMaxSize().padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            TileIcon(icon, PanelDimens.iconLarge)
+            FadingIcon(icon, PanelDimens.iconLarge)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Label(if (muted) stringResource(R.string.state_muted) else "$percent%")
                 VolumeBar(fill, Modifier.fillMaxWidth().height(7.dp), ink = ink)
@@ -179,12 +183,14 @@ internal fun VolumeFace(percent: Int, muted: Boolean, size: TileSize) {
 
 @Composable
 private fun VolumeBar(percent: Int, modifier: Modifier, vertical: Boolean = false, ink: Color = Color.White) {
+    // The bar glides to the new level instead of jumping; read while drawing, so it never recomposes.
+    val level by animateFloatAsState(percent / 100f, tween(220), label = "volume")
     Box(
         modifier
             .clip(CircleShape)
             .background(ink.copy(alpha = 0.28f))
             .drawBehind {
-                val f = percent / 100f
+                val f = level.coerceIn(0f, 1f)
                 val s = if (vertical) Size(size.width, size.height * f) else Size(size.width * f, size.height)
                 val top = if (vertical) size.height - s.height else 0f
                 drawRect(ink, topLeft = androidx.compose.ui.geometry.Offset(0f, top), size = s)
@@ -204,7 +210,7 @@ internal fun NowPlayingFace(
     val name = title ?: stringResource(R.string.nothing_playing)
     when (size) {
         TileSize.SMALL, TileSize.TOP -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            TileIcon(if (title == null) note else toggle, PanelDimens.iconSmall)
+            FadingIcon(if (title == null) note else toggle, PanelDimens.iconSmall)
         }
         TileSize.WIDE -> Row(
             Modifier.fillMaxSize().padding(horizontal = 14.dp),
@@ -227,14 +233,14 @@ internal fun NowPlayingFace(
                 Label(name, maxLines = 1)
                 artist?.let { Detail(it) }
             }
-            TileIcon(toggle, PanelDimens.iconSmall)
+            FadingIcon(toggle, PanelDimens.iconSmall)
         }
         TileSize.TALL -> Column(
             Modifier.fillMaxSize().padding(horizontal = 3.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            TileIcon(toggle, PanelDimens.iconSmall)
+            FadingIcon(toggle, PanelDimens.iconSmall)
             Spacer(Modifier.height(6.dp))
             Label(name, style = PanelType.labelSmall, maxLines = 1)
         }
@@ -244,7 +250,7 @@ internal fun NowPlayingFace(
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 TileIcon(note, PanelDimens.iconLarge)
-                TileIcon(toggle, PanelDimens.iconSmall)
+                FadingIcon(toggle, PanelDimens.iconSmall)
             }
             Column {
                 Label(name, maxLines = 2)
@@ -258,7 +264,8 @@ internal fun NowPlayingFace(
 internal fun TileIcon(icon: ImageVector, size: Dp, tint: Color = Color.Unspecified, modifier: Modifier = Modifier) {
     // Decorative: the tile itself carries the spoken label. Unspecified follows the tile: white, or dark on a white tile.
     val color = if (tint == Color.Unspecified) LocalTileInk.current else tint
-    Icon(icon, contentDescription = null, modifier = modifier.size(size), tint = color)
+    val styled = IconStyles.resolve(icon, LocalIconStyle.current)
+    Icon(styled, contentDescription = null, modifier = modifier.size(size), tint = color)
 }
 
 @Composable
@@ -282,4 +289,12 @@ internal fun Detail(text: String) {
         style = PanelType.detail.copy(color = LocalTileInk.current.copy(alpha = 0.82f)),
         maxLines = 1, overflow = TextOverflow.Ellipsis,
     )
+}
+
+/** An icon that fades into the next one when it changes (play and pause, volume and mute). */
+@Composable
+internal fun FadingIcon(icon: ImageVector, size: Dp, modifier: Modifier = Modifier) {
+    Crossfade(targetState = icon, animationSpec = tween(180), label = "icon", modifier = modifier) {
+        TileIcon(it, size)
+    }
 }

@@ -222,6 +222,15 @@ data class PanelSettings(
     val invertFocus: Boolean = true,
     /** Size of the text in the panel, on top of the panel size (see [TextScaleSteps]). */
     val textScale: Float = 1f,
+    /** Thickness of the glass edge line in dp (see [EdgeWidthSteps]); 0 draws none. */
+    val edgeWidth: Float = 1.5f,
+    /** Size of the round top-bar buttons in dp (see [TopSizeSteps]). */
+    val topSize: Int = 40,
+    /** Top-bar buttons have no glass until focused. */
+    val topBorderless: Boolean = false,
+    /** Menu button is the main page: it leaves the music page, and the music button only opens it. */
+    val menuIsHome: Boolean = true,
+    val iconStyle: IconStyle = IconStyle.FILLED,
     /** 0 = no photo. Changes whenever a new photo is saved, so the picture reloads. */
     val profilePhotoVersion: Int = 0,
     /** Colour of the profile circle when there is no photo; index into the app's palette. */
@@ -234,6 +243,10 @@ data class PanelSettings(
 val UiScaleSteps: List<Float> = listOf(0.8f, 1f, 1.25f, 1.5f, 1.75f)
 
 val TopOffsetSteps: List<Int> = listOf(0, 24, 48, 72, 96, 120)
+
+val EdgeWidthSteps: List<Float> = listOf(0f, 0.8f, 1.5f, 2.5f, 3.5f, 5f)
+
+val TopSizeSteps: List<Int> = listOf(28, 32, 36, 40, 44)
 
 val TextScaleSteps: List<Float> = listOf(0.8f, 0.9f, 1f, 1.15f, 1.3f)
 
@@ -337,3 +350,6 @@ object GridNav {
         return candidates.minWithOrNull(compareBy<Candidate>({ it.gap * 4 + it.cross }))?.id
     }
 }
+
+/** Which Material icon family the controls use. */
+enum class IconStyle { FILLED, OUTLINED, ROUNDED }

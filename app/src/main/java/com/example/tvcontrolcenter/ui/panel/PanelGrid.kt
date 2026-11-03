@@ -56,7 +56,7 @@ import kotlinx.coroutines.delay
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-private const val VOLUME_STEP = 5
+private const val VOLUME_STEP = 3
 
 /** Callbacks for the controls that react to Left/Right themselves. */
 internal class TileActions(
@@ -99,6 +99,7 @@ internal fun PanelContent(
     sheet: Boolean = false,
     page: PanelPage = PanelPage.GRID,
     musicFocus: MusicFocus? = null,
+    onLongPress: (TileId) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     // Focus moves over the top bar and the grid as one set of rows.
@@ -107,12 +108,14 @@ internal fun PanelContent(
     // The sheet reaches sheetPadding above the grid, so it adds that to keep the visible gap equal.
     val gap = state.settings.headerGap.dp + if (sheet) PanelDimens.sheetPadding else 0.dp
     val music = page == PanelPage.MUSIC && musicFocus != null
+    val top = state.settings.topSize.dp
+    val header = PanelDimens.headerFor(state.settings.topSize)
     val gridOrigin = origin + with(density) {
-        Offset(0f, (PanelDimens.headerHeight + gap).toPx())
+        Offset(0f, (header + gap).toPx())
     }
     Column(modifier.width(PanelDimens.gridWidth)) {
         Row(
-            Modifier.fillMaxWidth().height(PanelDimens.headerHeight),
+            Modifier.fillMaxWidth().height(header),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ClockText(Modifier.padding(start = 6.dp))
@@ -121,7 +124,7 @@ internal fun PanelContent(
                 pinned.forEachIndexed { index, p ->
                     key(p.id) {
                         val left = PanelDimens.gridWidth -
-                            (PanelDimens.topButton + PanelDimens.topButtonGap) * (pinned.size - index) +
+                            (top + PanelDimens.topButtonGap) * (pinned.size - index) +
                             PanelDimens.topButtonGap
                         PanelTile(
                             p = p,
@@ -139,8 +142,10 @@ internal fun PanelContent(
                             backdropOrigin = origin + with(density) { Offset(left.toPx(), 0f) },
                             downTarget = if (music) musicFocus?.play else null,
                             pageOpen = music && p.id == TileId.NOW_PLAYING,
-                            radius = PanelDimens.topButton / 2,
-                            modifier = Modifier.size(PanelDimens.topButton),
+                            radius = top / 2,
+                            flat = state.settings.topBorderless,
+                            longPress = if (interactive && p.id == TileId.PROFILE) ({ onLongPress(p.id) }) else null,
+                            modifier = Modifier.size(top),
                         )
                     }
                 }
@@ -249,6 +254,8 @@ internal fun TileGrid(
                     backdropOrigin = origin + with(density) { Offset(x.toPx(), y.toPx()) },
                     downTarget = null,
                     pageOpen = false,
+                    flat = false,
+                    longPress = null,
                     radius = radiusFor(p.size),
                     modifier = Modifier
                         .offset(x = x, y = y)
@@ -276,6 +283,8 @@ private fun PanelTile(
     backdropOrigin: Offset,
     downTarget: FocusRequester?,
     pageOpen: Boolean,
+    flat: Boolean,
+    longPress: (() -> Unit)?,
     radius: Dp,
     modifier: Modifier,
 ) {
@@ -316,6 +325,8 @@ private fun PanelTile(
         stateText = stateText,
         active = face.active,
         solid = pageOpen,
+        flat = flat,
+        onLongPress = longPress,
         selected = selected,
         backdrop = backdrop,
         backdropOrigin = backdropOrigin,

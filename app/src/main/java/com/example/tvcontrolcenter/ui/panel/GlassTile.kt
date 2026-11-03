@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.tvcontrolcenter.ui.glass.Backdrop
+import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
@@ -72,6 +73,10 @@ fun GlassTile(
     selected: Boolean = false,
     /** Drawn white with dark content whatever the focus, e.g. the open page's top-bar button. */
     solid: Boolean = false,
+    /** Borderless: no glass until focused. */
+    flat: Boolean = false,
+    /** Held OK. When set, a short press still activates, a long one calls this instead. */
+    onLongPress: (() -> Unit)? = null,
     backdrop: Backdrop? = null,
     backdropOrigin: Offset = Offset.Zero,
     appear: () -> Float = { 1f },
@@ -83,6 +88,8 @@ fun GlassTile(
     val invert = LocalInvertFocus.current
     val lite = LocalLiteGlass.current
     val overBlur = LocalOverBlur.current
+    val edge = LocalEdgeWidth.current
+    val longFired = remember { booleanArrayOf(false) }
     val focusAmount = animateFloatAsState(
         targetValue = if (focused) 1f else 0f,
         animationSpec = if (lite) snap<Float>() else Motion.focusSpring<Float>(),
@@ -106,9 +113,22 @@ fun GlassTile(
             .onKeyEvent { event ->
                 when {
                     onKey(event) -> true
+                    onLongPress != null && event.key.isSelect() && event.type == KeyEventType.KeyDown &&
+                        event.nativeKeyEvent.repeatCount > 0 -> {
+                        if (!longFired[0]) {
+                            longFired[0] = true
+                            if (GlassTokens.soundCues) view.playSoundEffect(SoundEffectConstants.CLICK)
+                            onLongPress()
+                        }
+                        true
+                    }
                     event.type == KeyEventType.KeyUp && event.key.isSelect() -> {
-                        if (GlassTokens.soundCues) view.playSoundEffect(SoundEffectConstants.CLICK)
-                        onActivate()
+                        if (longFired[0]) {
+                            longFired[0] = false
+                        } else {
+                            if (GlassTokens.soundCues) view.playSoundEffect(SoundEffectConstants.CLICK)
+                            onActivate()
+                        }
                         true
                     }
                     event.key.isSelect() -> true // swallow the matching key-down
@@ -144,6 +164,8 @@ fun GlassTile(
                 invert = invert,
                 solid = solid,
                 lite = lite,
+                edge = edge,
+                flat = flat,
             ),
     ) {
         CompositionLocalProvider(LocalTileInk provides ink) { content() }

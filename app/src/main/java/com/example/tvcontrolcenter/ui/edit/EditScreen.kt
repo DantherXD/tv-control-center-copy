@@ -24,7 +24,12 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.BoxScope
 import com.example.tvcontrolcenter.domain.model.HeaderGapSteps
+import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
+import com.example.tvcontrolcenter.ui.panel.LocalIconStyle
+import com.example.tvcontrolcenter.domain.model.EdgeWidthSteps
+import com.example.tvcontrolcenter.domain.model.IconStyle
+import com.example.tvcontrolcenter.domain.model.TopSizeSteps
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.glass.LocalTileInk
 import androidx.compose.foundation.shape.CircleShape
@@ -102,12 +107,14 @@ fun EditScreen(viewModel: ControlCenterViewModel, onDone: () -> Unit) {
     // Fits the screen but ignores the user's panel size, so the controls always have room.
     val rows = remember(state.layout) { GridPacker.rowCount(GridPacker.pack(state.layout.visibleItems())) }
     val needed = gridHeight(rows) + PanelDimens.sheetPadding * 2 +
-        PanelDimens.headerHeight + state.settings.headerGap.dp + PanelDimens.sheetPadding + 56.dp
+        PanelDimens.headerFor(state.settings.topSize) + state.settings.headerGap.dp + PanelDimens.sheetPadding + 56.dp
     ProvideUiScale(1f, neededHeight = needed) {
         // Lite glass: flat fills and no animation, so this page with its many buttons stays quick.
         CompositionLocalProvider(
             LocalLiteGlass provides true,
             LocalInvertFocus provides state.settings.invertFocus,
+            LocalEdgeWidth provides state.settings.edgeWidth.dp,
+            LocalIconStyle provides state.settings.iconStyle,
         ) {
             EditBody(state, viewModel, onDone)
         }
@@ -228,6 +235,22 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                     stringResource(R.string.edit_invert),
                     stringResource(if (settings.invertFocus) R.string.invert_yes else R.string.invert_no),
                 ) { vm.updateSettings { it.copy(invertFocus = !it.invertFocus) } }
+                StepRow(
+                    stringResource(R.string.edit_edge),
+                    if (settings.edgeWidth <= 0f) stringResource(R.string.edge_none) else "${settings.edgeWidth}",
+                ) { d -> vm.updateSettings { it.copy(edgeWidth = EdgeWidthSteps.step(it.edgeWidth, d)) } }
+                val iconNames = listOf(
+                    IconStyle.FILLED to R.string.icons_filled,
+                    IconStyle.OUTLINED to R.string.icons_outlined,
+                    IconStyle.ROUNDED to R.string.icons_rounded,
+                )
+                StepRow(
+                    stringResource(R.string.edit_icons),
+                    stringResource(iconNames.first { it.first == settings.iconStyle }.second),
+                ) { d ->
+                    val next = iconNames[Math.floorMod(iconNames.indexOfFirst { it.first == settings.iconStyle } + d, iconNames.size)].first
+                    vm.updateSettings { it.copy(iconStyle = next) }
+                }
 
                 Section(stringResource(R.string.edit_header_buttons))
                 listOf(TileId.EDIT to R.string.edit_btn_menu, TileId.PROFILE to R.string.edit_btn_profile).forEach { (id, name) ->
@@ -243,8 +266,18 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                         vm.setTileSize(TileId.NOW_PLAYING, TileSize.TOP)
                     }
                 }
+                StepRow(stringResource(R.string.edit_top_size), "${settings.topSize}") { d ->
+                    vm.updateSettings { it.copy(topSize = TopSizeSteps.step(it.topSize, d)) }
+                }
+                StepRow(stringResource(R.string.edit_top_flat), onOff(settings.topBorderless)) {
+                    vm.updateSettings { it.copy(topBorderless = !it.topBorderless) }
+                }
+                StepRow(stringResource(R.string.edit_menu_home), onOff(settings.menuIsHome)) {
+                    vm.updateSettings { it.copy(menuIsHome = !it.menuIsHome) }
+                }
                 Hint(stringResource(R.string.edit_menu_note))
                 Hint(stringResource(R.string.edit_music_note))
+                Hint(stringResource(R.string.edit_longpress_note))
 
                 Section(stringResource(R.string.edit_photo))
                 val context = LocalContext.current

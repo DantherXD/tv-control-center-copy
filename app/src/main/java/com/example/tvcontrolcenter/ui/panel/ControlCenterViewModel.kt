@@ -183,6 +183,11 @@ class ControlCenterViewModel @Inject constructor(
         return false
     }
 
+    /** Holding OK on a control. Profile opens the editor. */
+    fun onTileLongPressed(id: TileId) {
+        if (id == TileId.PROFILE) _events.tryEmit(PanelEvent.OpenEditor)
+    }
+
     fun onPlayPause() {
         if (nowPlayingSource.hasAccess()) nowPlayingSource.togglePlayPause()
     }
