@@ -307,6 +307,11 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 stringResource(R.string.edit_invert),
                                 stringResource(if (settings.invertFocus) R.string.invert_yes else R.string.invert_no),
                             ) { vm.updateSettings { it.copy(invertFocus = !it.invertFocus) } }
+                            StepRow(
+                                stringResource(R.string.edit_auto_ink),
+                                onOff(settings.autoInk),
+                            ) { vm.updateSettings { it.copy(autoInk = !it.autoInk) } }
+                            Hint(stringResource(R.string.edit_auto_ink_note))
                         }
 
                         EditTab.TOPBAR -> {

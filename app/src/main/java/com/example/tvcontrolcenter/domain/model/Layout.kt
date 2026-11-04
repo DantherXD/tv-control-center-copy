@@ -278,6 +278,11 @@ data class PanelSettings(
     val musicStyle: MusicStyle = MusicStyle.COMPACT,
     /** How the Wi-Fi, Bluetooth and Input windows arrive and leave (see [WindowMotion]). */
     val windowMotion: WindowMotion = WindowMotion.MID_AIR,
+    /**
+     * Icon and text colour follow the brightness behind each control, so white never sits on a
+     * white app. Off keeps every control white, as it was before.
+     */
+    val autoInk: Boolean = true,
     /** Wait longer and retry the screenshot, so the blur also works over video and moving scenes. */
     val patientCapture: Boolean = false,
     /** 0 = no photo. Changes whenever a new photo is saved, so the picture reloads. */

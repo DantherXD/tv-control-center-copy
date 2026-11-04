@@ -51,6 +51,7 @@ import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.glass.frostedSheet
+import com.example.tvcontrolcenter.ui.glass.glassInk
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import com.example.tvcontrolcenter.ui.theme.PanelType
 import kotlinx.coroutines.delay
@@ -153,12 +154,22 @@ internal fun PanelContent(
             modifier = m,
         )
     }
+    // The clock sits on the same picture; over a white app it needs dark ink too.
+    val clockInk: Color? = if (!state.settings.autoInk || backdrop == null) null else {
+        val heightDp = header + gap
+        backdrop.brightness(
+            origin.x,
+            origin.y,
+            with(density) { PanelDimens.gridWidth.toPx() },
+            with(density) { heightDp.toPx() },
+        )?.let { glassInk(LocalFrostStyle.current, it) }
+    }
     Column(modifier.width(PanelDimens.gridWidth)) {
         Row(
             Modifier.fillMaxWidth().height(header),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ClockText(Modifier.padding(start = 6.dp))
+            ClockText(Modifier.padding(start = 6.dp), ink = clockInk)
             Spacer(Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(PanelDimens.topButtonGap)) {
                 pinned.forEachIndexed { index, p ->
@@ -243,7 +254,7 @@ internal fun PanelContent(
 
 /** Time of day in the user's 12 or 24 hour style, refreshed on the minute. */
 @Composable
-internal fun ClockText(modifier: Modifier = Modifier) {
+internal fun ClockText(modifier: Modifier = Modifier, ink: Color? = null) {
     val context = LocalContext.current
     val formatter = remember(context) {
         DateTimeFormatter.ofPattern(if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm")
@@ -259,7 +270,7 @@ internal fun ClockText(modifier: Modifier = Modifier) {
     BasicText(
         text,
         modifier,
-        style = PanelType.clock.copy(color = Color.White.copy(alpha = 0.8f)),
+        style = PanelType.clock.copy(color = (ink ?: Color.White).copy(alpha = 0.8f)),
         maxLines = 1,
     )
 }
@@ -374,6 +385,21 @@ private fun PanelTile(
     val focusProps = remember(p.id, all, trapEdges, requesters, downTarget) {
         focusPropsFor(p.id, all, requesters, trapEdges, downTarget)
     }
+    // Over a white app the glass is light, so white ink would vanish into it. Ask the backdrop how
+    // bright the piece under this control is and let the glass style pick the readable colour.
+    val frost = LocalFrostStyle.current
+    val density = LocalDensity.current
+    val tileInk: Color? = if (!state.settings.autoInk || backdrop == null) null else {
+        val top = state.settings.topSize.dp
+        val widthDp = if (p.row == GridPacker.TOP_ROW) top else span(p.cols)
+        val heightDp = if (p.row == GridPacker.TOP_ROW) top else span(p.rows)
+        backdrop.brightness(
+            backdropOrigin.x,
+            backdropOrigin.y,
+            with(density) { widthDp.toPx() },
+            with(density) { heightDp.toPx() },
+        )?.let { glassInk(frost, it) }
+    }
 
     GlassTile(
         label = label,
@@ -386,6 +412,7 @@ private fun PanelTile(
         // Top-bar buttons: the open page is white, the rest are grey until focused.
         active = if (p.row == GridPacker.TOP_ROW) pageOpen else face.active,
         solid = p.id == TileId.NOW_PLAYING && pageOpen,
+        ink = tileInk,
         dimIdle = p.row == GridPacker.TOP_ROW && !pageOpen,
         flat = flat,
         onLongPress = longPress,

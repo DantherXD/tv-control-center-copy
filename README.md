@@ -53,6 +53,7 @@ buttons on the left set its size, move it earlier or later, or hide it. "Add con
 * **Panel position** lowers the panel from the top edge (six steps).
 * **Gap under the top bar** sets the space between the clock row and the controls (0 to 24).
 * **Selected control colors** Inverted (focused control turns white, icon and text dark) or Normal.
+* **Automatic icon colour** turns icons and text dark when the picture behind a control is light, so white never sits on white. On by default.
 * **Music button** puts Now Playing in the top bar. It then opens a now-playing page (album art, title, progress, rewind / play-pause / forward) instead of acting as a grid control. Back shrinks the card back into that button, with the grid already there again, and the next Back closes the panel. The remote's **Menu** key swaps the two pages both ways, and the music button stays white while its page is open.
 * **Window animation** how the Wi-Fi, Bluetooth and Input windows arrive and leave: Mid air (grows in place, the default), Out of the control, or Off.
 * **Buttons beside the clock** turns Menu and Profile on or off.
@@ -115,7 +116,7 @@ Glass is now plain drawing, so it costs almost nothing per frame:
 * The editor sets sizes and order but does not drag. Move is "swap with the next visible control"; the grid fills first-fit, so a small
   control can slot into a gap beside a larger one.
 * No Wi-Fi/Bluetooth detail sub-panels, Sleep Timer picker or AirPods-style device pickers yet. The Sleep Timer tile cycles Off, 15, 30, 60, 90 minutes.
-* Contrast: white text on the dark-based glass is tuned for AA. Verify over very bright content before shipping.
+* Contrast: the ink is white over the dark-based glass and turns dark by itself when the picture behind a control is light (**Automatic icon colour**), which keeps white apps readable. Verify over mixed content before shipping.
 
 ## tvOS behaviours Android cannot replicate
 

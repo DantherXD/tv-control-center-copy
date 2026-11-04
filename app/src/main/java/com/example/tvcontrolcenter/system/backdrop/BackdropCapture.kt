@@ -13,6 +13,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.asImageBitmap
 import com.example.tvcontrolcenter.system.trigger.ControlCenterAccessibilityService
 import com.example.tvcontrolcenter.ui.glass.Backdrop
+import com.example.tvcontrolcenter.ui.glass.lumaMapOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -166,6 +167,7 @@ object BackdropCapture {
         small.getPixels(pixels, 0, w, 0, 0, w, h)
         boxBlur(pixels, w, h, BlurLevels.boxRadius(level))
         val result = Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888)
-        return Backdrop(result.asImageBitmap(), fullWidth, fullHeight)
+        // The brightness map comes from the blurred pixels, so it matches what the glass shows.
+        return Backdrop(result.asImageBitmap(), fullWidth, fullHeight, lumaMapOf(pixels, w, h))
     }
 }

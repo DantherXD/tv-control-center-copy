@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.compositionLocalOf
 import com.example.tvcontrolcenter.domain.model.FrostStyle
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -302,6 +303,37 @@ private fun DrawScope.drawRim(
         style = Stroke(width = widthPx),
     )
 }
+
+/** White ink over the glass needs this much contrast; below it, dark ink reads better. */
+private const val INK_CONTRAST_FLOOR = 3f
+
+/**
+ * Icon and text colour for a control whose backdrop is [brightness] (0 black .. 1 white) in
+ * [style]. Glass over a white app is light, so white ink would vanish into it; there the ink turns
+ * dark, just as it does on a focused white control. Over normal TV content it stays white.
+ *
+ * The layers are the ones [frostedTile] draws: the picture, the dark base over it, then the light
+ * veil. Coloured styles bring their own base and veil, so each style is judged on its own.
+ */
+fun glassInk(style: FrostStyle, brightness: Float, overBlur: Boolean = true): Color {
+    val t = style.tileTint(overBlur)
+    val veil = (t.veilTop + t.veilBottom) / 2f
+    val under = linear(brightness.coerceIn(0f, 1f)) * (1f - t.dark) + linear(t.base) * t.dark
+    val surface = under * (1f - veil) + linear(t.veil) * veil
+    val onWhite = contrast(surface, 1f)
+    val onDark = contrast(surface, linear(GlassTokens.inkDark))
+    return if (onWhite >= INK_CONTRAST_FLOOR || onWhite >= onDark) Color.White else GlassTokens.inkDark
+}
+
+/** Relative luminance of a grey in 0..1, as the contrast ratio formula wants it. */
+private fun linear(grey: Float): Float =
+    if (grey <= 0.03928f) grey / 12.92f else ((grey + 0.055f) / 1.055f).pow(2.4f)
+
+private fun linear(c: Color): Float =
+    0.2126f * linear(c.red) + 0.7152f * linear(c.green) + 0.0722f * linear(c.blue)
+
+private fun contrast(a: Float, b: Float): Float =
+    (maxOf(a, b) + 0.05f) / (minOf(a, b) + 0.05f)
 
 /** The frost style every tile below draws with. Provided by the panel and the editor. */
 val LocalFrostStyle = compositionLocalOf { FrostStyle.SMOKE }

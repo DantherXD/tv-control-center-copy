@@ -81,9 +81,11 @@ Error output looks like `e: file:///home/runner/work/.../MusicPage.kt:85:50 Unre
   `musicHeightFor()`.
 - `ui/theme/UiScale.kt`: 4K density override, `ProvideTextScale`.
 - `ui/glass/FrostedGlass.kt`: sheet/tile drawing, LENS crops, edge width, invert/flat/lite modes,
+  `glassInk` (contrast-aware ink),
   composition locals `LocalInvertFocus`, `LocalLiteGlass`, `LocalOverBlur`, `LocalTileInk`,
   `LocalEdgeWidth`, `LocalFrostStyle`.
-- `ui/glass/Backdrop.kt`: blurred-screen holder.
+- `ui/glass/Backdrop.kt`: blurred-screen holder plus its `LumaMap` brightness grid, which is what
+  the ink contrast reads.
 - `ui/background/AppWallpaper.kt`: the eight painted wallpapers for the app's own pages.
 - `ui/panel/ControlCenterViewModel.kt`: UI state, tile activation, long press, caffeine,
   Wi-Fi/Bluetooth/input helpers, music page request.
@@ -143,7 +145,15 @@ glass), WINDOW (whole screen). Patient capture (1.2 s, 3 tries) for video. Whole
 blurred screenshot full screen with no box. Fallback when nothing can blur: frosted sheet/card.
 Customisable: blur strength, frost style, edge width, invert focus, card on/off, text scale, panel
 size, position, header gap, icon style, music style, wallpapers (eight, app pages only), profile
-photo/colour.
+photo/colour, automatic icon colour.
+
+**Ink contrast.** The glass assumes the screen behind it is dark, so white icons over a white app had
+about 1.5:1 contrast and disappeared. `BackdropCapture` now builds a 32x18 `LumaMap` from the blurred
+pixels on the blur thread, each control asks `Backdrop.brightness()` for its own rectangle, and
+`glassInk(style, brightness)` picks white or `inkDark` by whichever actually has contrast on that
+style's glass (white stays until it drops under 3:1). The clock uses the same rule; the sheet, the
+sub-window rows and the editor buttons are still plain white ink. Setting: `PanelSettings.autoInk`
+("Automatic icon colour", on by default, off restores the old all-white look).
 
 **Other.** Sleep Timer tile cycles the presets; Caffeine keeps the screen on (hidden by default);
 Screenshot tile captures through the accessibility service; overlay + accessibility trigger paths for
