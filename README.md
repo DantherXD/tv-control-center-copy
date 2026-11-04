@@ -41,9 +41,11 @@ Settings, Home, Recent apps, Display, Sound, Captions, Screen saver, Apps, Scree
 The clock follows the TV's 12/24 hour setting. **Menu** opens the editor; **Profile** opens Android settings.
 
 **Hold OK** on Wi-Fi or Bluetooth for a small window with its status, the network or audio device in use and a row that opens the
-system settings; **press OK** on Input for the list of inputs, one row each. A window grows out of the control it was opened from,
-like an iOS control, and it is as tall as its rows so nothing hides below the fold (long lists scroll). Back shrinks it back into
-that control, with the grid already there again, and the next Back closes the panel.
+system settings; **press OK** on Input for the list of inputs, one row each. A window opens in place, growing from slightly
+smaller, and it is as tall as its rows so nothing hides below the fold (long lists scroll). **Window animation** in the editor
+picks between that (**Mid air**, the default), growing out of the control it was opened from (**Out of the control**, which
+stretches the picture behind it into the control's shape), and no motion (**Off**). Back closes the window the same way, with the
+grid already there again, and the next Back closes the panel.
 
 **Edit Control Center:** open it from the **Menu** button in the panel, or from the demo screen. Pick a control with **OK**; the
 buttons on the left set its size, move it earlier or later, or hide it. "Add controls" lists hidden ones. Below that:
@@ -51,7 +53,8 @@ buttons on the left set its size, move it earlier or later, or hide it. "Add con
 * **Panel position** lowers the panel from the top edge (six steps).
 * **Gap under the top bar** sets the space between the clock row and the controls (0 to 24).
 * **Selected control colors** Inverted (focused control turns white, icon and text dark) or Normal.
-* **Music button** puts Now Playing in the top bar. It then opens a now-playing page (album art, title, progress, rewind / play-pause / forward) instead of acting as a grid control. Back shrinks the card back into that button, with the grid already there again, and the next Back closes the panel.
+* **Music button** puts Now Playing in the top bar. It then opens a now-playing page (album art, title, progress, rewind / play-pause / forward) instead of acting as a grid control. Back shrinks the card back into that button, with the grid already there again, and the next Back closes the panel. The remote's **Menu** key swaps the two pages both ways, and the music button stays white while its page is open.
+* **Window animation** how the Wi-Fi, Bluetooth and Input windows arrive and leave: Mid air (grows in place, the default), Out of the control, or Off.
 * **Buttons beside the clock** turns Menu and Profile on or off.
 * **Profile photo** picks a picture with the system file picker (square-cropped to 256 px and kept in the app), removes it, or
   picks one of six colours. If the TV has no file picker, use a colour.

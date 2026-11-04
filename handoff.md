@@ -93,7 +93,7 @@ Error output looks like `e: file:///home/runner/work/.../MusicPage.kt:85:50 Unre
   `TileGrid`, `PanelTile`, focus properties, `span()`, `gridHeight()`.
 - `ui/panel/MusicPage.kt`: `PanelPage` enum, `MusicFocus`, `MusicOrigin`, `cardGlass()`,
   `MusicCard` (Compact 150 dp / Big 388 dp), `popIn()`, `shrinkInto()`, transport buttons.
-- `ui/panel/SubPages.kt`: Wi-Fi/Bluetooth/Input windows, `SubPageCard`, `expandFromTile`, `Start`,
+- `ui/panel/SubPages.kt`: Wi-Fi/Bluetooth/Input windows, `SubPageCard`, `windowMotion`, `Start`,
   `SubRow`/`SubRow.Info`/`SubRow.Action`, row builders, `subTileOf`.
 - `ui/panel/GlassTile.kt`, `TileCatalog.kt` (icons; Edit uses `res/drawable/ic_menu_toggles.xml`),
   `TileFaces.kt`, `ProfileAvatar.kt`, `IconStyles.kt` (Filled/Outlined/Rounded table),
@@ -114,20 +114,28 @@ then a 4-column grid of Small/Wide/Tall/Large/Full controls. Round buttons are `
 default. Menu is the main page (`menuIsHome`), so the music button only opens the music page, and
 Menu still opens the editor if Profile is hidden (can't lock yourself out).
 
-**Small windows (Wi-Fi, Bluetooth, Input).** Grow out of their own tile on a spring (0.88 / 520);
-height is the sum of their rows (min `subPageHeight` 214, max `subPageMaxHeight` 320, scroll past the
-cap). Back runs the same motion backwards (0.9 / 700) and dissolves onto the tile; the host keeps
-`page` until the card has landed (`closingSub` → `closeSub`). The grid is composed underneath for the
-whole close so it is already there when the card lands, and rows ignore presses while closing. Back
-during the shrink closes the panel, so Back-Back still dismisses.
+**Small windows (Wi-Fi, Bluetooth, Input).** `PanelSettings.windowMotion` picks how they arrive and
+leave. **MID_AIR** (the default) grows from 94 % in the window's own place and fades out where it
+stands, so the backdrop inside it is never stretched into a tile's shape. **FROM_CONTROL** is the
+old behaviour — first frame is the tile's rect, non-uniform scale, translated onto the tile — and it
+does stretch. **OFF** draws the window at once and finishes a close immediately. Open springs
+0.88 / 520, close 0.9 / 700. Height is the sum of the rows (min `subPageHeight` 214, max
+`subPageMaxHeight` 320, scroll past the cap). The host keeps `page` until the card has landed
+(`closingSub` → `closeSub`), the grid is composed underneath for the whole close, and rows ignore
+presses while closing. Focus is handed back to the opening control as the close **starts**
+(`LaunchedEffect(closingSub)`), so it moves once instead of wandering over the grid when the card
+unmounts. Back during the shrink closes the panel, so Back-Back still dismisses.
 
-**Music page.** Opened from the Now Playing top-bar button when `menuIsHome` is on. Opens with
-`popIn()` (fade + 0.9→1 scale, settles from -14 dp, 0.78 / 380). **Back now shrinks the card into that
-top-bar button** (`closingMusic` → `closeMusic`), with `MusicOrigin` computed in `PanelGrid` from
-`topSize`, `header`, `gap` and the button's index; the grid is underneath, focus returns to Now
-Playing through the existing `returnTo` path. Pressing the music button to leave the page (only when
-`menuIsHome` is off) uses the same close; **Menu pressed as home still leaves instantly** (it would
-otherwise steal focus from Menu).
+**Music page.** Opened from the Now Playing top-bar button when `menuIsHome` is on, and from the
+remote's **Menu key**, which swaps the grid and the music page both ways (Menu on a sub window goes
+back to the grid). Opens with `popIn()` (fade + 0.9→1 scale, settles from -14 dp, 0.78 / 380).
+**Back shrinks the card into that top-bar button** (`closingMusic` → `closeMusic`), with `MusicOrigin`
+computed in `PanelGrid` from `topSize`, `header`, `gap` and the button's index; the grid is
+underneath and focus goes back to Now Playing, handed over as the close starts. The button is drawn
+**solid white while its page is open** (`GlassTile(solid = …)`), until the page hands back to the
+grid. Pressing the music button to leave the page (only when `menuIsHome` is off) uses the same
+close; the on-screen **Menu button** pressed as home still leaves instantly (it would otherwise
+steal focus from Menu).
 
 **Glass and blur.** Ten `FrostStyle`s (Smoke, Milky, Clear, Lens, Ocean, Amethyst, Ember, Forest,
 Rose, Midnight). Blur method AUTO (screenshot, window blur fallback), SCREENSHOT (blur only inside the
@@ -152,6 +160,9 @@ opening the panel; demo/home page with a live preview.
 - A key release only counts on the control where the press started.
 - Wi-Fi/Bluetooth on/off toggles were removed: Android blocks apps from switching those radios.
 - `PanelSettings` values persist individually, so bumping a default is safe for existing installs.
+- Sub windows default to MID_AIR: FROM_CONTROL stretches the picture inside the window into the
+  tile's shape while it opens and closes, which is what the owner objected to. Keep all three
+  options; MID_AIR is the one that never stretches.
 
 ## Traps that have cost builds
 
