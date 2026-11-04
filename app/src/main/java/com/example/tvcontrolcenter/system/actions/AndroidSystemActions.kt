@@ -16,6 +16,7 @@ import android.media.tv.TvContract
 import android.media.tv.TvInputManager
 import android.net.wifi.WifiManager
 import android.widget.Toast
+import com.example.tvcontrolcenter.domain.model.LauncherApp
 import com.example.tvcontrolcenter.domain.model.TvInputItem
 import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.system.backdrop.ScreenshotSaver
@@ -80,6 +81,31 @@ class AndroidSystemActions @Inject constructor(
     override fun openScreensaverSettings() = launchSettings(Settings.ACTION_DREAM_SETTINGS)
 
     override fun openAppsSettings() = launchSettings(Settings.ACTION_APPLICATION_SETTINGS)
+
+    // An app pinned to a slot: its own launcher intent, nothing special.
+    override fun openApp(packageName: String): ActionResult {
+        val intent = context.packageManager.getLaunchIntentForPackage(packageName)
+            ?: return ActionResult.Unavailable
+        return try {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            ActionResult.Done
+        } catch (_: ActivityNotFoundException) {
+            ActionResult.Unavailable
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    override fun installedApps(): List<LauncherApp> {
+        val pm = context.packageManager
+        val leanback = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+        val found = pm.queryIntentActivities(leanback, 0).ifEmpty {
+            pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+        }
+        return found
+            .map { LauncherApp(it.activityInfo.packageName, it.loadLabel(pm).toString()) }
+            .distinctBy { it.packageName }
+            .sortedBy { it.label.lowercase() }
+    }
 
     override fun openSearch(): ActionResult {
         val assist = Intent(Intent.ACTION_ASSIST).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

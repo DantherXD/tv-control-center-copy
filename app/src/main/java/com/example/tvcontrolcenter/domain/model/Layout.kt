@@ -141,6 +141,11 @@ data class PanelLayout(val items: List<ControlItem>) {
                 ControlItem(SCREENSAVER, TileSize.SMALL, visible = false),
                 ControlItem(INPUT, TileSize.SMALL, visible = false),
                 ControlItem(CAFFEINE, TileSize.SMALL, visible = false),
+                // App slots: shown once the editor pins an app to them.
+                ControlItem(APP_1, TileSize.SMALL, visible = false),
+                ControlItem(APP_2, TileSize.SMALL, visible = false),
+                ControlItem(APP_3, TileSize.SMALL, visible = false),
+                ControlItem(APP_4, TileSize.SMALL, visible = false),
             ),
         )
 
@@ -283,6 +288,14 @@ data class PanelSettings(
      * white app. Off keeps every control white, as it was before.
      */
     val autoInk: Boolean = true,
+    /** Package name per app slot (see [AppSlots]); null when the slot is empty. */
+    val appSlots: List<String?> = List(AppSlots.size) { null },
+    /** Short click on focus and on OK, as Android gives every list. Off is silent. */
+    val soundCues: Boolean = true,
+    /** Percent the volume moves per Left/Right press (see [VolumeStepSteps]). */
+    val volumeStep: Int = 3,
+    /** Log the package and activity of every screen that opens, for working out what a tile did. */
+    val activityLog: Boolean = false,
     /** Wait longer and retry the screenshot, so the blur also works over video and moving scenes. */
     val patientCapture: Boolean = false,
     /** 0 = no photo. Changes whenever a new photo is saved, so the picture reloads. */
@@ -301,6 +314,8 @@ val TopOffsetSteps: List<Int> = listOf(0, 24, 48, 72, 96, 120)
 val EdgeWidthSteps: List<Float> = listOf(0f, 0.8f, 1.5f, 2.5f, 3.5f, 5f)
 
 val TopSizeSteps: List<Int> = listOf(32, 36, 40, 44, 48)
+
+val VolumeStepSteps: List<Int> = listOf(1, 2, 3, 5, 10)
 
 val TextScaleSteps: List<Float> = listOf(0.8f, 0.9f, 1f, 1.15f, 1.3f)
 

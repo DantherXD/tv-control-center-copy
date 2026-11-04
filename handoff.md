@@ -159,6 +159,25 @@ sub-window rows and the editor buttons are still plain white ink. Setting: `Pane
 Screenshot tile captures through the accessibility service; overlay + accessibility trigger paths for
 opening the panel; demo/home page with a live preview.
 
+**App slots.** Four grid tiles (`TileId.APP_1..APP_4`, list `AppSlots`) each hold a package name in
+`PanelSettings.appSlots` (stored as `a|b|c|d` under `app_slots`), assigned in the editor's new **Apps**
+tab from `SystemActions.installedApps()` (leanback launcher query, `launcher` fallback). The tile draws
+the app's own icon and label through `PackageManager` (`appArt`/`appLabelOf` in `TileFaces.kt`) and OK
+starts its launch intent. Four slots kept the identity model untouched: each slot is its own `TileId`,
+so layout encoding, focus requesters and `key(p.id)` keep working — adding unlimited tiles would need a
+new identity type instead.
+
+**Activity capture.** `ControlCenterAccessibilityService.onAccessibilityEvent` writes
+`package/activity` to logcat tag `TCC` on every window change while `PanelSettings.activityLog` is on;
+the service reads that preference straight from the layout prefs file because a service cannot use
+injection. This replaces the manual `adb shell dumpsys activity activities | grep -E
+"mResumedActivity|topResumedActivity"` round trip: press the control, then `adb logcat -s TCC`. The
+toggle lives in the Apps tab.
+
+Key sounds and the volume step are settings too (`soundCues` through `LocalSoundCues`, `volumeStep` in
+steps 1/2/3/5/10). Handy defaults to know: both are on/3 %, and `PanelSettings` reads each key on its
+own, so a new default only reaches installs that never touched it.
+
 ## Deliberate decisions (don't "fix" these)
 
 - Release APK only in CI, tests after the upload.

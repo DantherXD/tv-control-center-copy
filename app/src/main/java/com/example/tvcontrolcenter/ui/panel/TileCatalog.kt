@@ -62,6 +62,11 @@ internal fun lookOf(id: TileId): TileLook = when (id) {
     TileId.CAFFEINE -> TileLook(Icons.Filled.Coffee, R.string.tile_caffeine)
     TileId.EDIT -> TileLook(Icons.Filled.Menu, R.string.tile_edit)
     TileId.PROFILE -> TileLook(Icons.Filled.Person, R.string.tile_profile)
+    // App slots fall back to this icon; the face draws the app's own icon when there is one.
+    TileId.APP_1 -> TileLook(Icons.Filled.Apps, R.string.tile_app_1)
+    TileId.APP_2 -> TileLook(Icons.Filled.Apps, R.string.tile_app_2)
+    TileId.APP_3 -> TileLook(Icons.Filled.Apps, R.string.tile_app_3)
+    TileId.APP_4 -> TileLook(Icons.Filled.Apps, R.string.tile_app_4)
 }
 
 /**

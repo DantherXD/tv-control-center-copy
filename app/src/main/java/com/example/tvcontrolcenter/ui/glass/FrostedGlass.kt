@@ -347,6 +347,9 @@ val LocalTopBorderless = compositionLocalOf { false }
 /** Setting: focused controls turn white with dark content. */
 val LocalInvertFocus = compositionLocalOf { true }
 
+/** Setting: short system sounds on focus and on OK. */
+val LocalSoundCues = compositionLocalOf { true }
+
 /** True in the editor: controls draw flat fills and skip animation, so the page stays fast. */
 val LocalLiteGlass = compositionLocalOf { false }
 

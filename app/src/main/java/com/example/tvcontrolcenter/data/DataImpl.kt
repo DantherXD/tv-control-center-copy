@@ -125,6 +125,15 @@ class PreferencesLayoutRepository @Inject constructor(
             musicStyle = MusicStyle.entries.firstOrNull { it.name == prefs.getString(KEY_MUSIC_STYLE, null) } ?: MusicStyle.COMPACT,
             windowMotion = WindowMotion.entries.firstOrNull { it.name == prefs.getString(KEY_WINDOW_MOTION, null) } ?: WindowMotion.MID_AIR,
             autoInk = prefs.getBoolean(KEY_AUTO_INK, true),
+            appSlots = prefs.getString(KEY_APP_SLOTS, null)
+                ?.split('|')
+                ?.map { it.ifEmpty { null } }
+                ?.take(4)
+                ?.let { it + List(4 - it.size) { null } }
+                ?: List(4) { null },
+            soundCues = prefs.getBoolean(KEY_SOUND_CUES, true),
+            volumeStep = prefs.getInt(KEY_VOLUME_STEP, 3),
+            activityLog = prefs.getBoolean(KEY_ACTIVITY_LOG, false),
             iconStyle = IconStyle.entries.firstOrNull { it.name == prefs.getString(KEY_ICONS, null) } ?: IconStyle.FILLED,
             profilePhotoVersion = prefs.getInt(KEY_PHOTO, 0),
             profileColor = prefs.getInt(KEY_COLOR, 0),
@@ -178,6 +187,10 @@ class PreferencesLayoutRepository @Inject constructor(
             .putString(KEY_MUSIC_STYLE, next.musicStyle.name)
             .putString(KEY_WINDOW_MOTION, next.windowMotion.name)
             .putBoolean(KEY_AUTO_INK, next.autoInk)
+            .putString(KEY_APP_SLOTS, next.appSlots.joinToString("|") { it ?: "" })
+            .putBoolean(KEY_SOUND_CUES, next.soundCues)
+            .putInt(KEY_VOLUME_STEP, next.volumeStep)
+            .putBoolean(KEY_ACTIVITY_LOG, next.activityLog)
             .putBoolean(KEY_PATIENT, next.patientCapture)
             .putInt(KEY_PHOTO, next.profilePhotoVersion)
             .putInt(KEY_COLOR, next.profileColor)
@@ -202,6 +215,10 @@ class PreferencesLayoutRepository @Inject constructor(
         const val KEY_MUSIC_STYLE = "music_style"
         const val KEY_WINDOW_MOTION = "window_motion"
         const val KEY_AUTO_INK = "auto_ink"
+        const val KEY_APP_SLOTS = "app_slots"
+        const val KEY_SOUND_CUES = "sound_cues"
+        const val KEY_VOLUME_STEP = "volume_step"
+        const val KEY_ACTIVITY_LOG = "activity_log"
         const val KEY_PATIENT = "patient_capture"
         const val KEY_PHOTO = "profile_photo"
         const val KEY_COLOR = "profile_color"

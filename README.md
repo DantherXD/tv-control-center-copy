@@ -39,6 +39,8 @@ The panel is a clock with two round buttons (Menu and Profile) on top, then one 
 grid has Power, Wi-Fi, Do Not Disturb, Bluetooth, Sleep Timer, four shortcuts, Now Playing (only while something plays) and Volume.
 Settings, Home, Recent apps, Display, Sound, Captions, Screen saver, Apps, Screenshot and Notifications are available from the editor.
 The clock follows the TV's 12/24 hour setting. **Menu** opens the editor; **Profile** opens Android settings.
+The **Apps** tab pins an app to one of four slots, so it opens in one press from the grid, and can log which screen a control
+really opens (`adb logcat -s TCC`).
 
 **Hold OK** on Wi-Fi or Bluetooth for a small window with its status, the network or audio device in use and a row that opens the
 system settings; **press OK** on Input for the list of inputs, one row each. A window opens in place, growing from slightly
@@ -54,6 +56,7 @@ buttons on the left set its size, move it earlier or later, or hide it. "Add con
 * **Gap under the top bar** sets the space between the clock row and the controls (0 to 24).
 * **Selected control colors** Inverted (focused control turns white, icon and text dark) or Normal.
 * **Automatic icon colour** turns icons and text dark when the picture behind a control is light, so white never sits on white. On by default.
+* **Key sounds** turns the click on focus and OK on or off. **Volume step** sets how far one Left/Right press moves the volume.
 * **Music button** puts Now Playing in the top bar. It then opens a now-playing page (album art, title, progress, rewind / play-pause / forward) instead of acting as a grid control. Back shrinks the card back into that button, with the grid already there again, and the next Back closes the panel. The remote's **Menu** key swaps the two pages both ways, and the music button stays white while its page is open.
 * **Window animation** how the Wi-Fi, Bluetooth and Input windows arrive and leave: Mid air (grows in place, the default), Out of the control, or Off.
 * **Buttons beside the clock** turns Menu and Profile on or off.

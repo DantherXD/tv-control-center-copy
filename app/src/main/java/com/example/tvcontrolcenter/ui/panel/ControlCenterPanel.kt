@@ -49,6 +49,7 @@ import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
+import com.example.tvcontrolcenter.ui.glass.LocalSoundCues
 import com.example.tvcontrolcenter.ui.theme.Motion
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
@@ -399,6 +400,7 @@ private fun HostBody(
                 LocalOverBlur provides (backdrop != null),
                 LocalEdgeWidth provides state.settings.edgeWidth.dp,
                 LocalIconStyle provides state.settings.iconStyle,
+                LocalSoundCues provides state.settings.soundCues,
             ) {
                 ProvideTextScale(state.settings.textScale) {
                 PanelContent(

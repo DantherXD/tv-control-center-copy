@@ -1,6 +1,7 @@
 package com.example.tvcontrolcenter.domain.repository
 
 import com.example.tvcontrolcenter.domain.model.ActionResult
+import com.example.tvcontrolcenter.domain.model.LauncherApp
 import com.example.tvcontrolcenter.domain.model.NowPlaying
 import com.example.tvcontrolcenter.domain.model.PanelLayout
 import com.example.tvcontrolcenter.domain.model.PanelSettings
@@ -60,6 +61,11 @@ interface SystemActions {
     /** Caffeine: keeps the screen on (and so the screensaver away) until switched off. */
     fun caffeineOn(): Boolean = false
     fun toggleCaffeine(): ActionResult = ActionResult.Unavailable
+
+    /** Opens an app pinned to one of the [com.example.tvcontrolcenter.domain.model.AppSlots]. */
+    fun openApp(packageName: String): ActionResult = ActionResult.Unavailable
+    /** Every app with a launcher entry, for the editor's picker. */
+    fun installedApps(): List<LauncherApp> = emptyList()
 }
 
 interface NowPlayingSource {

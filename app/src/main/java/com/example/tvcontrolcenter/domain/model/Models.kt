@@ -16,7 +16,25 @@ enum class TileId {
     EDIT,
     // Round button next to the clock; shows the profile picture.
     PROFILE,
+    // Four slots that open an app chosen in the editor (see [AppSlots]).
+    APP_1, APP_2, APP_3, APP_4,
 }
+
+/** The app slots, in order. A slot's package name lives in [PanelSettings.appSlots]. */
+val AppSlots: List<TileId> = listOf(TileId.APP_1, TileId.APP_2, TileId.APP_3, TileId.APP_4)
+
+/** 0..3 for an app slot, null for every other control. */
+val TileId.appSlot: Int?
+    get() = when (this) {
+        TileId.APP_1 -> 0
+        TileId.APP_2 -> 1
+        TileId.APP_3 -> 2
+        TileId.APP_4 -> 3
+        else -> null
+    }
+
+/** An app the editor can pin to a slot. Its icon is read from the system when it is drawn. */
+data class LauncherApp(val packageName: String, val label: String)
 
 enum class NetworkKind { WIFI, ETHERNET, NONE }
 

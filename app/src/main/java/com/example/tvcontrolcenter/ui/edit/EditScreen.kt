@@ -84,6 +84,9 @@ import com.example.tvcontrolcenter.domain.model.TileSize
 import com.example.tvcontrolcenter.domain.model.UiScaleSteps
 import com.example.tvcontrolcenter.domain.model.Wallpaper
 import com.example.tvcontrolcenter.domain.model.WindowMotion
+import com.example.tvcontrolcenter.domain.model.AppSlots
+import com.example.tvcontrolcenter.domain.model.VolumeStepSteps
+import com.example.tvcontrolcenter.ui.panel.appLabelOf
 import com.example.tvcontrolcenter.ui.background.AppWallpaper
 import com.example.tvcontrolcenter.ui.panel.ControlCenterUiState
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
@@ -183,7 +186,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                 Hint(stringResource(R.string.edit_live))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     EditTab.entries.forEach { t ->
-                        EditChip(stringResource(t.label), highlighted = tab == t, width = 108.dp) { tab = t }
+                        EditChip(stringResource(t.label), highlighted = tab == t, width = 96.dp) { tab = t }
                     }
                     EditChip(stringResource(R.string.edit_done), width = 84.dp, onClick = onDone)
                 }
@@ -312,6 +315,12 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 onOff(settings.autoInk),
                             ) { vm.updateSettings { it.copy(autoInk = !it.autoInk) } }
                             Hint(stringResource(R.string.edit_auto_ink_note))
+                            StepRow(stringResource(R.string.edit_sound_cues), onOff(settings.soundCues)) {
+                                vm.updateSettings { it.copy(soundCues = !it.soundCues) }
+                            }
+                            StepRow(stringResource(R.string.edit_volume_step), "${settings.volumeStep}%") { d ->
+                                vm.updateSettings { it.copy(volumeStep = VolumeStepSteps.step(it.volumeStep, d)) }
+                            }
                         }
 
                         EditTab.TOPBAR -> {
@@ -372,6 +381,49 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 "${settings.profileColor.mod(AvatarColors.size) + 1}",
                                 swatch = AvatarColors[settings.profileColor.mod(AvatarColors.size)],
                             ) { d -> vm.updateSettings { it.copy(profileColor = Math.floorMod(it.profileColor + d, AvatarColors.size)) } }
+                        }
+
+                        EditTab.APPS -> {
+                            // The slot the next app press fills; 0 is the first.
+                            var slot by remember { mutableStateOf(0) }
+                            Section(stringResource(R.string.edit_app_slots))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                AppSlots.forEachIndexed { index, _ ->
+                                    val name = appLabelOf(settings.appSlots.getOrNull(index))
+                                        ?: stringResource(R.string.edit_app_empty)
+                                    EditChip(
+                                        label = "${index + 1} · $name",
+                                        highlighted = slot == index,
+                                        width = 132.dp,
+                                    ) { slot = index }
+                                }
+                            }
+                            Hint(stringResource(R.string.edit_app_note))
+                            EditChip(stringResource(R.string.edit_app_clear), width = 160.dp) {
+                                vm.updateSettings { it.copy(appSlots = it.appSlots.withSlot(slot, null)) }
+                                vm.setTileVisible(AppSlots[slot], false)
+                            }
+                            Section(stringResource(R.string.edit_apps_installed))
+                            val apps = remember { vm.installedApps() }
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                apps.forEach { app ->
+                                    EditChip(
+                                        label = app.label,
+                                        highlighted = settings.appSlots.getOrNull(slot) == app.packageName,
+                                        width = 340.dp,
+                                    ) {
+                                        vm.updateSettings {
+                                            it.copy(appSlots = it.appSlots.withSlot(slot, app.packageName))
+                                        }
+                                        vm.setTileVisible(AppSlots[slot], true)
+                                    }
+                                }
+                            }
+                            Section(stringResource(R.string.edit_capture))
+                            StepRow(stringResource(R.string.edit_capture_log), onOff(settings.activityLog)) {
+                                vm.updateSettings { it.copy(activityLog = !it.activityLog) }
+                            }
+                            Hint(stringResource(R.string.edit_capture_note))
                         }
 
                         EditTab.BLUR -> {
@@ -441,6 +493,7 @@ private enum class EditTab(val label: Int) {
     LOOK(R.string.tab_look),
     TOPBAR(R.string.tab_topbar),
     BLUR(R.string.tab_blur),
+    APPS(R.string.tab_apps),
 }
 
 private fun wallpaperLabel(style: Wallpaper): Int = when (style) {
@@ -624,6 +677,10 @@ private fun <T> List<T>.step(current: T, delta: Int): T {
     val i = indexOf(current).let { if (it < 0) 0 else it }
     return this[Math.floorMod(i + delta, size)]
 }
+
+/** A copy of the slot list with [index] set to [value]. */
+private fun List<String?>.withSlot(index: Int, value: String?): List<String?> =
+    toMutableList().also { if (index in it.indices) it[index] = value }
 
 @Composable
 private fun AddChip(id: TileId, onClick: () -> Unit) {

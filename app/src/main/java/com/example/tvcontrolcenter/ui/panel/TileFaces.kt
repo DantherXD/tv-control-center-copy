@@ -1,6 +1,14 @@
 package com.example.tvcontrolcenter.ui.panel
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import androidx.annotation.StringRes
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
@@ -44,6 +52,7 @@ import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.NetworkKind
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
+import com.example.tvcontrolcenter.domain.model.appSlot
 import com.example.tvcontrolcenter.ui.glass.LocalTileInk
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
@@ -55,6 +64,8 @@ internal class Face(
     val title: String,
     val detail: String?,
     val active: Boolean,
+    /** The app's own icon, when this control stands for an installed app. */
+    val art: ImageBitmap? = null,
 )
 
 @Composable
@@ -91,6 +102,16 @@ internal fun faceOf(id: TileId, state: ControlCenterUiState): Face {
             val sleep = state.tiles[TileId.SLEEP_TIMER]
             Face(icon, title, sleep?.detail ?: off, sleep?.active == true)
         }
+        TileId.APP_1, TileId.APP_2, TileId.APP_3, TileId.APP_4 -> {
+            val packageName = state.settings.appSlots.getOrNull(id.appSlot ?: 0)
+            Face(
+                icon = icon,
+                title = appLabelOf(packageName) ?: stringResource(slotName(id)),
+                detail = null,
+                active = false,
+                art = appArt(packageName),
+            )
+        }
         else -> Face(icon, title, null, false)
     }
 }
@@ -101,14 +122,14 @@ internal fun GenericFace(id: TileId, face: Face, size: TileSize) {
     val tint = LocalTileInk.current.copy(alpha = if (face.active) 1f else 0.9f)
     when (size) {
         TileSize.SMALL, TileSize.TOP -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            TileIcon(face.icon, PanelDimens.iconSmall, tint)
+            FaceArt(face, PanelDimens.iconSmall, tint)
         }
         TileSize.WIDE, TileSize.FULL -> Row(
             Modifier.fillMaxSize().padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(9.dp),
         ) {
-            TileIcon(face.icon, PanelDimens.iconSmall, tint)
+            FaceArt(face, PanelDimens.iconSmall, tint)
             Column(Modifier.weight(1f)) {
                 Label(face.title)
                 face.detail?.let { Detail(it) }
@@ -119,7 +140,7 @@ internal fun GenericFace(id: TileId, face: Face, size: TileSize) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            TileIcon(face.icon, PanelDimens.iconSmall, tint)
+            FaceArt(face, PanelDimens.iconSmall, tint)
             Spacer(Modifier.height(6.dp))
             Label(face.title, style = PanelType.labelSmall, maxLines = 1)
         }
@@ -129,7 +150,7 @@ internal fun GenericFace(id: TileId, face: Face, size: TileSize) {
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                TileIcon(face.icon, PanelDimens.iconLarge * 1.2f, tint)
+                FaceArt(face, PanelDimens.iconLarge * 1.2f, tint)
                 Spacer(Modifier.height(6.dp))
                 Label(face.title)
             }
@@ -138,7 +159,7 @@ internal fun GenericFace(id: TileId, face: Face, size: TileSize) {
                 Modifier.fillMaxSize().padding(14.dp),
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
-                TileIcon(face.icon, PanelDimens.iconLarge, tint)
+                FaceArt(face, PanelDimens.iconLarge, tint)
                 Column {
                     Label(face.title)
                     face.detail?.let { Detail(it) }
@@ -302,4 +323,57 @@ internal fun FadingIcon(icon: ImageVector, size: Dp, modifier: Modifier = Modifi
     Crossfade(targetState = icon, animationSpec = tween(180), label = "icon", modifier = modifier) {
         TileIcon(it, size)
     }
+}
+
+/** The app's own icon when there is one, otherwise the Material icon, tinted like the rest. */
+@Composable
+private fun FaceArt(face: Face, size: Dp, tint: Color) {
+    val art = face.art
+    if (art != null) {
+        Image(bitmap = art, contentDescription = null, modifier = Modifier.size(size))
+    } else {
+        TileIcon(face.icon, size, tint)
+    }
+}
+
+/** The app's own icon, read from the system once per package. Null when the app is gone. */
+@Composable
+internal fun appArt(packageName: String?): ImageBitmap? {
+    val context = LocalContext.current
+    return remember(packageName) {
+        packageName?.let { pkg ->
+            runCatching {
+                val drawable = context.packageManager.getApplicationIcon(pkg)
+                val px = (48 * context.resources.displayMetrics.density).toInt().coerceIn(32, 192)
+                val bitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
+                drawable.setBounds(0, 0, px, px)
+                drawable.draw(Canvas(bitmap))
+                bitmap.asImageBitmap()
+            }.getOrNull()
+        }
+    }
+}
+
+/** The name the launcher shows for [packageName], or null when it is not installed. */
+@Suppress("DEPRECATION")
+@Composable
+internal fun appLabelOf(packageName: String?): String? {
+    val context = LocalContext.current
+    return remember(packageName) {
+        packageName?.let { pkg ->
+            runCatching {
+                val pm = context.packageManager
+                pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+            }.getOrNull()
+        }
+    }
+}
+
+/** Fallback name of an empty app slot. */
+@StringRes
+internal fun slotName(id: TileId): Int = when (id) {
+    TileId.APP_2 -> R.string.tile_app_2
+    TileId.APP_3 -> R.string.tile_app_3
+    TileId.APP_4 -> R.string.tile_app_4
+    else -> R.string.tile_app_1
 }

@@ -12,7 +12,9 @@ import com.example.tvcontrolcenter.domain.model.PanelSettings
 import com.example.tvcontrolcenter.domain.model.SystemStatus
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
+import com.example.tvcontrolcenter.domain.model.LauncherApp
 import com.example.tvcontrolcenter.domain.model.TileState
+import com.example.tvcontrolcenter.domain.model.appSlot
 import com.example.tvcontrolcenter.domain.repository.FocusMemory
 import com.example.tvcontrolcenter.domain.repository.LayoutRepository
 import com.example.tvcontrolcenter.domain.repository.NowPlayingSource
@@ -158,6 +160,11 @@ class ControlCenterViewModel @Inject constructor(
             }
             TileId.EDIT -> _events.tryEmit(PanelEvent.OpenEditor)
             TileId.PROFILE -> handle(actions.openSettings(), dismissOnDone = true, tile = id)
+            TileId.APP_1, TileId.APP_2, TileId.APP_3, TileId.APP_4 -> {
+                val packageName = state.settings.appSlots.getOrNull(id.appSlot ?: 0)
+                if (packageName == null) _events.tryEmit(PanelEvent.Unavailable(id))
+                else handle(actions.openApp(packageName), dismissOnDone = true, tile = id)
+            }
         }
     }
 
@@ -201,6 +208,9 @@ class ControlCenterViewModel @Inject constructor(
     fun wifiName() = actions.wifiNetworkName()
     fun pairedBluetooth() = actions.pairedBluetoothDevices()
     fun tvInputs() = actions.tvInputs()
+
+    /** Every app with a launcher entry, for the editor's Apps tab. Read once per visit. */
+    fun installedApps(): List<LauncherApp> = actions.installedApps()
     fun onSetWifi(on: Boolean) = handle(actions.setWifiEnabled(on), tile = TileId.WIFI)
     fun onSetBluetooth(on: Boolean) = handle(actions.setBluetoothEnabled(on), tile = TileId.BLUETOOTH)
     fun onOpenWifiSettings() = handle(actions.openWifiSettings(), dismissOnDone = true, tile = TileId.WIFI)

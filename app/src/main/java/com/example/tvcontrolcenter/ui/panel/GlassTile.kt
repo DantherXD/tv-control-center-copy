@@ -42,6 +42,7 @@ import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
+import com.example.tvcontrolcenter.ui.glass.LocalSoundCues
 import com.example.tvcontrolcenter.ui.glass.LocalTileInk
 import com.example.tvcontrolcenter.ui.glass.frostedTile
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
@@ -93,6 +94,7 @@ fun GlassTile(
     val lite = LocalLiteGlass.current
     val overBlur = LocalOverBlur.current
     val edge = LocalEdgeWidth.current
+    val soundCues = LocalSoundCues.current
     val longFired = remember { booleanArrayOf(false) }
     // A screen can open while OK is still held (long press); that release must not press anything.
     val pressedHere = remember { booleanArrayOf(false) }
@@ -118,7 +120,7 @@ fun GlassTile(
             .onFocusChanged { state ->
                 if (state.isFocused && !focused) {
                     onFocused()
-                    if (GlassTokens.soundCues) view.playSoundEffect(SoundEffectConstants.NAVIGATION_DOWN)
+                    if (soundCues) view.playSoundEffect(SoundEffectConstants.NAVIGATION_DOWN)
                 }
                 focused = state.isFocused
             }
@@ -134,7 +136,7 @@ fun GlassTile(
                         event.nativeKeyEvent.repeatCount > 0 -> {
                         if (!longFired[0]) {
                             longFired[0] = true
-                            if (GlassTokens.soundCues) view.playSoundEffect(SoundEffectConstants.CLICK)
+                            if (soundCues) view.playSoundEffect(SoundEffectConstants.CLICK)
                             onLongPress()
                         }
                         true
@@ -143,7 +145,7 @@ fun GlassTile(
                         if (longFired[0]) {
                             longFired[0] = false
                         } else if (pressedHere[0]) {
-                            if (GlassTokens.soundCues) view.playSoundEffect(SoundEffectConstants.CLICK)
+                            if (soundCues) view.playSoundEffect(SoundEffectConstants.CLICK)
                             onActivate()
                         }
                         pressedHere[0] = false

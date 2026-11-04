@@ -58,8 +58,6 @@ import kotlinx.coroutines.delay
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-private const val VOLUME_STEP = 3
-
 /** Callbacks for the controls that react to Left/Right themselves. */
 internal class TileActions(
     val onVolumeStep: (Int) -> Unit = {},
@@ -379,7 +377,7 @@ private fun PanelTile(
         !interactive -> NoKeys
         musicButton -> NoKeys
         p.id == TileId.NOW_PLAYING -> nowPlayingKeys(actions)
-        p.id == TileId.VOLUME -> volumeKeys(actions)
+        p.id == TileId.VOLUME -> volumeKeys(actions, state.settings.volumeStep)
         else -> NoKeys
     }
     val focusProps = remember(p.id, all, trapEdges, requesters, downTarget) {
@@ -444,10 +442,10 @@ private fun nowPlayingKeys(a: TileActions): (KeyEvent) -> Boolean = { e ->
     }
 }
 
-private fun volumeKeys(a: TileActions): (KeyEvent) -> Boolean = { e ->
+private fun volumeKeys(a: TileActions, step: Int): (KeyEvent) -> Boolean = { e ->
     when (e.key) {
-        Key.DirectionRight -> { if (e.type == KeyEventType.KeyDown) a.onVolumeStep(VOLUME_STEP); true }
-        Key.DirectionLeft -> { if (e.type == KeyEventType.KeyDown) a.onVolumeStep(-VOLUME_STEP); true }
+        Key.DirectionRight -> { if (e.type == KeyEventType.KeyDown) a.onVolumeStep(step); true }
+        Key.DirectionLeft -> { if (e.type == KeyEventType.KeyDown) a.onVolumeStep(-step); true }
         else -> false
     }
 }

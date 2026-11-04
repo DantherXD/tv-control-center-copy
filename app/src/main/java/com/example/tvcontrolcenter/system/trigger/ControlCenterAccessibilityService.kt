@@ -1,7 +1,9 @@
 package com.example.tvcontrolcenter.system.trigger
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Context
 import android.os.Build
+import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
@@ -61,6 +63,20 @@ class ControlCenterAccessibilityService : AccessibilityService() {
         return false
     }
 
+    /**
+     * Writes the package and activity of every screen that opens to the log, tag TCC, while the
+     * "Log the screen that opens" setting is on. Lets a control be checked against what it really
+     * launched, without a computer attached to the TV.
+     */
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        if (!settings().getBoolean(KEY_ACTIVITY_LOG, false)) return
+        Log.i(TAG, "${event.packageName}/${event.className}")
+    }
+
+    // The same preferences file PreferencesLayoutRepository writes; a service cannot use injection.
+    private fun settings() = getSharedPreferences(SETTINGS_FILE, Context.MODE_PRIVATE)
+
     /** System power menu. Android 12+ only; returns false when the platform refuses. */
     fun showPowerDialog(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && performGlobalAction(GLOBAL_ACTION_POWER_DIALOG)
@@ -83,6 +99,10 @@ class ControlCenterAccessibilityService : AccessibilityService() {
     companion object {
         /** Keys that can open the panel on a long press. Edit to suit the remote. */
         val TRIGGER_KEYS = setOf(KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS)
+
+        private const val TAG = "TCC"
+        private const val SETTINGS_FILE = "control_center_layout"
+        private const val KEY_ACTIVITY_LOG = "activity_log"
         const val LONG_PRESS_MILLIS = 600L
 
         @Volatile
