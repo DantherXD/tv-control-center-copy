@@ -97,6 +97,11 @@
     <string name="frost_lens">Lens</string>
 
     <string name="edit_header_gap">Gap under the top bar</string>
+    <string name="edit_window_motion">Window animation</string>
+    <string name="motion_from_control">Out of the control</string>
+    <string name="motion_mid_air">Mid air</string>
+    <string name="motion_none">Off</string>
+    <string name="edit_window_motion_note">How the Wi-Fi, Bluetooth and Input windows arrive and leave: growing in place (Mid air), out of their control, or at once. Mid air never stretches the picture behind them.</string>
     <string name="edit_invert">Selected control colors</string>
     <string name="invert_yes">Inverted</string>
     <string name="invert_no">Normal</string>

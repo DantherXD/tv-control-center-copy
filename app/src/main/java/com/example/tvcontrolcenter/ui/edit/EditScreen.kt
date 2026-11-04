@@ -83,6 +83,7 @@ import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
 import com.example.tvcontrolcenter.domain.model.UiScaleSteps
 import com.example.tvcontrolcenter.domain.model.Wallpaper
+import com.example.tvcontrolcenter.domain.model.WindowMotion
 import com.example.tvcontrolcenter.ui.background.AppWallpaper
 import com.example.tvcontrolcenter.ui.panel.ControlCenterUiState
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
@@ -269,6 +270,19 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                             StepRow(stringResource(R.string.edit_header_gap), "${settings.headerGap}") { d ->
                                 vm.updateSettings { it.copy(headerGap = HeaderGapSteps.step(it.headerGap, d)) }
                             }
+                            val motions = listOf(
+                                WindowMotion.FROM_CONTROL to R.string.motion_from_control,
+                                WindowMotion.MID_AIR to R.string.motion_mid_air,
+                                WindowMotion.OFF to R.string.motion_none,
+                            )
+                            StepRow(
+                                stringResource(R.string.edit_window_motion),
+                                stringResource(motions.first { it.first == settings.windowMotion }.second),
+                            ) { d ->
+                                val next = motions[Math.floorMod(motions.indexOfFirst { it.first == settings.windowMotion } + d, motions.size)].first
+                                vm.updateSettings { it.copy(windowMotion = next) }
+                            }
+                            Hint(stringResource(R.string.edit_window_motion_note))
                             StepRow(stringResource(R.string.edit_card), onOff(settings.card)) {
                                 vm.updateSettings { it.copy(card = !it.card) }
                             }

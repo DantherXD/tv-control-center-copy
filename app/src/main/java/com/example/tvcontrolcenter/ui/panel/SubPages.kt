@@ -52,6 +52,7 @@ import com.example.tvcontrolcenter.domain.model.NetworkKind
 import com.example.tvcontrolcenter.domain.model.Placed
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TvInputItem
+import com.example.tvcontrolcenter.domain.model.WindowMotion
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalTileInk
@@ -104,9 +105,9 @@ internal fun subTileOf(page: PanelPage): TileId = when (page) {
 
 /**
  * The small window a long press on Wi-Fi or Bluetooth (or a press on Input) opens in place of the
- * grid: a title, then one line per row. It grows out of [from], the control that opened it, so it
- * is clear where it came from, and it is as tall as its rows so none of them hides below the fold.
- * The first pressable row takes focus; Back closes the window.
+ * grid: a title, then one line per row. [motion] decides how it arrives and leaves; it is as tall
+ * as its rows so none of them hides below the fold. The first pressable row takes focus; Back
+ * closes the window.
  */
 @Composable
 internal fun SubPageCard(
@@ -118,6 +119,7 @@ internal fun SubPageCard(
     origin: Offset,
     sheet: Boolean,
     from: Placed? = null,
+    motion: WindowMotion = WindowMotion.MID_AIR,
     closing: Boolean = false,
     onClosed: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -139,7 +141,7 @@ internal fun SubPageCard(
     val firstRow = rows.indexOfFirst { it is SubRow.Action }
     Column(
         modifier
-            .expandFromTile(from, PanelDimens.gridWidth, height, closing, onClosed)
+            .windowMotion(motion, from, PanelDimens.gridWidth, height, closing, onClosed)
             .size(PanelDimens.gridWidth, height)
             // Nothing to press (no inputs found): the window itself takes focus, so Back works.
             .then(if (firstRow < 0) Modifier.focusRequester(first).focusable() else Modifier)
@@ -176,23 +178,28 @@ internal fun SubPageCard(
 }
 
 /**
- * Grows the window out of the control that opened it, the way iOS opens a control's detail: it
- * starts as exactly that control and springs to its full size. The first frame is the tile, so
- * nothing is composed twice and focus exists from the start.
+ * How the window arrives and leaves, chosen by [motion] in the editor.
  *
- * [closing] runs the same motion backwards, so the window shrinks onto its control and dissolves;
- * [onClosed] fires when it has landed, and only then does the host drop the window.
+ * [WindowMotion.FROM_CONTROL] starts as exactly the control that opened it and springs to its full
+ * size, the way iOS opens a control's detail. [WindowMotion.MID_AIR] starts a little smaller in the
+ * window's own place and grows, so the picture inside it is never stretched into a tile's shape.
+ * [WindowMotion.OFF] draws it at once. [closing] runs whichever motion backwards, so the window
+ * leaves the way it arrived; [onClosed] fires when it has landed, and only then does the host drop
+ * the window.
  */
 @Composable
-private fun Modifier.expandFromTile(
+private fun Modifier.windowMotion(
+    motion: WindowMotion,
     from: Placed?,
     width: Dp,
     height: Dp,
     closing: Boolean,
     onClosed: () -> Unit,
 ): Modifier {
-    if (from == null) {
-        // Nothing to shrink onto: still finish the close, or Back would leave the window stuck.
+    // From the control needs a control to come from; with none, or with no motion at all, there is
+    // nothing to animate, but the close must still finish or Back would leave the window stuck.
+    val tile = if (motion == WindowMotion.FROM_CONTROL) from else null
+    if (motion == WindowMotion.OFF || (motion == WindowMotion.FROM_CONTROL && tile == null)) {
         LaunchedEffect(closing) { if (closing) onClosed() }
         return this
     }
@@ -207,29 +214,42 @@ private fun Modifier.expandFromTile(
         progress.animateTo(0f, spring(dampingRatio = 0.9f, stiffness = 700f))
         onClosed()
     }
-    val start = with(density) {
-        Start(
-            x = (PanelDimens.cell + PanelDimens.gap).toPx() * from.col,
-            y = (PanelDimens.cell + PanelDimens.gap).toPx() * from.row,
-            scaleX = span(from.cols).toPx() / width.toPx(),
-            scaleY = span(from.rows).toPx() / height.toPx(),
-        )
+    val start = if (tile != null) {
+        with(density) {
+            Start(
+                x = (PanelDimens.cell + PanelDimens.gap).toPx() * tile.col,
+                y = (PanelDimens.cell + PanelDimens.gap).toPx() * tile.row,
+                scaleX = span(tile.cols).toPx() / width.toPx(),
+                scaleY = span(tile.rows).toPx() / height.toPx(),
+            )
+        }
+    } else {
+        Start(x = 0f, y = 0f, scaleX = MID_AIR_SCALE, scaleY = MID_AIR_SCALE)
     }
     return this.graphicsLayer {
         val p = progress.value
         val s = p.coerceIn(0f, 1f)
-        val sx = start.scaleX + (1f - start.scaleX) * s
-        val sy = start.scaleY + (1f - start.scaleY) * s
-        transformOrigin = TransformOrigin(0f, 0f)
-        scaleX = sx
-        scaleY = sy
+        // A tile's shape has to be anchored at its top-left corner to land on the control; a
+        // mid-air window grows out of its own middle.
+        transformOrigin = if (tile != null) TransformOrigin(0f, 0f) else TransformOrigin.Center
+        scaleX = start.scaleX + (1f - start.scaleX) * s
+        scaleY = start.scaleY + (1f - start.scaleY) * s
         // Maps the window's own rect onto the tile's rect at the first frame: same place, small.
         translationX = start.x * (1f - s)
         translationY = start.y * (1f - s)
-        // Open fades in over the first frames; closing stays solid until it is nearly home.
-        alpha = (p * (if (closing) 1.4f else 4f)).coerceIn(0f, 1f)
+        // Opening from a control fades in over the first frames; anything else stays solid until
+        // it is nearly home on the way out.
+        val fade = when {
+            closing -> 1.4f
+            tile != null -> 4f
+            else -> 2.2f
+        }
+        alpha = (p * fade).coerceIn(0f, 1f)
     }
 }
+
+/** How much smaller a mid-air window is at its first frame. */
+private const val MID_AIR_SCALE = 0.94f
 
 /** Where the window starts: the opened control's top-left corner and the scale that fits it. */
 private class Start(val x: Float, val y: Float, val scaleX: Float, val scaleY: Float)

@@ -11,6 +11,7 @@ import com.example.tvcontrolcenter.domain.model.PanelSettings
 import com.example.tvcontrolcenter.domain.model.SleepTimerPresets
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.Wallpaper
+import com.example.tvcontrolcenter.domain.model.WindowMotion
 import com.example.tvcontrolcenter.domain.repository.FocusMemory
 import com.example.tvcontrolcenter.domain.repository.LayoutRepository
 import com.example.tvcontrolcenter.domain.repository.SleepTimerRepository
@@ -122,6 +123,7 @@ class PreferencesLayoutRepository @Inject constructor(
             menuIsHome = prefs.getBoolean(KEY_MENU_HOME, true),
             patientCapture = prefs.getBoolean(KEY_PATIENT, false),
             musicStyle = MusicStyle.entries.firstOrNull { it.name == prefs.getString(KEY_MUSIC_STYLE, null) } ?: MusicStyle.COMPACT,
+            windowMotion = WindowMotion.entries.firstOrNull { it.name == prefs.getString(KEY_WINDOW_MOTION, null) } ?: WindowMotion.MID_AIR,
             iconStyle = IconStyle.entries.firstOrNull { it.name == prefs.getString(KEY_ICONS, null) } ?: IconStyle.FILLED,
             profilePhotoVersion = prefs.getInt(KEY_PHOTO, 0),
             profileColor = prefs.getInt(KEY_COLOR, 0),
@@ -173,6 +175,7 @@ class PreferencesLayoutRepository @Inject constructor(
             .putBoolean(KEY_MENU_HOME, next.menuIsHome)
             .putString(KEY_ICONS, next.iconStyle.name)
             .putString(KEY_MUSIC_STYLE, next.musicStyle.name)
+            .putString(KEY_WINDOW_MOTION, next.windowMotion.name)
             .putBoolean(KEY_PATIENT, next.patientCapture)
             .putInt(KEY_PHOTO, next.profilePhotoVersion)
             .putInt(KEY_COLOR, next.profileColor)
@@ -195,6 +198,7 @@ class PreferencesLayoutRepository @Inject constructor(
         const val KEY_MENU_HOME = "menu_is_home"
         const val KEY_ICONS = "icon_style"
         const val KEY_MUSIC_STYLE = "music_style"
+        const val KEY_WINDOW_MOTION = "window_motion"
         const val KEY_PATIENT = "patient_capture"
         const val KEY_PHOTO = "profile_photo"
         const val KEY_COLOR = "profile_color"

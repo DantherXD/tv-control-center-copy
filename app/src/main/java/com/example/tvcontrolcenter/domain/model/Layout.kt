@@ -276,6 +276,8 @@ data class PanelSettings(
     val menuIsHome: Boolean = true,
     val iconStyle: IconStyle = IconStyle.FILLED,
     val musicStyle: MusicStyle = MusicStyle.COMPACT,
+    /** How the Wi-Fi, Bluetooth and Input windows arrive and leave (see [WindowMotion]). */
+    val windowMotion: WindowMotion = WindowMotion.MID_AIR,
     /** Wait longer and retry the screenshot, so the blur also works over video and moving scenes. */
     val patientCapture: Boolean = false,
     /** 0 = no photo. Changes whenever a new photo is saved, so the picture reloads. */
@@ -403,3 +405,23 @@ enum class IconStyle { FILLED, OUTLINED, ROUNDED }
 
 /** Look of the now-playing page: a compact card, or a big one like iOS with the album picture filling it. */
 enum class MusicStyle { COMPACT, BIG }
+
+/** How a small window opens and closes. */
+enum class WindowMotion {
+    /**
+     * Grows out of the control that opened it, as the control's own piece of the screen, and
+     * shrinks back onto it. The window is a tile's shape at the first frame, so the picture
+     * inside it is drawn stretched until it has reached its real size.
+     */
+    FROM_CONTROL,
+
+    /**
+     * Opens in the window's own place, a little smaller and transparent, and grows to full size;
+     * closing fades it out where it stands. Nothing travels and nothing is stretched into a
+     * tile's shape, which is why this is the default.
+     */
+    MID_AIR,
+
+    /** No motion: the window is simply there, and a close is done at once. */
+    OFF,
+}
