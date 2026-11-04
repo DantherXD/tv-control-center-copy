@@ -277,6 +277,18 @@ private fun HostBody(
             switchInput = viewModel::onSwitchInput,
         )
     }
+    // A card on its way home hands focus back at once, so it lands on its control in one move
+    // instead of wandering over the grid while the card disappears.
+    LaunchedEffect(closingSub, closingMusic) {
+        val target = when {
+            closingSub -> returnTo
+            closingMusic -> TileId.NOW_PLAYING
+            else -> null
+        } ?: return@LaunchedEffect
+        withFrameNanos { }
+        withFrameNanos { }
+        runCatching { requesters.getValue(target).requestFocus() }
+    }
     // A small window opened: put focus on its first row. Closed: back to the tile that opened it.
     LaunchedEffect(page) {
         if (page.isSub) {
@@ -335,19 +347,36 @@ private fun HostBody(
                 if (a > 0.001f) drawRect(Color.Black.copy(alpha = a))
             }
             .onPreviewKeyEvent { event ->
-                if (event.key == Key.Back || event.key == Key.Escape) {
-                    if (event.type == KeyEventType.KeyUp) {
-                        when {
-                            // A card is already on its way home: Back closes the panel, as before.
-                            closingSub || closingMusic -> dismiss()
-                            // First Back shrinks the card back into the control it came from.
-                            page.isSub -> closingSub = true
-                            page == PanelPage.MUSIC -> closingMusic = true
-                            else -> dismiss()
+                when (event.key) {
+                    Key.Back, Key.Escape -> {
+                        if (event.type == KeyEventType.KeyUp) {
+                            when {
+                                // A card is already on its way home: Back closes the panel, as before.
+                                closingSub || closingMusic -> dismiss()
+                                // First Back shrinks the card back into the control it came from.
+                                page.isSub -> closingSub = true
+                                page == PanelPage.MUSIC -> closingMusic = true
+                                else -> dismiss()
+                            }
                         }
+                        true
                     }
-                    true
-                } else false
+                    Key.Menu -> {
+                        // Menu swaps the main page and the now-playing page, both ways.
+                        if (event.type == KeyEventType.KeyUp && !closingSub && !closingMusic) {
+                            when {
+                                // A window is open: Menu goes back to the grid.
+                                page.isSub -> closingSub = true
+                                page == PanelPage.MUSIC -> closingMusic = true
+                                page == PanelPage.GRID && musicOnTop -> {
+                                    if (viewModel.onMusicPageRequested()) page = PanelPage.MUSIC
+                                }
+                            }
+                        }
+                        true
+                    }
+                    else -> false
+                }
             },
         contentAlignment = Alignment.TopEnd,
     ) {

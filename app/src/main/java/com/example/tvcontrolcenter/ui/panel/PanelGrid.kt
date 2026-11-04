@@ -232,6 +232,7 @@ internal fun PanelContent(
                     sheet = sheet,
                     // Where the window grows from: the control that opened it.
                     from = grid.firstOrNull { it.id == subTileOf(page) },
+                    motion = state.settings.windowMotion,
                     closing = subClosing,
                     onClosed = onSubClosed,
                 )
@@ -382,8 +383,9 @@ private fun PanelTile(
         onActivate = onActivate,
         modifier = modifier,
         stateText = stateText,
-        // Top-bar buttons: the open page is highlighted (not white), the rest are grey until focused.
+        // Top-bar buttons: the open page is white, the rest are grey until focused.
         active = if (p.row == GridPacker.TOP_ROW) pageOpen else face.active,
+        solid = p.id == TileId.NOW_PLAYING && pageOpen,
         dimIdle = p.row == GridPacker.TOP_ROW && !pageOpen,
         flat = flat,
         onLongPress = longPress,
