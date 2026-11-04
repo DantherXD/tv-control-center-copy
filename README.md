@@ -43,8 +43,8 @@ The **Apps** tab pins an app to one of four slots, so it opens in one press from
 really opens (`adb logcat -s TCC`).
 
 **Hold OK** on Wi-Fi or Bluetooth for a small window with its status, the network or audio device in use and a row that opens the
-system settings; **press OK** on Input for the list of inputs, one row each. Those controls carry a small dot in the
-corner, so the hold is findable, and TalkBack gets the same action. A window opens in place, growing from slightly
+system settings; **press OK** on Input for the list of inputs, one row each. The hold is exposed to TalkBack too, so the action is reachable from a screen
+reader. A window opens in place, growing from slightly
 smaller, and it is as tall as its rows so nothing hides below the fold (long lists scroll). **Window animation** in the editor
 picks between that (**Mid air**, the default), growing out of the control it was opened from (**Out of the control**, which
 stretches the picture behind it into the control's shape), and no motion (**Off**). Back closes the window the same way, with the
