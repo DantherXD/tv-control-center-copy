@@ -5,7 +5,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
@@ -13,7 +17,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusProperties
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -31,6 +37,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -161,6 +168,8 @@ fun GlassTile(
                 stateText?.let { stateDescription = it }
                 role = Role.Button
                 onClick(label = label) { onActivate(); true }
+                // The held action is part of the control, so a screen reader can reach it too.
+                onLongPress?.let { press -> onLongClick(label = label) { press(); true } }
             }
             .then(
                 if (lite) Modifier else Modifier.graphicsLayer {
@@ -188,7 +197,21 @@ fun GlassTile(
                 flat = flat,
             ),
     ) {
-        CompositionLocalProvider(LocalTileInk provides inkColor) { content() }
+        CompositionLocalProvider(LocalTileInk provides inkColor) {
+            content()
+            // A control with a second, held action gets a quiet corner dot: otherwise nobody
+            // finds the window behind Wi-Fi, Bluetooth or Profile.
+            if (onLongPress != null) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 7.dp, end = 7.dp)
+                        .size(5.dp)
+                        .clip(CircleShape)
+                        .background(LocalTileInk.current.copy(alpha = 0.5f)),
+                )
+            }
+        }
     }
 }
 

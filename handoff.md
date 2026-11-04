@@ -126,7 +126,9 @@ does stretch. **OFF** draws the window at once and finishes a close immediately.
 (`closingSub` → `closeSub`), the grid is composed underneath for the whole close, and rows ignore
 presses while closing. Focus is handed back to the opening control as the close **starts**
 (`LaunchedEffect(closingSub)`), so it moves once instead of wandering over the grid when the card
-unmounts. Back during the shrink closes the panel, so Back-Back still dismisses.
+unmounts. Back during the shrink closes the panel, so Back-Back still dismisses. A control that has
+a window behind it carries a 5 dp corner dot, and `GlassTile` exposes the hold as a semantics
+`onLongClick`, so the action is reachable with TalkBack and visible without it.
 
 **Music page.** Opened from the Now Playing top-bar button when `menuIsHome` is on, and from the
 remote's **Menu key**, which swaps the grid and the music page both ways (Menu on a sub window goes
@@ -207,10 +209,12 @@ own, so a new default only reaches installs that never touched it.
 
 ## Open items
 
-1. **Verify the last two pushes in CI.** `fd383b4` (closing animations for small windows + round
-   buttons 40 → 44 dp default, steps 32–48) and the music-page work on top of it. Neither has been
-   compiled. Most likely failure points: the composable lambda `gridLayer`, `Dp` arithmetic in
-   `musicFrom`, and `LocalDensity` plumbing in `MusicPage.shrinkInto`.
+1. **Verify the recent pushes in CI.** Since `fd383b4` nothing has been compiled: closing animations,
+   the window-motion setting, contrast-aware ink, app slots with the Apps tab, activity capture, and
+   the corner dot. Most likely failure points: the two exhaustive `when`s over `TileId`
+   (`TileCatalog`, `ControlCenterViewModel.onTileActivated`) after the four APP ids were added, the
+   smart casts in `TileFaces`/`GlassTile`, the `app_slots` string round-trip in `DataImpl`, and the
+   new `EditTab.APPS` branch.
 2. **Music page: transport presses still work during the ~250 ms shrink.** The small windows got a
    `NoActivate` guard for their rows; the transport buttons do not have one yet.
 3. **"A lot of tiles have no action"** — the owner reported it without naming them. Ask which. Then:
