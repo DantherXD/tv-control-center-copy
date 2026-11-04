@@ -19,12 +19,12 @@
 
     <!-- Upper switch: knob, sitting on the left. -->
     <path
-        android:pathData="M6.7,8m-1.7,0a1.7,1.7 0 1,0 3.4,0a1.7,1.7 0 1,0 -3.4,0"
+        android:pathData="M6.7,8m-2.2,0a2.2,2.2 0 1,0 4.4,0a2.2,2.2 0 1,0 -4.4,0"
         android:fillColor="#FFFFFFFF" />
 
     <!-- Lower switch: filled track with the knob cut out on the right. -->
     <path
         android:fillType="evenOdd"
-        android:pathData="M6.4,12.6h11.2a3.4,3.4 0 0,1 0,6.8H6.4a3.4,3.4 0 0,1 0,-6.8z M17.3,16m-1.7,0a1.7,1.7 0 1,0 3.4,0a1.7,1.7 0 1,0 -3.4,0"
+        android:pathData="M6.4,12.6h11.2a3.4,3.4 0 0,1 0,6.8H6.4a3.4,3.4 0 0,1 0,-6.8z M17.3,16m-2.2,0a2.2,2.2 0 1,0 4.4,0a2.2,2.2 0 1,0 -4.4,0"
         android:fillColor="#FFFFFFFF" />
 </vector>
