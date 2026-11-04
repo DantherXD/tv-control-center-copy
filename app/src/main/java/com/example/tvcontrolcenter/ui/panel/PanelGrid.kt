@@ -200,6 +200,11 @@ internal fun PanelContent(
                                 TileId.EDIT -> state.settings.menuIsHome && musicButton && page == PanelPage.GRID
                                 else -> false
                             },
+                            // While a page is open nothing in the bar may hold focus: the grid
+                            // leaves for a frame, and a bar button taking focus in that gap is
+                            // what made the highlight hop through it. The music page keeps its own
+                            // button, and even that steps aside while the page flies home.
+                            focusable = !sub && !musicClosing && (!music || p.id == TileId.NOW_PLAYING),
                             radius = top / 2,
                             // Menu and profile follow the setting; the music button never has a border.
                             flat = state.settings.topBorderless || p.id == TileId.NOW_PLAYING,
@@ -354,6 +359,7 @@ private fun PanelTile(
     pageOpen: Boolean,
     flat: Boolean,
     longPress: (() -> Unit)?,
+    focusable: Boolean = true,
     radius: Dp,
     modifier: Modifier,
 ) {
@@ -414,6 +420,7 @@ private fun PanelTile(
         dimIdle = p.row == GridPacker.TOP_ROW && !pageOpen,
         flat = flat,
         onLongPress = longPress,
+        focusable = focusable,
         selected = selected,
         backdrop = backdrop,
         backdropOrigin = backdropOrigin,

@@ -144,7 +144,7 @@ internal fun SubPageCard(
             .windowMotion(motion, from, PanelDimens.gridWidth, height, closing, onClosed)
             .size(PanelDimens.gridWidth, height)
             // Nothing to press (no inputs found): the window itself takes focus, so Back works.
-            .then(if (firstRow < 0) Modifier.focusRequester(first).focusable() else Modifier)
+            .then(if (firstRow < 0 && !closing) Modifier.focusRequester(first).focusable() else Modifier)
             .then(glass)
             .padding(WINDOW_PADDING),
         verticalArrangement = Arrangement.spacedBy(ROW_GAP),
@@ -169,6 +169,7 @@ internal fun SubPageCard(
                         label = row.label,
                         value = null,
                         requester = if (index == firstRow) first else null,
+                        focusable = !closing,
                         activate = if (closing) NoActivate else row.activate,
                     )
                 }
@@ -300,7 +301,13 @@ private fun InputRows(inputs: List<TvInputItem>, actions: SubPageActions): List<
 
 /** A focusable row: name on the left, value on the right. White when focused, like the other controls. */
 @Composable
-private fun SheetRow(label: String, value: String?, requester: FocusRequester?, activate: () -> Unit) {
+private fun SheetRow(
+    label: String,
+    value: String?,
+    requester: FocusRequester?,
+    focusable: Boolean = true,
+    activate: () -> Unit,
+) {
     var focused by remember { mutableStateOf(false) }
     val invert = LocalInvertFocus.current
     val dark = focused && invert
@@ -329,7 +336,7 @@ private fun SheetRow(label: String, value: String?, requester: FocusRequester?, 
                     else -> false
                 }
             }
-            .focusable()
+            .focusable(focusable)
             .semantics(mergeDescendants = true) {
                 contentDescription = if (value == null) label else "$label, $value"
                 role = Role.Button

@@ -89,6 +89,8 @@ fun GlassTile(
     ink: Color? = null,
     /** Held OK. When set, a short press still activates, a long one calls this instead. */
     onLongPress: (() -> Unit)? = null,
+    /** False while a page is leaving: a control that is going away must not be able to take focus. */
+    focusable: Boolean = true,
     backdrop: Backdrop? = null,
     backdropOrigin: Offset = Offset.Zero,
     appear: () -> Float = { 1f },
@@ -162,7 +164,7 @@ fun GlassTile(
                     else -> false
                 }
             }
-            .focusable()
+            .focusable(focusable)
             .semantics(mergeDescendants = true) {
                 contentDescription = label
                 stateText?.let { stateDescription = it }
