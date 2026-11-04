@@ -85,8 +85,6 @@ class ControlCenterAccessibilityService : AccessibilityService() {
     fun lockScreen(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
-
     override fun onInterrupt() = Unit
 
     override fun onDestroy() {

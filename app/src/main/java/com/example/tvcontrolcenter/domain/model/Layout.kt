@@ -2,6 +2,10 @@ package com.example.tvcontrolcenter.domain.model
 
 import kotlin.math.abs
 import com.example.tvcontrolcenter.domain.model.TileId.ACCESSIBILITY
+import com.example.tvcontrolcenter.domain.model.TileId.APP_1
+import com.example.tvcontrolcenter.domain.model.TileId.APP_2
+import com.example.tvcontrolcenter.domain.model.TileId.APP_3
+import com.example.tvcontrolcenter.domain.model.TileId.APP_4
 import com.example.tvcontrolcenter.domain.model.TileId.APPS
 import com.example.tvcontrolcenter.domain.model.TileId.BLUETOOTH
 import com.example.tvcontrolcenter.domain.model.TileId.CAPTIONS
