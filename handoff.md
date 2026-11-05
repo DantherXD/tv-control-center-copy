@@ -113,8 +113,9 @@ the default layout, fixed default positions), `BoxBlurTest`, `ControlCenterViewM
 **Grid and top bar.** Clock plus round Menu / Profile buttons (Now Playing optional, `MAX_PINNED = 3`),
 then a 4-column grid of Small/Wide/Tall/Large/Full controls. Round buttons are `topSize` dp
 (**default 44**, steps 32–48); the header row is `maxOf(44 dp, topSize)` so nothing shifts at the
-default. Menu is the main page (`menuIsHome`), so the music button only opens the music page, and
-Menu still opens the editor if Profile is hidden (can't lock yourself out).
+default. Menu is the main page (`menuIsHome`), so the music button only opens the music page — pressing it
+again from inside that page opens the app that is playing — and Menu still opens the editor if
+Profile is hidden (can't lock yourself out).
 
 **Small windows (Wi-Fi, Bluetooth, Input).** `PanelSettings.windowMotion` picks how they arrive and
 leave. **MID_AIR** (the default) grows from 94 % in the window's own place and fades out where it
@@ -134,11 +135,20 @@ remote's **Menu key**, which swaps the grid and the music page both ways (Menu o
 back to the grid). Opens with `popIn()` (fade + 0.9→1 scale, settles from -14 dp, 0.78 / 380).
 **Back shrinks the card into that top-bar button** (`closingMusic` → `closeMusic`), with `MusicOrigin`
 computed in `PanelGrid` from `topSize`, `header`, `gap` and the button's index; the grid is
-underneath and focus goes back to Now Playing, handed over as the close starts. The button is drawn
-**solid white while its page is open** (`GlassTile(solid = …)`), until the page hands back to the
-grid. Pressing the music button to leave the page (only when `menuIsHome` is off) uses the same
-close; the on-screen **Menu button** pressed as home still leaves instantly (it would otherwise
-steal focus from Menu).
+underneath and focus is handed to the grid's top-left control as the close starts, so it moves once
+and lands where a page starts. The button is drawn **solid white while its page is open**
+(`GlassTile(solid = …)`), until the page hands back to the grid. The page opens on its **play
+button** (`LaunchedEffect(page)`), and **OK on the music button opens the app that is playing**
+(`onOpenNowPlayingApp` → `openApp(nowPlaying.packageName)`), which is what that button leads to from
+there; the on-screen **Menu button** pressed as home still leaves instantly (it would otherwise
+steal focus from Menu). The bar stays focusable on the music page, so Up from the card reaches the
+music button and Left/Right move between the bar buttons (`all = if (music) pinned else navigation`),
+while a small window takes the bar out of focus (`focusable = !sub && !musicClosing`).
+
+**Starting focus.** The panel opens on the grid's top-left control (`firstGridTile()`: the lowest row
+then column below `GridPacker.TOP_ROW`), never on whichever button the bar composed first; the music
+page opens on play, coming back from it lands on that same top-left control, and only a closed small
+window hands focus back to the control that opened it.
 
 **Glass and blur.** Ten `FrostStyle`s (Smoke, Milky, Clear, Lens, Ocean, Amethyst, Ember, Forest,
 Rose, Midnight). Blur method AUTO (screenshot, window blur fallback), SCREENSHOT (blur only inside the

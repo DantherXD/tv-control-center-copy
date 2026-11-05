@@ -204,6 +204,16 @@ class ControlCenterViewModel @Inject constructor(
         return false
     }
 
+    /**
+     * The music button pressed on the open music page: hand over to whatever is playing. Nothing to
+     * hand over to says so, rather than doing nothing at all.
+     */
+    fun onOpenNowPlayingApp() {
+        val packageName = uiState.value.nowPlaying?.packageName
+        if (packageName == null) _events.tryEmit(PanelEvent.Unavailable(TileId.NOW_PLAYING))
+        else handle(actions.openApp(packageName), dismissOnDone = true, tile = TileId.NOW_PLAYING)
+    }
+
     fun wifiEnabled() = actions.wifiEnabled()
     fun wifiName() = actions.wifiNetworkName()
     fun pairedBluetooth() = actions.pairedBluetoothDevices()

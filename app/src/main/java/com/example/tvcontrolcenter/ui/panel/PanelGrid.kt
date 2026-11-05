@@ -177,7 +177,9 @@ internal fun PanelContent(
                             PanelDimens.topButtonGap
                         PanelTile(
                             p = p,
-                            all = navigation,
+                            // With the music page open the bar is the only way up, so it navigates
+                            // between its own buttons instead of reaching into the hidden grid.
+                            all = if (music) pinned else navigation,
                             state = state,
                             requesters = requesters,
                             interactive = interactive,
@@ -200,11 +202,11 @@ internal fun PanelContent(
                                 TileId.EDIT -> state.settings.menuIsHome && musicButton && page == PanelPage.GRID
                                 else -> false
                             },
-                            // While a page is open nothing in the bar may hold focus: the grid
-                            // leaves for a frame, and a bar button taking focus in that gap is
-                            // what made the highlight hop through it. The music page keeps its own
-                            // button, and even that steps aside while the page flies home.
-                            focusable = !sub && !musicClosing && (!music || p.id == TileId.NOW_PLAYING),
+                            // A window owns the screen while it is open, so the bar steps out of
+                            // the way, and it steps out again while a card flies home: a button
+                            // taking focus in that gap is what made the highlight hop through it.
+                            // The music page is different: Up from its card comes here.
+                            focusable = !sub && !musicClosing,
                             radius = top / 2,
                             // Menu and profile follow the setting; the music button never has a border.
                             flat = state.settings.topBorderless || p.id == TileId.NOW_PLAYING,

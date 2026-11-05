@@ -155,12 +155,18 @@ private fun HostBody(
     val musicOnTop = pinned.any { it.id == TileId.NOW_PLAYING }
 
     val currentPlaced by rememberUpdatedState(placed)
-    val currentPinned by rememberUpdatedState(pinned)
     val currentVisible by rememberUpdatedState(visible)
     val dismiss by rememberUpdatedState(onDismissRequest)
     val capability by rememberUpdatedState(onCapability)
     val editor by rememberUpdatedState(onOpenEditor)
     val shown by remember { derivedStateOf { currentVisible || progress.value > 0.001f } }
+    // Where focus starts on the grid: its top-left control, never a button in the bar above it.
+    // Read when called, so it follows a layout reordered in the editor.
+    val firstGridTile: () -> TileId? = {
+        currentPlaced.filter { it.row > GridPacker.TOP_ROW }
+            .minWithOrNull(compareBy({ it.row }, { it.col }))
+            ?.id
+    }
 
     // Closing before the first open (the owner is still preparing a backdrop) is not a close.
     val hasOpened = remember { booleanArrayOf(false) }
@@ -210,13 +216,12 @@ private fun HostBody(
 
     if (!shown) return
 
-    // Wait for the first status emission, then give the remembered control focus.
+    // Wait for the first status emission, then start on the grid's top-left control. The bar is
+    // composed first, so without this the panel opens with a button up there highlighted.
     LaunchedEffect(Unit) {
         viewModel.uiState.first { it.tiles.isNotEmpty() }
         withFrameNanos { }
-        val remembered = viewModel.rememberedFocus()
-        val all = currentPinned + currentPlaced
-        val target = all.firstOrNull { it.id == remembered }?.id ?: all.firstOrNull()?.id
+        val target = firstGridTile()
         if (target != null) runCatching { requesters.getValue(target).requestFocus() }
     }
 
@@ -259,10 +264,10 @@ private fun HostBody(
         closingSub = false
         page = PanelPage.GRID
     }
-    // The music card has shrunk back into its button: focus goes there too.
+    // The music card has shrunk back into its button; the grid starts at its top-left control.
     val closeMusic: () -> Unit = {
         closingMusic = false
-        returnTo = TileId.NOW_PLAYING
+        returnTo = null
         page = PanelPage.GRID
     }
     val subActions = remember(viewModel) {
@@ -283,26 +288,38 @@ private fun HostBody(
     LaunchedEffect(closingSub, closingMusic) {
         val target = when {
             closingSub -> returnTo
-            closingMusic -> TileId.NOW_PLAYING
+            // The music page opened from a button in the bar, but focus comes back into the grid:
+            // the bar is not where a page starts.
+            closingMusic -> firstGridTile()
             else -> null
         } ?: return@LaunchedEffect
         withFrameNanos { }
         withFrameNanos { }
         runCatching { requesters.getValue(target).requestFocus() }
     }
-    // A small window opened: put focus on its first row. Closed: back to the tile that opened it.
+    // A window opened: its first row. The grid came back: the tile that opened the window that
+    // just closed, else the grid's top-left control. The music page: its play button, so the bar
+    // never holds focus just because it happens to be composed first.
     LaunchedEffect(page) {
-        if (page.isSub) {
-            withFrameNanos { }
-            withFrameNanos { }
-            runCatching { subFocus.requestFocus() }
-        } else if (page == PanelPage.GRID) {
-            val target = returnTo
-            if (target != null) {
+        when {
+            page.isSub -> {
+                withFrameNanos { }
+                withFrameNanos { }
+                runCatching { subFocus.requestFocus() }
+            }
+            page == PanelPage.MUSIC -> {
+                withFrameNanos { }
+                withFrameNanos { }
+                runCatching { musicFocus.play.requestFocus() }
+            }
+            else -> {
+                val target = returnTo ?: firstGridTile()
                 returnTo = null
-                withFrameNanos { }
-                withFrameNanos { }
-                runCatching { requesters.getValue(target).requestFocus() }
+                if (target != null) {
+                    withFrameNanos { }
+                    withFrameNanos { }
+                    runCatching { requesters.getValue(target).requestFocus() }
+                }
             }
         }
     }
@@ -311,8 +328,8 @@ private fun HostBody(
             id == TileId.INPUT -> openSub(PanelPage.INPUT, TileId.INPUT)
             id == TileId.NOW_PLAYING && musicOnTop -> {
                 if (page == PanelPage.MUSIC) {
-                    // With Menu as the main page, the music button only opens the music page.
-                    if (!menuIsHome) closeMusic()
+                    // The page is already open: from here the button leads into the app playing.
+                    viewModel.onOpenNowPlayingApp()
                 } else if (viewModel.onMusicPageRequested()) {
                     closingMusic = false
                     page = PanelPage.MUSIC
