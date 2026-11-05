@@ -25,8 +25,10 @@ import androidx.compose.foundation.layout.BoxScope
 import com.example.tvcontrolcenter.domain.model.HeaderGapSteps
 import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
+import com.example.tvcontrolcenter.ui.panel.LocalIconPack
 import com.example.tvcontrolcenter.ui.panel.LocalIconStyle
 import com.example.tvcontrolcenter.domain.model.EdgeWidthSteps
+import com.example.tvcontrolcenter.domain.model.IconPack
 import com.example.tvcontrolcenter.domain.model.IconStyle
 import com.example.tvcontrolcenter.domain.model.MusicStyle
 import com.example.tvcontrolcenter.domain.model.TopSizeSteps
@@ -121,6 +123,7 @@ fun EditScreen(viewModel: ControlCenterViewModel, onDone: () -> Unit) {
             LocalInvertFocus provides state.settings.invertFocus,
             LocalEdgeWidth provides state.settings.edgeWidth.dp,
             LocalIconStyle provides state.settings.iconStyle,
+            LocalIconPack provides state.settings.iconPack,
         ) {
             EditBody(state, viewModel, onDone)
         }
@@ -290,9 +293,15 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 vm.updateSettings { it.copy(card = !it.card) }
                             }
                             Hint(stringResource(R.string.edit_card_note))
+                            val edge = settings.edgeWidth
                             StepRow(
                                 stringResource(R.string.edit_edge),
-                                if (settings.edgeWidth <= 0f) stringResource(R.string.edge_none) else "${settings.edgeWidth}",
+                                when {
+                                    edge <= 0f -> stringResource(R.string.edge_none)
+                                    // Whole dp reads as "2", not "2.0"; the finer steps keep their decimals.
+                                    edge % 1f == 0f -> "${edge.toInt()}"
+                                    else -> "$edge"
+                                },
                             ) { d -> vm.updateSettings { it.copy(edgeWidth = EdgeWidthSteps.step(it.edgeWidth, d)) } }
                             val iconNames = listOf(
                                 IconStyle.FILLED to R.string.icons_filled,
@@ -306,6 +315,18 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 val next = iconNames[Math.floorMod(iconNames.indexOfFirst { it.first == settings.iconStyle } + d, iconNames.size)].first
                                 vm.updateSettings { it.copy(iconStyle = next) }
                             }
+                            val iconPacks = listOf(
+                                IconPack.MATERIAL to R.string.pack_system,
+                                IconPack.PHOSPHOR to R.string.pack_phosphor,
+                            )
+                            StepRow(
+                                stringResource(R.string.edit_icon_pack),
+                                stringResource(iconPacks.first { it.first == settings.iconPack }.second),
+                            ) { d ->
+                                val next = iconPacks[Math.floorMod(iconPacks.indexOfFirst { it.first == settings.iconPack } + d, iconPacks.size)].first
+                                vm.updateSettings { it.copy(iconPack = next) }
+                            }
+                            Hint(stringResource(R.string.edit_icon_pack_note))
                             StepRow(
                                 stringResource(R.string.edit_invert),
                                 stringResource(if (settings.invertFocus) R.string.invert_yes else R.string.invert_no),

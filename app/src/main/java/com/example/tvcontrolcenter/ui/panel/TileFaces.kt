@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
 import com.example.tvcontrolcenter.R
+import com.example.tvcontrolcenter.domain.model.IconPack
 import com.example.tvcontrolcenter.domain.model.NetworkKind
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
@@ -290,7 +291,12 @@ internal fun NowPlayingFace(
 internal fun TileIcon(icon: ImageVector, size: Dp, tint: Color = Color.Unspecified, modifier: Modifier = Modifier) {
     // Decorative: the tile itself carries the spoken label. Unspecified follows the tile: white, or dark on a white tile.
     val color = if (tint == Color.Unspecified) LocalTileInk.current else tint
-    val styled = IconStyles.resolve(icon, LocalIconStyle.current)
+    val style = LocalIconStyle.current
+    val styled = if (LocalIconPack.current == IconPack.PHOSPHOR) {
+        PhosphorIcons.resolve(icon, style) ?: IconStyles.resolve(icon, style)
+    } else {
+        IconStyles.resolve(icon, style)
+    }
     Icon(styled, contentDescription = null, modifier = modifier.size(size), tint = color)
 }
 

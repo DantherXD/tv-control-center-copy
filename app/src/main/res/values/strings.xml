@@ -144,6 +144,10 @@
     <string name="icons_filled">Filled</string>
     <string name="icons_outlined">Outlined</string>
     <string name="icons_rounded">Rounded</string>
+    <string name="edit_icon_pack">Icon pack</string>
+    <string name="pack_system">System</string>
+    <string name="pack_phosphor">Phosphor</string>
+    <string name="edit_icon_pack_note">Phosphor draws its fill set for Filled, and its regular set for Outlined and Rounded.</string>
     <string name="edit_top_size">Top bar button size</string>
     <string name="edit_top_flat">Borderless top bar</string>
     <string name="edit_menu_home">Menu button is the main page</string>

@@ -417,6 +417,7 @@ private fun HostBody(
                 LocalOverBlur provides (backdrop != null),
                 LocalEdgeWidth provides state.settings.edgeWidth.dp,
                 LocalIconStyle provides state.settings.iconStyle,
+                LocalIconPack provides state.settings.iconPack,
                 LocalSoundCues provides state.settings.soundCues,
             ) {
                 ProvideTextScale(state.settings.textScale) {

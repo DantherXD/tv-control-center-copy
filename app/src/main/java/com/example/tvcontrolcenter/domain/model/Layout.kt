@@ -284,6 +284,7 @@ data class PanelSettings(
     /** Menu button is the main page: it leaves the music page, and the music button only opens it. */
     val menuIsHome: Boolean = true,
     val iconStyle: IconStyle = IconStyle.FILLED,
+    val iconPack: IconPack = IconPack.MATERIAL,
     val musicStyle: MusicStyle = MusicStyle.COMPACT,
     /** How the Wi-Fi, Bluetooth and Input windows arrive and leave (see [WindowMotion]). */
     val windowMotion: WindowMotion = WindowMotion.MID_AIR,
@@ -315,7 +316,7 @@ val UiScaleSteps: List<Float> = listOf(0.8f, 1f, 1.25f, 1.5f, 1.75f)
 
 val TopOffsetSteps: List<Int> = listOf(0, 24, 48, 72, 96, 120)
 
-val EdgeWidthSteps: List<Float> = listOf(0f, 0.8f, 1.5f, 2.5f, 3.5f, 5f)
+val EdgeWidthSteps: List<Float> = listOf(0f, 0.5f, 0.8f, 1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f, 3.5f, 4f, 5f)
 
 val TopSizeSteps: List<Int> = listOf(32, 36, 40, 44, 48)
 
@@ -426,6 +427,9 @@ object GridNav {
 
 /** Which Material icon family the controls use. */
 enum class IconStyle { FILLED, OUTLINED, ROUNDED }
+
+/** Where the controls' icons are drawn from: the platform's Material set, or Phosphor. */
+enum class IconPack { MATERIAL, PHOSPHOR }
 
 /** Look of the now-playing page: a compact card, or a big one like iOS with the album picture filling it. */
 enum class MusicStyle { COMPACT, BIG }

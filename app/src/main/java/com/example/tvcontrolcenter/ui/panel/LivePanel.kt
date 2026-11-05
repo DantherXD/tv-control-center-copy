@@ -111,6 +111,7 @@ internal fun LivePanel(
             LocalOverBlur provides (mapped != null),
             LocalEdgeWidth provides state.settings.edgeWidth.dp,
             LocalIconStyle provides state.settings.iconStyle,
+            LocalIconPack provides state.settings.iconPack,
         ) {
             ProvideTextScale(state.settings.textScale) {
                 PanelContent(

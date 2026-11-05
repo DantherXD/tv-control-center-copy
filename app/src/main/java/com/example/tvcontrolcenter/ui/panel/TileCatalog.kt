@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import com.example.tvcontrolcenter.R
+import com.example.tvcontrolcenter.domain.model.IconPack
 import com.example.tvcontrolcenter.domain.model.TileId
 
 internal class TileLook(val icon: ImageVector, @StringRes val label: Int)
@@ -71,9 +72,13 @@ internal fun lookOf(id: TileId): TileLook = when (id) {
 
 /**
  * The resting icon of [id], as a composable so a drawable can be used. The Menu button draws
- * the on/off switches from `ic_menu_toggles.xml`; the other controls use the Material icons
- * that [IconStyles] can swap for outlined or rounded twins.
+ * the on/off switches from `ic_menu_toggles.xml`, or Phosphor's sliders when that pack is on;
+ * the other controls use the Material icons that [IconStyles] can swap for outlined or rounded
+ * twins, and that [PhosphorIcons] can swap for its own.
  */
 @Composable
-internal fun lookIcon(id: TileId): ImageVector =
-    if (id == TileId.EDIT) ImageVector.vectorResource(R.drawable.ic_menu_toggles) else lookOf(id).icon
+internal fun lookIcon(id: TileId): ImageVector = when {
+    id != TileId.EDIT -> lookOf(id).icon
+    LocalIconPack.current == IconPack.PHOSPHOR -> PhosphorIcons.menu(LocalIconStyle.current)
+    else -> ImageVector.vectorResource(R.drawable.ic_menu_toggles)
+}

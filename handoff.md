@@ -55,7 +55,7 @@ Error output looks like `e: file:///home/runner/work/.../MusicPage.kt:85:50 Unre
   (artwork + duration/position/speed), `TvInputItem`, `Capability`, `ActionResult`, `TileState`.
 - `domain/model/Layout.kt`: `TileSize` (Small/Wide/Tall/Large/Full), `ControlItem`, `PanelLayout`,
   `GridPacker`, `GridNav`, `MAX_PINNED = 3`, `PanelSettings`, the `*Steps` lists, `BlurLevels`,
-  and enums `BlurMethod`, `FrostStyle`, `Wallpaper`, `IconStyle`, `MusicStyle`.
+  and enums `BlurMethod`, `FrostStyle`, `Wallpaper`, `IconStyle`, `IconPack`, `MusicStyle`.
 - `domain/repository/Contracts.kt`: interfaces, including `SystemActions` and `SleepTimerRepository`.
 - `data/DataImpl.kt`: SharedPreferences-backed layout/settings (`PanelSettings` is read field by
   field, so a changed data-class default only reaches users who never touched that setting) plus
@@ -98,7 +98,8 @@ Error output looks like `e: file:///home/runner/work/.../MusicPage.kt:85:50 Unre
 - `ui/panel/SubPages.kt`: Wi-Fi/Bluetooth/Input windows, `SubPageCard`, `windowMotion`, `Start`,
   `SubRow`/`SubRow.Info`/`SubRow.Action`, row builders, `subTileOf`.
 - `ui/panel/GlassTile.kt`, `TileCatalog.kt` (icons; Edit uses `res/drawable/ic_menu_toggles.xml`),
-  `TileFaces.kt`, `ProfileAvatar.kt`, `IconStyles.kt` (Filled/Outlined/Rounded table),
+  `TileFaces.kt`, `ProfileAvatar.kt`, `IconStyles.kt` (Material Filled/Outlined/Rounded table),
+  `PhosphorIcons.kt` (Phosphor paths as `ImageVector`s, MIT, `PHOSPHOR_LICENSE.txt`),
   `LivePanel.kt` (the demo/editor preview, reuses `PanelContent` with defaults).
 - `ui/edit/EditScreen.kt`: tabbed editor (Controls, Look, Top bar, Blur) with one-row steppers and a
   live preview, incl. the "Top bar button size" stepper.
@@ -145,6 +146,14 @@ steal focus from Menu). The bar stays focusable on the music page, so Up from th
 music button and Left/Right move between the bar buttons (`all = if (music) pinned else navigation`),
 while a small window takes the bar out of focus (`focusable = !sub && !musicClosing`).
 
+**Icons.** Every icon in the panel, the music page, the windows and the editor is drawn by
+`TileIcon`/`FadingIcon`, which ask `IconStyles` for the Material twin and, when `IconPack.PHOSPHOR`
+is on, `PhosphorIcons` first (the Material `ImageVector` is the key; an icon the pack lacks falls
+back to Material). Phosphor is stored as path strings and built into `ImageVector`s on first use, so
+the pack adds no drawables; `Filled` maps to its fill set and `Outlined`/`Rounded` to its regular set.
+The Menu button is the one control drawn from a drawable, so `lookIcon` hands it `PhosphorIcons.menu`
+itself. The pack is a setting (`PanelSettings.iconPack`, "Icon pack") and is off by default.
+
 **Starting focus.** The panel opens on the grid's top-left control (`firstGridTile()`: the lowest row
 then column below `GridPacker.TOP_ROW`), never on whichever button the bar composed first; the music
 page opens on play, coming back from it lands on that same top-left control, and only a closed small
@@ -155,8 +164,9 @@ Rose, Midnight). Blur method AUTO (screenshot, window blur fallback), SCREENSHOT
 glass), WINDOW (whole screen). Patient capture (1.2 s, 3 tries) for video. Whole-screen mode draws the
 blurred screenshot full screen with no box. Fallback when nothing can blur: frosted sheet/card.
 Customisable: blur strength, frost style, edge width, invert focus, card on/off, text scale, panel
-size, position, header gap, icon style, music style, wallpapers (eight, app pages only), profile
-photo/colour, automatic icon colour.
+size, position, header gap, icon style and pack, music style, wallpapers (eight, app pages only),
+profile photo/colour, automatic icon colour. The glass edge is set from none to 5 dp in fine steps
+(`EdgeWidthSteps`), and whole dp shows without a decimal.
 
 **Ink contrast.** The glass assumes the screen behind it is dark, so white icons over a white app had
 about 1.5:1 contrast and disappeared. `BackdropCapture` now builds a 32x18 `LumaMap` from the blurred
