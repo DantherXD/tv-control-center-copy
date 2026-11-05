@@ -161,7 +161,7 @@
     <string name="bt_icon_standard">Bluetooth mark</string>
     <string name="bt_icon_headphones">Headphones</string>
     <string name="edit_menu_icon">Menu icon</string>
-    <string name="edit_menu_icon_note">Bars is this panel's own pair of switches, one outlined and one filled. Switches is the older pair, which follows the icon pack: Phosphor's sliders while that pack is on.</string>
+    <string name="edit_menu_icon_note">Bars is this panel\'s own pair of switches, one outlined and one filled. Switches is the older pair, which follows the icon pack: Phosphor\'s sliders while that pack is on.</string>
     <string name="menu_icon_bars">Bars</string>
     <string name="menu_icon_toggles">Switches</string>
     <string name="edit_active_highlight">Highlight active controls</string>
