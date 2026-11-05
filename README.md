@@ -39,6 +39,7 @@ The panel is a clock with two round buttons (Menu and Profile) on top, then one 
 grid has Power, Wi-Fi, Do Not Disturb, Bluetooth, Sleep Timer, four shortcuts, Now Playing (only while something plays) and Volume.
 Settings, Home, Recent apps, Display, Sound, Captions, Screen saver, Apps, Screenshot and Notifications are available from the editor.
 The clock follows the TV's 12/24 hour setting. **Menu** opens the editor; **Profile** opens Android settings.
+**Lock** turns the picture off through the TV settings app's own screen (`com.android.tv.settings/.partnercustomizer.power.PictureOffActivity`), and falls back to the accessibility service's lock on a TV without it.
 The **Apps** tab pins an app to one of four slots, so it opens in one press from the grid, and can log which screen a control
 really opens (`adb logcat -s TCC`).
 
@@ -58,6 +59,8 @@ buttons on the left set its size, move it earlier or later, or hide it. "Add con
 * **Selected control colors** Inverted (focused control turns white, icon and text dark) or Normal.
 * **Glass edge thickness** from none to 5 dp, in fine steps (0.5, 0.8, 1, 1.25, 1.5, 1.75 …), so the rim can be a hairline or a line.
 * **Icon style and pack** Filled, Outlined or Rounded, from the system's Material set or from **Phosphor**. The pack has its own weight instead — Thin, Light, Regular, Bold, Fill or Duotone — offered in the editor once Phosphor is on, with Duotone filling the shape faintly behind the outline.
+* **Bluetooth icon** the Bluetooth mark (default), or the headphones the control used to wear.
+* **Highlight active controls** brighter glass on a control whose action is on: Wi-Fi, Bluetooth, Do Not Disturb, the sleep timer, the screen hold and now playing. On by default; off leaves every control the same until focused.
 * **Automatic icon colour** turns icons and text dark when the picture behind a control is light, so white never sits on white. On by default.
 * **Key sounds** turns the click on focus and OK on or off. **Volume step** sets how far one Left/Right press moves the volume.
 * **Music button** puts Now Playing in the top bar. It then opens a now-playing page (album art, title, progress, rewind / play-pause / forward) instead of acting as a grid control. Back shrinks the card back into that button, with the grid already there again, and the next Back closes the panel. The remote's **Menu** key swaps the two pages both ways, and the music button stays white while its page is open. Within that page, OK on the music button opens the app that is playing, and Up from the card reaches the bar, so Menu and Profile are one press away.
@@ -98,7 +101,7 @@ Glass is now plain drawing, so it costs almost nothing per frame:
 
 | Permission / service | Used for | Without it |
 |---|---|---|
-| Accessibility service (user enables) | Open from any app, power menu, screen off | Panel only opens inside this app; Power Off and Lock ask you to enable it |
+| Accessibility service (user enables) | Open from any app, power menu, screen off | Panel only opens inside this app; Power Off asks to enable it, Lock falls back to it when the TV has no picture-off screen |
 | `SYSTEM_ALERT_WINDOW` | Overlay window via `OverlayService` | Settings screen opens so you can grant it |
 | Notification listener (user enables) | Now Playing via `MediaSessionManager` | Now Playing tile hidden; no crash |
 | Notification policy access | Do Not Disturb toggle | Settings screen opens so you can grant it |

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.BoxScope
 import com.example.tvcontrolcenter.domain.model.HeaderGapSteps
 import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
+import com.example.tvcontrolcenter.ui.panel.LocalBluetoothIcon
 import com.example.tvcontrolcenter.ui.panel.LocalIconPack
 import com.example.tvcontrolcenter.ui.panel.LocalIconStyle
 import com.example.tvcontrolcenter.ui.panel.LocalPhosphorWeight
@@ -40,6 +41,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.example.tvcontrolcenter.data.ProfilePhoto
+import com.example.tvcontrolcenter.domain.model.BluetoothIcon
 import com.example.tvcontrolcenter.domain.model.BlurMethod
 import com.example.tvcontrolcenter.domain.model.FrostStyle
 import com.example.tvcontrolcenter.domain.model.TopOffsetSteps
@@ -127,6 +129,7 @@ fun EditScreen(viewModel: ControlCenterViewModel, onDone: () -> Unit) {
             LocalIconStyle provides state.settings.iconStyle,
             LocalIconPack provides state.settings.iconPack,
             LocalPhosphorWeight provides state.settings.phosphorWeight,
+            LocalBluetoothIcon provides state.settings.bluetoothIcon,
         ) {
             EditBody(state, viewModel, onDone)
         }
@@ -350,6 +353,20 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 }
                                 Hint(stringResource(R.string.edit_phosphor_weight_note))
                             }
+                            val bluetoothIcons = listOf(
+                                BluetoothIcon.STANDARD to R.string.bt_icon_standard,
+                                BluetoothIcon.HEADPHONES to R.string.bt_icon_headphones,
+                            )
+                            StepRow(
+                                stringResource(R.string.edit_bluetooth_icon),
+                                stringResource(bluetoothIcons.first { it.first == settings.bluetoothIcon }.second),
+                            ) { d ->
+                                val at = bluetoothIcons.indexOfFirst { it.first == settings.bluetoothIcon }
+                                vm.updateSettings {
+                                    it.copy(bluetoothIcon = bluetoothIcons[Math.floorMod(at + d, bluetoothIcons.size)].first)
+                                }
+                            }
+                            Hint(stringResource(R.string.edit_bluetooth_icon_note))
                             StepRow(
                                 stringResource(R.string.edit_invert),
                                 stringResource(if (settings.invertFocus) R.string.invert_yes else R.string.invert_no),
@@ -359,6 +376,11 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 onOff(settings.autoInk),
                             ) { vm.updateSettings { it.copy(autoInk = !it.autoInk) } }
                             Hint(stringResource(R.string.edit_auto_ink_note))
+                            StepRow(
+                                stringResource(R.string.edit_active_highlight),
+                                onOff(settings.activeHighlight),
+                            ) { vm.updateSettings { it.copy(activeHighlight = !it.activeHighlight) } }
+                            Hint(stringResource(R.string.edit_active_highlight_note))
                             StepRow(stringResource(R.string.edit_sound_cues), onOff(settings.soundCues)) {
                                 vm.updateSettings { it.copy(soundCues = !it.soundCues) }
                             }

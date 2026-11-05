@@ -76,7 +76,7 @@ internal fun faceOf(id: TileId, state: ControlCenterUiState): Face {
     val title = stringResource(look.label)
     val on = stringResource(R.string.state_on)
     val off = stringResource(R.string.state_off)
-    return when (id) {
+    val face = when (id) {
         TileId.WIFI -> {
             val net = state.status.network
             val detail = when (net) {
@@ -113,8 +113,12 @@ internal fun faceOf(id: TileId, state: ControlCenterUiState): Face {
                 art = appArt(packageName),
             )
         }
+        // Now playing lights up while music plays, like the radios do while they are on.
+        TileId.NOW_PLAYING -> Face(icon, title, null, state.nowPlaying?.isPlaying == true)
         else -> Face(icon, title, null, false)
     }
+    // "Highlight active controls" off: the face keeps its text but stops asking for bright glass.
+    return if (state.settings.activeHighlight) face else Face(face.icon, face.title, face.detail, active = false, art = face.art)
 }
 
 /** Icon plus name (and state) laid out for the control's size. */

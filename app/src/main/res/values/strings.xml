@@ -156,6 +156,12 @@
     <string name="weight_bold">Bold</string>
     <string name="weight_fill">Fill</string>
     <string name="weight_duotone">Duotone</string>
+    <string name="edit_bluetooth_icon">Bluetooth icon</string>
+    <string name="edit_bluetooth_icon_note">The Bluetooth mark is the standard icon; Headphones is the audio-device one this control used to wear.</string>
+    <string name="bt_icon_standard">Bluetooth mark</string>
+    <string name="bt_icon_headphones">Headphones</string>
+    <string name="edit_active_highlight">Highlight active controls</string>
+    <string name="edit_active_highlight_note">On, a control whose action is on draws brighter glass: Wi-Fi, Bluetooth, Do Not Disturb, the sleep timer, the screen hold and now playing. Off leaves them all the same until focused.</string>
     <string name="edit_top_size">Top bar button size</string>
     <string name="edit_top_flat">Borderless top bar</string>
     <string name="edit_menu_home">Menu button is the main page</string>

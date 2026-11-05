@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.DarkMode
@@ -31,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import com.example.tvcontrolcenter.R
+import com.example.tvcontrolcenter.domain.model.BluetoothIcon
 import com.example.tvcontrolcenter.domain.model.IconPack
 import com.example.tvcontrolcenter.domain.model.TileId
 
@@ -41,7 +43,7 @@ internal fun lookOf(id: TileId): TileLook = when (id) {
     TileId.POWER -> TileLook(Icons.Filled.PowerSettingsNew, R.string.tile_power)
     TileId.WIFI -> TileLook(Icons.Filled.Wifi, R.string.tile_wifi)
     TileId.DND -> TileLook(Icons.Filled.DarkMode, R.string.tile_dnd)
-    TileId.BLUETOOTH -> TileLook(Icons.Filled.Headphones, R.string.tile_bluetooth)
+    TileId.BLUETOOTH -> TileLook(Icons.Filled.Bluetooth, R.string.tile_bluetooth)
     TileId.SLEEP_TIMER -> TileLook(Icons.Filled.Timer, R.string.tile_sleep_timer)
     TileId.GAMEPAD -> TileLook(Icons.Filled.SportsEsports, R.string.tile_gamepad)
     TileId.ACCESSIBILITY -> TileLook(Icons.Filled.Accessibility, R.string.tile_accessibility)
@@ -78,6 +80,8 @@ internal fun lookOf(id: TileId): TileLook = when (id) {
  */
 @Composable
 internal fun lookIcon(id: TileId): ImageVector = when {
+    // Bluetooth can wear its own mark or the headphones it used to carry (editor setting).
+    id == TileId.BLUETOOTH && LocalBluetoothIcon.current == BluetoothIcon.HEADPHONES -> Icons.Filled.Headphones
     id != TileId.EDIT -> lookOf(id).icon
     LocalIconPack.current == IconPack.PHOSPHOR -> PhosphorIcons.menu(LocalPhosphorWeight.current)
     else -> ImageVector.vectorResource(R.drawable.ic_menu_toggles)

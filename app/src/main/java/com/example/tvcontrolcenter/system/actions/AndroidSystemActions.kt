@@ -136,6 +136,18 @@ class AndroidSystemActions @Inject constructor(
     }
 
     override fun sleepScreen(): ActionResult {
+        // The TV settings app's own picture-off screen, which is what the TV's Lock control does.
+        // Tried first because on these sets it turns the picture off without asking a service.
+        try {
+            context.startActivity(
+                Intent()
+                    .setClassName("com.android.tv.settings", "com.android.tv.settings.partnercustomizer.power.PictureOffActivity")
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            return ActionResult.Done
+        } catch (_: Exception) {
+            // Not on this TV: fall back to the accessibility service's lock.
+        }
         val service = ControlCenterAccessibilityService.instance
             ?: return ActionResult.NeedsCapability(Capability.ACCESSIBILITY_SERVICE)
         return if (service.lockScreen()) ActionResult.Done else ActionResult.Unavailable

@@ -154,6 +154,8 @@ the pack adds no drawables. All six of its weights are bundled — Thin, Light, 
 Duotone, `PanelSettings.phosphorWeight` — and the weight replaces Icon style while the pack is on;
 the cache is keyed by name and weight, so only the weight in use is ever built. Duotone ships two
 paths, the shape at 0.2 alpha under the outline, which is why a path is a `Shape(d, alpha)`.
+Bluetooth has two possible sources (`PanelSettings.bluetoothIcon`, Bluetooth mark or headphones), so
+`lookOf` holds the mark and `lookIcon` swaps in the headphones; both are in the Phosphor twin table.
 The Menu button is the one control drawn from a drawable, so `lookIcon` hands it `PhosphorIcons.menu`
 itself. The pack is a setting (`PanelSettings.iconPack`, "Icon pack") and is off by default; the
 weight row only appears once Phosphor is chosen.
@@ -169,8 +171,19 @@ glass), WINDOW (whole screen). Patient capture (1.2 s, 3 tries) for video. Whole
 blurred screenshot full screen with no box. Fallback when nothing can blur: frosted sheet/card.
 Customisable: blur strength, frost style, edge width, invert focus, card on/off, text scale, panel
 size, position, header gap, icon style and pack, music style, wallpapers (eight, app pages only),
-profile photo/colour, automatic icon colour, icon pack and its six weights. The glass edge is set from none to 5 dp in fine steps
-(`EdgeWidthSteps`), and whole dp shows without a decimal.
+profile photo/colour, automatic icon colour, icon pack and its six weights, the Bluetooth icon
+(Bluetooth mark or headphones) and the active-control highlight. The glass edge is set from none to
+5 dp in fine steps (`EdgeWidthSteps`), and whole dp shows without a decimal.
+
+**Active highlight.** A control whose action is on asks for brighter glass (`Face.active` →
+`GlassTile(active = …)`, `GlassTokens.tileActiveBoost`): Wi-Fi, Bluetooth, Do Not Disturb, the sleep
+timer, the screen hold and now playing while music plays. `faceOf` also drops the bright tint when
+`PanelSettings.activeHighlight` is off, and that is the "Highlight active controls" row in the editor.
+Top-bar buttons keep their own rule (white while their page is open), which is not this setting.
+
+**Lock.** `sleepScreen()` starts `com.android.tv.settings/.partnercustomizer.power.PictureOffActivity`
+first — the TV settings app's own picture-off screen — and only falls back to the accessibility
+service's `lockScreen()` when that activity is missing. Power Off's fallback uses the same path.
 
 **Ink contrast.** The glass assumes the screen behind it is dark, so white icons over a white app had
 about 1.5:1 contrast and disappeared. `BackdropCapture` now builds a 32x18 `LumaMap` from the blurred

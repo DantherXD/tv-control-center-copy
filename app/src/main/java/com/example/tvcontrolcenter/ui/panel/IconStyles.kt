@@ -99,6 +99,7 @@ import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.example.tvcontrolcenter.domain.model.BluetoothIcon
 import com.example.tvcontrolcenter.domain.model.IconPack
 import com.example.tvcontrolcenter.domain.model.IconStyle
 import com.example.tvcontrolcenter.domain.model.PhosphorWeight
@@ -112,6 +113,9 @@ internal val LocalIconPack = compositionLocalOf { IconPack.MATERIAL }
 
 /** Phosphor weight chosen in the editor, used only while the Phosphor pack is on. */
 internal val LocalPhosphorWeight = compositionLocalOf { PhosphorWeight.FILL }
+
+/** Bluetooth icon chosen in the editor. Provided by the panel and the editor. */
+internal val LocalBluetoothIcon = compositionLocalOf { BluetoothIcon.STANDARD }
 
 /**
  * Swaps a filled icon for its outlined or rounded twin. Every icon the panel uses is listed here;
