@@ -150,9 +150,13 @@ while a small window takes the bar out of focus (`focusable = !sub && !musicClos
 `TileIcon`/`FadingIcon`, which ask `IconStyles` for the Material twin and, when `IconPack.PHOSPHOR`
 is on, `PhosphorIcons` first (the Material `ImageVector` is the key; an icon the pack lacks falls
 back to Material). Phosphor is stored as path strings and built into `ImageVector`s on first use, so
-the pack adds no drawables; `Filled` maps to its fill set and `Outlined`/`Rounded` to its regular set.
+the pack adds no drawables. All six of its weights are bundled — Thin, Light, Regular, Bold, Fill and
+Duotone, `PanelSettings.phosphorWeight` — and the weight replaces Icon style while the pack is on;
+the cache is keyed by name and weight, so only the weight in use is ever built. Duotone ships two
+paths, the shape at 0.2 alpha under the outline, which is why a path is a `Shape(d, alpha)`.
 The Menu button is the one control drawn from a drawable, so `lookIcon` hands it `PhosphorIcons.menu`
-itself. The pack is a setting (`PanelSettings.iconPack`, "Icon pack") and is off by default.
+itself. The pack is a setting (`PanelSettings.iconPack`, "Icon pack") and is off by default; the
+weight row only appears once Phosphor is chosen.
 
 **Starting focus.** The panel opens on the grid's top-left control (`firstGridTile()`: the lowest row
 then column below `GridPacker.TOP_ROW`), never on whichever button the bar composed first; the music
@@ -165,7 +169,7 @@ glass), WINDOW (whole screen). Patient capture (1.2 s, 3 tries) for video. Whole
 blurred screenshot full screen with no box. Fallback when nothing can blur: frosted sheet/card.
 Customisable: blur strength, frost style, edge width, invert focus, card on/off, text scale, panel
 size, position, header gap, icon style and pack, music style, wallpapers (eight, app pages only),
-profile photo/colour, automatic icon colour. The glass edge is set from none to 5 dp in fine steps
+profile photo/colour, automatic icon colour, icon pack and its six weights. The glass edge is set from none to 5 dp in fine steps
 (`EdgeWidthSteps`), and whole dp shows without a decimal.
 
 **Ink contrast.** The glass assumes the screen behind it is dark, so white icons over a white app had

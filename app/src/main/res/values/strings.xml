@@ -147,7 +147,15 @@
     <string name="edit_icon_pack">Icon pack</string>
     <string name="pack_system">System</string>
     <string name="pack_phosphor">Phosphor</string>
-    <string name="edit_icon_pack_note">Phosphor draws its fill set for Filled, and its regular set for Outlined and Rounded.</string>
+    <string name="edit_icon_pack_note">Phosphor draws its own icons, so Icon style above then only changes the system pack.</string>
+    <string name="edit_phosphor_weight">Phosphor weight</string>
+    <string name="edit_phosphor_weight_note">Six weights, lightest first. Duotone fills the shape faintly behind the outline.</string>
+    <string name="weight_thin">Thin</string>
+    <string name="weight_light">Light</string>
+    <string name="weight_regular">Regular</string>
+    <string name="weight_bold">Bold</string>
+    <string name="weight_fill">Fill</string>
+    <string name="weight_duotone">Duotone</string>
     <string name="edit_top_size">Top bar button size</string>
     <string name="edit_top_flat">Borderless top bar</string>
     <string name="edit_menu_home">Menu button is the main page</string>

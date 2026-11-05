@@ -101,6 +101,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.tvcontrolcenter.domain.model.IconPack
 import com.example.tvcontrolcenter.domain.model.IconStyle
+import com.example.tvcontrolcenter.domain.model.PhosphorWeight
 import java.util.IdentityHashMap
 
 /** Icon family chosen in the editor. Provided by the panel and the editor. */
@@ -108,6 +109,9 @@ internal val LocalIconStyle = compositionLocalOf { IconStyle.FILLED }
 
 /** Icon pack chosen in the editor. Provided by the panel and the editor. */
 internal val LocalIconPack = compositionLocalOf { IconPack.MATERIAL }
+
+/** Phosphor weight chosen in the editor, used only while the Phosphor pack is on. */
+internal val LocalPhosphorWeight = compositionLocalOf { PhosphorWeight.FILL }
 
 /**
  * Swaps a filled icon for its outlined or rounded twin. Every icon the panel uses is listed here;

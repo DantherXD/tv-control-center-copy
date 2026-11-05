@@ -9,6 +9,7 @@ import com.example.tvcontrolcenter.domain.model.IconStyle
 import com.example.tvcontrolcenter.domain.model.MusicStyle
 import com.example.tvcontrolcenter.domain.model.PanelLayout
 import com.example.tvcontrolcenter.domain.model.PanelSettings
+import com.example.tvcontrolcenter.domain.model.PhosphorWeight
 import com.example.tvcontrolcenter.domain.model.SleepTimerPresets
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.Wallpaper
@@ -137,6 +138,8 @@ class PreferencesLayoutRepository @Inject constructor(
             activityLog = prefs.getBoolean(KEY_ACTIVITY_LOG, false),
             iconStyle = IconStyle.entries.firstOrNull { it.name == prefs.getString(KEY_ICONS, null) } ?: IconStyle.FILLED,
             iconPack = IconPack.entries.firstOrNull { it.name == prefs.getString(KEY_ICON_PACK, null) } ?: IconPack.MATERIAL,
+            phosphorWeight = PhosphorWeight.entries.firstOrNull { it.name == prefs.getString(KEY_PHOSPHOR_WEIGHT, null) }
+                ?: PhosphorWeight.FILL,
             profilePhotoVersion = prefs.getInt(KEY_PHOTO, 0),
             profileColor = prefs.getInt(KEY_COLOR, 0),
         ),
@@ -187,6 +190,7 @@ class PreferencesLayoutRepository @Inject constructor(
             .putBoolean(KEY_MENU_HOME, next.menuIsHome)
             .putString(KEY_ICONS, next.iconStyle.name)
             .putString(KEY_ICON_PACK, next.iconPack.name)
+            .putString(KEY_PHOSPHOR_WEIGHT, next.phosphorWeight.name)
             .putString(KEY_MUSIC_STYLE, next.musicStyle.name)
             .putString(KEY_WINDOW_MOTION, next.windowMotion.name)
             .putBoolean(KEY_AUTO_INK, next.autoInk)
@@ -216,6 +220,7 @@ class PreferencesLayoutRepository @Inject constructor(
         const val KEY_MENU_HOME = "menu_is_home"
         const val KEY_ICONS = "icon_style"
         const val KEY_ICON_PACK = "icon_pack"
+        const val KEY_PHOSPHOR_WEIGHT = "phosphor_weight"
         const val KEY_MUSIC_STYLE = "music_style"
         const val KEY_WINDOW_MOTION = "window_motion"
         const val KEY_AUTO_INK = "auto_ink"

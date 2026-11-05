@@ -285,6 +285,7 @@ data class PanelSettings(
     val menuIsHome: Boolean = true,
     val iconStyle: IconStyle = IconStyle.FILLED,
     val iconPack: IconPack = IconPack.MATERIAL,
+    val phosphorWeight: PhosphorWeight = PhosphorWeight.FILL,
     val musicStyle: MusicStyle = MusicStyle.COMPACT,
     /** How the Wi-Fi, Bluetooth and Input windows arrive and leave (see [WindowMotion]). */
     val windowMotion: WindowMotion = WindowMotion.MID_AIR,
@@ -430,6 +431,9 @@ enum class IconStyle { FILLED, OUTLINED, ROUNDED }
 
 /** Where the controls' icons are drawn from: the platform's Material set, or Phosphor. */
 enum class IconPack { MATERIAL, PHOSPHOR }
+
+/** How heavy Phosphor draws its icons: its six weights, lightest first. */
+enum class PhosphorWeight { THIN, LIGHT, REGULAR, BOLD, FILL, DUOTONE }
 
 /** Look of the now-playing page: a compact card, or a big one like iOS with the album picture filling it. */
 enum class MusicStyle { COMPACT, BIG }

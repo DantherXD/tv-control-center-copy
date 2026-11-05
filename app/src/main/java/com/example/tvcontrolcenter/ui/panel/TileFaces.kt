@@ -293,7 +293,7 @@ internal fun TileIcon(icon: ImageVector, size: Dp, tint: Color = Color.Unspecifi
     val color = if (tint == Color.Unspecified) LocalTileInk.current else tint
     val style = LocalIconStyle.current
     val styled = if (LocalIconPack.current == IconPack.PHOSPHOR) {
-        PhosphorIcons.resolve(icon, style) ?: IconStyles.resolve(icon, style)
+        PhosphorIcons.resolve(icon, LocalPhosphorWeight.current) ?: IconStyles.resolve(icon, style)
     } else {
         IconStyles.resolve(icon, style)
     }

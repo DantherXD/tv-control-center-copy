@@ -57,7 +57,7 @@ buttons on the left set its size, move it earlier or later, or hide it. "Add con
 * **Gap under the top bar** sets the space between the clock row and the controls (0 to 24).
 * **Selected control colors** Inverted (focused control turns white, icon and text dark) or Normal.
 * **Glass edge thickness** from none to 5 dp, in fine steps (0.5, 0.8, 1, 1.25, 1.5, 1.75 …), so the rim can be a hairline or a line.
-* **Icon style and pack** Filled, Outlined or Rounded, from the system's Material set or from **Phosphor** (its fill set for Filled, its regular set for Outlined and Rounded).
+* **Icon style and pack** Filled, Outlined or Rounded, from the system's Material set or from **Phosphor**. The pack has its own weight instead — Thin, Light, Regular, Bold, Fill or Duotone — offered in the editor once Phosphor is on, with Duotone filling the shape faintly behind the outline.
 * **Automatic icon colour** turns icons and text dark when the picture behind a control is light, so white never sits on white. On by default.
 * **Key sounds** turns the click on focus and OK on or off. **Volume step** sets how far one Left/Right press moves the volume.
 * **Music button** puts Now Playing in the top bar. It then opens a now-playing page (album art, title, progress, rewind / play-pause / forward) instead of acting as a grid control. Back shrinks the card back into that button, with the grid already there again, and the next Back closes the panel. The remote's **Menu** key swaps the two pages both ways, and the music button stays white while its page is open. Within that page, OK on the music button opens the app that is playing, and Up from the card reaches the bar, so Menu and Profile are one press away.

@@ -112,6 +112,7 @@ internal fun LivePanel(
             LocalEdgeWidth provides state.settings.edgeWidth.dp,
             LocalIconStyle provides state.settings.iconStyle,
             LocalIconPack provides state.settings.iconPack,
+            LocalPhosphorWeight provides state.settings.phosphorWeight,
         ) {
             ProvideTextScale(state.settings.textScale) {
                 PanelContent(

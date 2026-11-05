@@ -27,10 +27,12 @@ import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.panel.LocalIconPack
 import com.example.tvcontrolcenter.ui.panel.LocalIconStyle
+import com.example.tvcontrolcenter.ui.panel.LocalPhosphorWeight
 import com.example.tvcontrolcenter.domain.model.EdgeWidthSteps
 import com.example.tvcontrolcenter.domain.model.IconPack
 import com.example.tvcontrolcenter.domain.model.IconStyle
 import com.example.tvcontrolcenter.domain.model.MusicStyle
+import com.example.tvcontrolcenter.domain.model.PhosphorWeight
 import com.example.tvcontrolcenter.domain.model.TopSizeSteps
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.glass.LocalTileInk
@@ -124,6 +126,7 @@ fun EditScreen(viewModel: ControlCenterViewModel, onDone: () -> Unit) {
             LocalEdgeWidth provides state.settings.edgeWidth.dp,
             LocalIconStyle provides state.settings.iconStyle,
             LocalIconPack provides state.settings.iconPack,
+            LocalPhosphorWeight provides state.settings.phosphorWeight,
         ) {
             EditBody(state, viewModel, onDone)
         }
@@ -326,7 +329,27 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 val next = iconPacks[Math.floorMod(iconPacks.indexOfFirst { it.first == settings.iconPack } + d, iconPacks.size)].first
                                 vm.updateSettings { it.copy(iconPack = next) }
                             }
-                            Hint(stringResource(R.string.edit_icon_pack_note))
+                            if (settings.iconPack == IconPack.PHOSPHOR) {
+                                Hint(stringResource(R.string.edit_icon_pack_note))
+                                val weightNames = listOf(
+                                    PhosphorWeight.THIN to R.string.weight_thin,
+                                    PhosphorWeight.LIGHT to R.string.weight_light,
+                                    PhosphorWeight.REGULAR to R.string.weight_regular,
+                                    PhosphorWeight.BOLD to R.string.weight_bold,
+                                    PhosphorWeight.FILL to R.string.weight_fill,
+                                    PhosphorWeight.DUOTONE to R.string.weight_duotone,
+                                )
+                                StepRow(
+                                    stringResource(R.string.edit_phosphor_weight),
+                                    stringResource(weightNames.first { it.first == settings.phosphorWeight }.second),
+                                ) { d ->
+                                    val at = weightNames.indexOfFirst { it.first == settings.phosphorWeight }
+                                    vm.updateSettings {
+                                        it.copy(phosphorWeight = weightNames[Math.floorMod(at + d, weightNames.size)].first)
+                                    }
+                                }
+                                Hint(stringResource(R.string.edit_phosphor_weight_note))
+                            }
                             StepRow(
                                 stringResource(R.string.edit_invert),
                                 stringResource(if (settings.invertFocus) R.string.invert_yes else R.string.invert_no),
