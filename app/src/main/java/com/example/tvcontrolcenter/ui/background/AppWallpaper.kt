@@ -229,13 +229,15 @@ private fun paintNebula(canvas: Canvas, w: Float, h: Float) {
     canvas.blob(w * 0.30f, h * 0.35f, h * 0.85f, 0xFF7C3AED.toInt(), 165, w, h)
     canvas.blob(w * 0.78f, h * 0.25f, h * 0.65f, 0xFFEC4899.toInt(), 120, w, h)
     canvas.blob(w * 0.60f, h * 0.85f, h * 0.80f, 0xFF2563EB.toInt(), 140, w, h)
-    val stars = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xCCFFFFFF.toInt() }
+    // Few and faint on purpose: the stars are atmosphere, not texture. They must never compete
+    // with a heading, an icon or a value on the app's own pages.
+    val stars = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xB3FFFFFF.toInt() }
     val rnd = Random(11)
-    repeat(150) {
+    repeat(52) {
         val x = rnd.nextFloat() * w
         val y = rnd.nextFloat() * h
-        val r = h * (0.0012f + rnd.nextFloat() * 0.0022f)
-        stars.alpha = 90 + rnd.nextInt(150)
+        val r = h * (0.0009f + rnd.nextFloat() * 0.0014f)
+        stars.alpha = 26 + rnd.nextInt(64)
         canvas.drawCircle(x, y, r, stars)
     }
     canvas.vignette(0x2E000000)

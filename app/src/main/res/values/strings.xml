@@ -161,7 +161,7 @@
     <string name="bt_icon_standard">Bluetooth mark</string>
     <string name="bt_icon_headphones">Headphones</string>
     <string name="edit_menu_icon">Menu icon</string>
-    <string name="edit_menu_icon_note">Bars is this panel's own pair of switches, one outlined and one filled. Switches is the older pair, which follows the icon pack: Phosphor's sliders while that pack is on.</string>
+    <string name="edit_menu_icon_note">Bars is this panel\'s own pair of switches, one outlined and one filled. Switches is the older pair, which follows the icon pack: Phosphor\'s sliders while that pack is on.</string>
     <string name="menu_icon_bars">Bars</string>
     <string name="menu_icon_toggles">Switches</string>
     <string name="edit_active_highlight">Highlight active controls</string>
@@ -203,12 +203,17 @@
     <string name="tab_blur">Blur</string>
     <string name="edit_live">Changes show on the right straight away.</string>
     <string name="home_title">TV Control Center</string>
-    <string name="home_hint">Open it from any app with your trigger key. This is how it looks right now.</string>
+    <string name="home_hint">Open it from any app with your trigger key.</string>
     <string name="home_open">Open control center</string>
     <string name="home_setup">Setup</string>
+    <string name="home_eyebrow">Android TV</string>
+    <string name="home_preview">Live preview</string>
+    <string name="home_preview_note">Your panel, right now.</string>
+    <string name="edit_eyebrow">Customize</string>
+    <string name="edit_preview_note">Mirrors the panel while you change it.</string>
     <string name="setup_accessibility">Accessibility service</string>
     <string name="setup_overlay">Display over other apps</string>
     <string name="setup_media">Media access</string>
     <string name="setup_on">On</string>
-    <string name="setup_off">Tap to turn on</string>
+    <string name="setup_off">Turn on</string>
 </resources>
