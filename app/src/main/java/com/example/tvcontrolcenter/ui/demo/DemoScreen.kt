@@ -1,16 +1,17 @@
 package com.example.tvcontrolcenter.ui.demo
 
 import android.provider.Settings
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -22,7 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -38,22 +38,28 @@ import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.system.openCapabilitySettings
 import com.example.tvcontrolcenter.system.overlay.OverlayService
 import com.example.tvcontrolcenter.system.trigger.ControlCenterAccessibilityService
-import com.example.tvcontrolcenter.ui.background.AppWallpaper
+import com.example.tvcontrolcenter.ui.app.AppButton
+import com.example.tvcontrolcenter.ui.app.AppButtonTone
+import com.example.tvcontrolcenter.ui.app.AppCard
+import com.example.tvcontrolcenter.ui.app.AppEyebrow
+import com.example.tvcontrolcenter.ui.app.AppPreview
+import com.example.tvcontrolcenter.ui.app.AppScreenBackground
+import com.example.tvcontrolcenter.ui.app.AppSectionLabel
+import com.example.tvcontrolcenter.ui.app.AppSetupRow
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
-import com.example.tvcontrolcenter.ui.panel.Detail
-import com.example.tvcontrolcenter.ui.panel.GlassTile
-import com.example.tvcontrolcenter.ui.panel.Label
 import com.example.tvcontrolcenter.ui.panel.LivePanel
-import com.example.tvcontrolcenter.ui.theme.GlassTokens
-import com.example.tvcontrolcenter.ui.theme.PanelType
+import com.example.tvcontrolcenter.ui.theme.AppDimens
+import com.example.tvcontrolcenter.ui.theme.AppPalette
+import com.example.tvcontrolcenter.ui.theme.AppType
 import com.example.tvcontrolcenter.ui.theme.ProvideUiScale
 
 /**
- * Home page. Left: what to do, and whether the three permissions the app needs are on (each
- * row opens the right system screen). Right: a live picture of your control center, so every
- * change made in the editor shows here too. The panel itself opens over this page.
+ * Home page. The left side explains the app in one line, offers one unmistakable action and a
+ * compact permission checklist (each row opens the right system screen). The right side frames
+ * the real panel drawing, so every editor change shows here too. The panel itself opens over this
+ * page.
  */
 @Composable
 fun DemoScreen(
@@ -69,53 +75,116 @@ fun DemoScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Box(Modifier.fillMaxSize()) {
-        AppWallpaper(state.settings.wallpaper, Modifier.fillMaxSize())
+        AppScreenBackground(state.settings.wallpaper, Modifier.fillMaxSize())
 
         // Fits the screen but ignores the user's panel size: the home page is not the panel.
         ProvideUiScale(1f) {
             Row(
-                Modifier.fillMaxSize().padding(horizontal = 56.dp, vertical = 36.dp),
-                horizontalArrangement = Arrangement.spacedBy(48.dp),
+                Modifier
+                    .fillMaxSize()
+                    .padding(
+                        horizontal = AppDimens.screenHorizontal,
+                        vertical = AppDimens.screenVertical,
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(AppDimens.columnGap),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(
                     Modifier.weight(1f).fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.Center,
                 ) {
+                    AppEyebrow(stringResource(R.string.home_eyebrow))
+                    Spacer(Modifier.height(6.dp))
                     BasicText(
                         stringResource(R.string.home_title),
-                        style = PanelType.title.copy(color = GlassTokens.textPrimary),
+                        style = AppType.display.copy(color = AppPalette.textPrimary),
+                        maxLines = 1,
                     )
+                    Spacer(Modifier.height(8.dp))
                     BasicText(
                         stringResource(R.string.home_hint),
-                        style = PanelType.hint.copy(color = GlassTokens.textSecondary),
+                        Modifier.fillMaxWidth(0.9f),
+                        style = AppType.subtitle.copy(color = AppPalette.textSecondary),
                     )
+
+                    Spacer(Modifier.height(20.dp))
                     // Everything here is inert while the panel is open over it.
                     if (!panelVisible) {
-                        HomeButton(stringResource(R.string.home_open), openRequester) { onPanelVisibleChange(true) }
-                        HomeButton(stringResource(R.string.demo_edit), null, onEdit)
-
-                        BasicText(
-                            stringResource(R.string.home_setup),
-                            Modifier.padding(top = 12.dp),
-                            style = PanelType.label.copy(color = GlassTokens.textSecondary),
+                        AppButton(
+                            label = stringResource(R.string.home_open),
+                            onClick = { onPanelVisibleChange(true) },
+                            modifier = Modifier.width(320.dp),
+                            tone = AppButtonTone.Primary,
+                            requester = openRequester,
+                            height = 54.dp,
+                            showArrow = true,
                         )
-                        SetupRow(stringResource(R.string.setup_accessibility), setup.accessibility) {
-                            context.openCapabilitySettings(Capability.ACCESSIBILITY_SERVICE)
-                        }
-                        SetupRow(stringResource(R.string.setup_overlay), setup.overlay) {
-                            if (setup.overlay) OverlayService.toggle(context)
-                            else context.openCapabilitySettings(Capability.OVERLAY)
-                        }
-                        SetupRow(stringResource(R.string.setup_media), setup.media) {
-                            context.openCapabilitySettings(Capability.NOTIFICATION_LISTENER)
+                        Spacer(Modifier.height(8.dp))
+                        AppButton(
+                            label = stringResource(R.string.demo_edit),
+                            onClick = onEdit,
+                            modifier = Modifier.width(320.dp),
+                            tone = AppButtonTone.Secondary,
+                            height = 44.dp,
+                        )
+
+                        Spacer(Modifier.height(20.dp))
+                        AppSectionLabel(stringResource(R.string.home_setup))
+                        Spacer(Modifier.height(8.dp))
+                        AppCard(Modifier.fillMaxWidth()) {
+                            Column(
+                                Modifier.fillMaxWidth().padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                AppSetupRow(
+                                    label = stringResource(R.string.setup_accessibility),
+                                    ok = setup.accessibility,
+                                    status = stringResource(
+                                        if (setup.accessibility) R.string.setup_on else R.string.setup_off,
+                                    ),
+                                    onClick = {
+                                        context.openCapabilitySettings(Capability.ACCESSIBILITY_SERVICE)
+                                    },
+                                )
+                                AppSetupRow(
+                                    label = stringResource(R.string.setup_overlay),
+                                    ok = setup.overlay,
+                                    status = stringResource(
+                                        if (setup.overlay) R.string.setup_on else R.string.setup_off,
+                                    ),
+                                    onClick = {
+                                        if (setup.overlay) OverlayService.toggle(context)
+                                        else context.openCapabilitySettings(Capability.OVERLAY)
+                                    },
+                                )
+                                AppSetupRow(
+                                    label = stringResource(R.string.setup_media),
+                                    ok = setup.media,
+                                    status = stringResource(
+                                        if (setup.media) R.string.setup_on else R.string.setup_off,
+                                    ),
+                                    onClick = {
+                                        context.openCapabilitySettings(Capability.NOTIFICATION_LISTENER)
+                                    },
+                                )
+                            }
                         }
                         LaunchedEffect(Unit) { runCatching { openRequester.requestFocus() } }
                     }
                 }
 
-                // Live preview: the real panel drawing, not clickable.
-                Column(Modifier.fillMaxHeight(), verticalArrangement = Arrangement.Center) {
-                    LivePreview(viewModel)
+                Column(
+                    Modifier.width(AppDimens.previewWidth).fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    // Live preview: the real panel drawing, not clickable.
+                    AppPreview(
+                        label = stringResource(R.string.home_preview),
+                        note = stringResource(R.string.home_preview_note),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        LivePreview(viewModel)
+                    }
                 }
             }
         }
@@ -153,46 +222,6 @@ private fun rememberSetupState(): SetupState {
             overlay = Settings.canDrawOverlays(context),
             media = NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName),
         )
-    }
-}
-
-@Composable
-private fun HomeButton(label: String, requester: FocusRequester?, onClick: () -> Unit) {
-    val r = requester ?: remember { FocusRequester() }
-    GlassTile(
-        label = label,
-        cornerRadius = 22.dp,
-        focusRequester = r,
-        focusProps = {},
-        onActivate = onClick,
-        modifier = Modifier.size(width = 300.dp, height = 44.dp),
-    ) {
-        Label(label, Modifier.align(Alignment.Center), maxLines = 1)
-    }
-}
-
-/** One permission: a coloured dot, its name, and whether it is on. Press OK to open its screen. */
-@Composable
-private fun SetupRow(label: String, ok: Boolean, onClick: () -> Unit) {
-    val requester = remember { FocusRequester() }
-    val status = stringResource(if (ok) R.string.setup_on else R.string.setup_off)
-    GlassTile(
-        label = "$label, $status",
-        cornerRadius = 22.dp,
-        focusRequester = requester,
-        focusProps = {},
-        onActivate = onClick,
-        modifier = Modifier.size(width = 300.dp, height = 44.dp),
-    ) {
-        Row(
-            Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Box(Modifier.size(10.dp).background(if (ok) Color(0xFF4CD964) else Color(0xFFFFB340), CircleShape))
-            Label(label, Modifier.weight(1f), maxLines = 1)
-            Detail(status)
-        }
     }
 }
 
