@@ -60,6 +60,7 @@ buttons on the left set its size, move it earlier or later, or hide it. "Add con
 * **Glass edge thickness** from none to 5 dp, in fine steps (0.5, 0.8, 1, 1.25, 1.5, 1.75 …), so the rim can be a hairline or a line.
 * **Icon style and pack** Filled, Outlined or Rounded, from the system's Material set or from **Phosphor**. The pack has its own weight instead — Thin, Light, Regular, Bold, Fill or Duotone — offered in the editor once Phosphor is on, with Duotone filling the shape faintly behind the outline.
 * **Bluetooth icon** the Bluetooth mark (default), or the headphones the control used to wear.
+* **Menu icon** the Menu button wears two switches, one outlined and one filled (default), or the older pair of switches it had before.
 * **Highlight active controls** brighter glass on a control whose action is on: Wi-Fi, Bluetooth, Do Not Disturb, the sleep timer, the screen hold and now playing. On by default; off leaves every control the same until focused.
 * **Automatic icon colour** turns icons and text dark when the picture behind a control is light, so white never sits on white. On by default.
 * **Key sounds** turns the click on focus and OK on or off. **Volume step** sets how far one Left/Right press moves the volume.

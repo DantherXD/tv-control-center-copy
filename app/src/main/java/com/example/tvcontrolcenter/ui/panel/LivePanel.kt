@@ -114,6 +114,7 @@ internal fun LivePanel(
             LocalIconPack provides state.settings.iconPack,
             LocalPhosphorWeight provides state.settings.phosphorWeight,
             LocalBluetoothIcon provides state.settings.bluetoothIcon,
+            LocalMenuIcon provides state.settings.menuIcon,
         ) {
             ProvideTextScale(state.settings.textScale) {
                 PanelContent(

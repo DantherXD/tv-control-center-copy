@@ -58,8 +58,8 @@ internal object PhosphorIcons {
     }
 
     /**
-     * The Menu button's twin. It is drawn from ic_menu_toggles otherwise, so it never goes
-     * through [resolve] and is looked up by hand.
+     * The Menu button's twin. Its own drawings are the toggle sources (ic_menu_bars,
+     * ic_menu_toggles), so it never goes through [resolve] and is looked up by hand.
      */
     fun menu(weight: PhosphorWeight): ImageVector = vector("sliders-horizontal", weight)
 

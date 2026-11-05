@@ -420,6 +420,7 @@ private fun HostBody(
                 LocalIconPack provides state.settings.iconPack,
                 LocalPhosphorWeight provides state.settings.phosphorWeight,
                 LocalBluetoothIcon provides state.settings.bluetoothIcon,
+                LocalMenuIcon provides state.settings.menuIcon,
                 LocalSoundCues provides state.settings.soundCues,
             ) {
                 ProvideTextScale(state.settings.textScale) {

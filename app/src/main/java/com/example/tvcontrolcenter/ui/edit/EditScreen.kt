@@ -27,6 +27,7 @@ import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.panel.LocalBluetoothIcon
 import com.example.tvcontrolcenter.ui.panel.LocalIconPack
+import com.example.tvcontrolcenter.ui.panel.LocalMenuIcon
 import com.example.tvcontrolcenter.ui.panel.LocalIconStyle
 import com.example.tvcontrolcenter.ui.panel.LocalPhosphorWeight
 import com.example.tvcontrolcenter.domain.model.EdgeWidthSteps
@@ -43,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.tvcontrolcenter.data.ProfilePhoto
 import com.example.tvcontrolcenter.domain.model.BluetoothIcon
 import com.example.tvcontrolcenter.domain.model.BlurMethod
+import com.example.tvcontrolcenter.domain.model.MenuIcon
 import com.example.tvcontrolcenter.domain.model.FrostStyle
 import com.example.tvcontrolcenter.domain.model.TopOffsetSteps
 import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
@@ -130,6 +132,7 @@ fun EditScreen(viewModel: ControlCenterViewModel, onDone: () -> Unit) {
             LocalIconPack provides state.settings.iconPack,
             LocalPhosphorWeight provides state.settings.phosphorWeight,
             LocalBluetoothIcon provides state.settings.bluetoothIcon,
+            LocalMenuIcon provides state.settings.menuIcon,
         ) {
             EditBody(state, viewModel, onDone)
         }
@@ -367,6 +370,20 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 }
                             }
                             Hint(stringResource(R.string.edit_bluetooth_icon_note))
+                            val menuIcons = listOf(
+                                MenuIcon.BARS to R.string.menu_icon_bars,
+                                MenuIcon.TOGGLES to R.string.menu_icon_toggles,
+                            )
+                            StepRow(
+                                stringResource(R.string.edit_menu_icon),
+                                stringResource(menuIcons.first { it.first == settings.menuIcon }.second),
+                            ) { d ->
+                                val at = menuIcons.indexOfFirst { it.first == settings.menuIcon }
+                                vm.updateSettings {
+                                    it.copy(menuIcon = menuIcons[Math.floorMod(at + d, menuIcons.size)].first)
+                                }
+                            }
+                            Hint(stringResource(R.string.edit_menu_icon_note))
                             StepRow(
                                 stringResource(R.string.edit_invert),
                                 stringResource(if (settings.invertFocus) R.string.invert_yes else R.string.invert_no),

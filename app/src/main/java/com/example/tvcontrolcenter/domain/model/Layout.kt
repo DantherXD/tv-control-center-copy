@@ -288,6 +288,8 @@ data class PanelSettings(
     val phosphorWeight: PhosphorWeight = PhosphorWeight.FILL,
     /** The Bluetooth control's icon: the Bluetooth mark, or the headphones it used to carry. */
     val bluetoothIcon: BluetoothIcon = BluetoothIcon.STANDARD,
+    /** The Menu button's icon: this panel's two bars, or the older pair of switches. */
+    val menuIcon: MenuIcon = MenuIcon.BARS,
     /**
      * Controls that are "on" get brighter glass: Wi-Fi, Bluetooth, Do Not Disturb, the sleep
      * timer, the screen hold and now playing. Off draws every control the same until focused.
@@ -444,6 +446,9 @@ enum class PhosphorWeight { THIN, LIGHT, REGULAR, BOLD, FILL, DUOTONE }
 
 /** Which icon the Bluetooth control wears (see [PanelSettings.bluetoothIcon]). */
 enum class BluetoothIcon { STANDARD, HEADPHONES }
+
+/** Which icon the Menu button wears (see [PanelSettings.menuIcon]). */
+enum class MenuIcon { BARS, TOGGLES }
 
 /** Look of the now-playing page: a compact card, or a big one like iOS with the album picture filling it. */
 enum class MusicStyle { COMPACT, BIG }

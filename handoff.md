@@ -157,8 +157,11 @@ paths, the shape at 0.2 alpha under the outline, which is why a path is a `Shape
 Bluetooth has two possible sources (`PanelSettings.bluetoothIcon`, Bluetooth mark or headphones), so
 `lookOf` holds the mark and `lookIcon` swaps in the headphones; both are in the Phosphor twin table.
 The Menu button is the one control drawn from a drawable, so `lookIcon` hands it `PhosphorIcons.menu`
-itself. The pack is a setting (`PanelSettings.iconPack`, "Icon pack") and is off by default; the
-weight row only appears once Phosphor is chosen.
+itself. It has two drawings (`PanelSettings.menuIcon`, "Menu icon"): `BARS` is `ic_menu_bars.xml`,
+the panel's own pair of switches (outlined track with its knob left, filled track with the knob cut
+out on the right by `evenOdd`), and it wins over the pack; `TOGGLES` is the older `ic_menu_toggles.xml`
+or, when the pack is Phosphor, the pack's sliders. The pack is a setting (`PanelSettings.iconPack`,
+"Icon pack") and is off by default; the weight row only appears once Phosphor is chosen.
 
 **Starting focus.** The panel opens on the grid's top-left control (`firstGridTile()`: the lowest row
 then column below `GridPacker.TOP_ROW`), never on whichever button the bar composed first; the music
@@ -172,7 +175,8 @@ blurred screenshot full screen with no box. Fallback when nothing can blur: fros
 Customisable: blur strength, frost style, edge width, invert focus, card on/off, text scale, panel
 size, position, header gap, icon style and pack, music style, wallpapers (eight, app pages only),
 profile photo/colour, automatic icon colour, icon pack and its six weights, the Bluetooth icon
-(Bluetooth mark or headphones) and the active-control highlight. The glass edge is set from none to
+(Bluetooth mark or headphones), the Menu button icon (bars or the older switches) and the
+active-control highlight. The glass edge is set from none to
 5 dp in fine steps (`EdgeWidthSteps`), and whole dp shows without a decimal.
 
 **Active highlight.** A control whose action is on asks for brighter glass (`Face.active` →

@@ -34,6 +34,7 @@ import androidx.compose.ui.res.vectorResource
 import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.BluetoothIcon
 import com.example.tvcontrolcenter.domain.model.IconPack
+import com.example.tvcontrolcenter.domain.model.MenuIcon
 import com.example.tvcontrolcenter.domain.model.TileId
 
 internal class TileLook(val icon: ImageVector, @StringRes val label: Int)
@@ -83,6 +84,9 @@ internal fun lookIcon(id: TileId): ImageVector = when {
     // Bluetooth can wear its own mark or the headphones it used to carry (editor setting).
     id == TileId.BLUETOOTH && LocalBluetoothIcon.current == BluetoothIcon.HEADPHONES -> Icons.Filled.Headphones
     id != TileId.EDIT -> lookOf(id).icon
+    // The Menu button is drawn by the app, so "Bars" wins over the pack; "Toggles" is the old
+    // pair, which still follows the pack and becomes Phosphor's sliders when that pack is on.
+    LocalMenuIcon.current == MenuIcon.BARS -> ImageVector.vectorResource(R.drawable.ic_menu_bars)
     LocalIconPack.current == IconPack.PHOSPHOR -> PhosphorIcons.menu(LocalPhosphorWeight.current)
     else -> ImageVector.vectorResource(R.drawable.ic_menu_toggles)
 }

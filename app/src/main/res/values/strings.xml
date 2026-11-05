@@ -160,6 +160,10 @@
     <string name="edit_bluetooth_icon_note">The Bluetooth mark is the standard icon; Headphones is the audio-device one this control used to wear.</string>
     <string name="bt_icon_standard">Bluetooth mark</string>
     <string name="bt_icon_headphones">Headphones</string>
+    <string name="edit_menu_icon">Menu icon</string>
+    <string name="edit_menu_icon_note">Bars is this panel's own pair of switches, one outlined and one filled. Switches is the older pair, which follows the icon pack: Phosphor's sliders while that pack is on.</string>
+    <string name="menu_icon_bars">Bars</string>
+    <string name="menu_icon_toggles">Switches</string>
     <string name="edit_active_highlight">Highlight active controls</string>
     <string name="edit_active_highlight_note">On, a control whose action is on draws brighter glass: Wi-Fi, Bluetooth, Do Not Disturb, the sleep timer, the screen hold and now playing. Off leaves them all the same until focused.</string>
     <string name="edit_top_size">Top bar button size</string>
