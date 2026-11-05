@@ -5,60 +5,17 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.focusable
-import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.input.key.onKeyEvent
-import com.example.tvcontrolcenter.domain.model.TextScaleSteps
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.onClick
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.foundation.layout.BoxScope
-import com.example.tvcontrolcenter.domain.model.HeaderGapSteps
-import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
-import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
-import com.example.tvcontrolcenter.ui.panel.LocalBluetoothIcon
-import com.example.tvcontrolcenter.ui.panel.LocalIconPack
-import com.example.tvcontrolcenter.ui.panel.LocalMenuIcon
-import com.example.tvcontrolcenter.ui.panel.LocalIconStyle
-import com.example.tvcontrolcenter.ui.panel.LocalPhosphorWeight
-import com.example.tvcontrolcenter.domain.model.EdgeWidthSteps
-import com.example.tvcontrolcenter.domain.model.IconPack
-import com.example.tvcontrolcenter.domain.model.IconStyle
-import com.example.tvcontrolcenter.domain.model.MusicStyle
-import com.example.tvcontrolcenter.domain.model.PhosphorWeight
-import com.example.tvcontrolcenter.domain.model.TopSizeSteps
-import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
-import com.example.tvcontrolcenter.ui.glass.LocalTileInk
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import com.example.tvcontrolcenter.data.ProfilePhoto
-import com.example.tvcontrolcenter.domain.model.BluetoothIcon
-import com.example.tvcontrolcenter.domain.model.BlurMethod
-import com.example.tvcontrolcenter.domain.model.MenuIcon
-import com.example.tvcontrolcenter.domain.model.FrostStyle
-import com.example.tvcontrolcenter.domain.model.TopOffsetSteps
-import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
-import com.example.tvcontrolcenter.ui.panel.AvatarColors
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
@@ -74,46 +31,82 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tvcontrolcenter.R
-import com.example.tvcontrolcenter.system.wholeScreenBlurSupported
+import com.example.tvcontrolcenter.data.ProfilePhoto
+import com.example.tvcontrolcenter.domain.model.AppSlots
+import com.example.tvcontrolcenter.domain.model.BluetoothIcon
+import com.example.tvcontrolcenter.domain.model.BlurMethod
+import com.example.tvcontrolcenter.domain.model.EdgeWidthSteps
+import com.example.tvcontrolcenter.domain.model.FrostStyle
 import com.example.tvcontrolcenter.domain.model.GridPacker
+import com.example.tvcontrolcenter.domain.model.HeaderGapSteps
+import com.example.tvcontrolcenter.domain.model.IconPack
+import com.example.tvcontrolcenter.domain.model.IconStyle
+import com.example.tvcontrolcenter.domain.model.MenuIcon
+import com.example.tvcontrolcenter.domain.model.MusicStyle
+import com.example.tvcontrolcenter.domain.model.PhosphorWeight
+import com.example.tvcontrolcenter.domain.model.TextScaleSteps
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
+import com.example.tvcontrolcenter.domain.model.TopOffsetSteps
+import com.example.tvcontrolcenter.domain.model.TopSizeSteps
 import com.example.tvcontrolcenter.domain.model.UiScaleSteps
+import com.example.tvcontrolcenter.domain.model.VolumeStepSteps
 import com.example.tvcontrolcenter.domain.model.Wallpaper
 import com.example.tvcontrolcenter.domain.model.WindowMotion
-import com.example.tvcontrolcenter.domain.model.AppSlots
-import com.example.tvcontrolcenter.domain.model.VolumeStepSteps
-import com.example.tvcontrolcenter.ui.panel.appLabelOf
-import com.example.tvcontrolcenter.ui.background.AppWallpaper
+import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
+import com.example.tvcontrolcenter.system.wholeScreenBlurSupported
+import com.example.tvcontrolcenter.ui.app.AppActionChip
+import com.example.tvcontrolcenter.ui.app.AppButton
+import com.example.tvcontrolcenter.ui.app.AppButtonTone
+import com.example.tvcontrolcenter.ui.app.AppCard
+import com.example.tvcontrolcenter.ui.app.AppEyebrow
+import com.example.tvcontrolcenter.ui.app.AppNote
+import com.example.tvcontrolcenter.ui.app.AppPreview
+import com.example.tvcontrolcenter.ui.app.AppScreenBackground
+import com.example.tvcontrolcenter.ui.app.AppSectionLabel
+import com.example.tvcontrolcenter.ui.app.AppSettingRow
+import com.example.tvcontrolcenter.ui.app.AppTabBar
+import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
+import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
+import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
+import com.example.tvcontrolcenter.ui.panel.AvatarColors
 import com.example.tvcontrolcenter.ui.panel.ControlCenterUiState
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
-import com.example.tvcontrolcenter.ui.panel.Label
 import com.example.tvcontrolcenter.ui.panel.LivePanel
+import com.example.tvcontrolcenter.ui.panel.LocalBluetoothIcon
+import com.example.tvcontrolcenter.ui.panel.LocalIconPack
+import com.example.tvcontrolcenter.ui.panel.LocalIconStyle
+import com.example.tvcontrolcenter.ui.panel.LocalMenuIcon
+import com.example.tvcontrolcenter.ui.panel.LocalPhosphorWeight
 import com.example.tvcontrolcenter.ui.panel.TileIcon
-import com.example.tvcontrolcenter.ui.panel.lookIcon
+import com.example.tvcontrolcenter.ui.panel.appLabelOf
 import com.example.tvcontrolcenter.ui.panel.gridHeight
+import com.example.tvcontrolcenter.ui.panel.lookIcon
 import com.example.tvcontrolcenter.ui.panel.lookOf
-import com.example.tvcontrolcenter.ui.theme.GlassTokens
+import com.example.tvcontrolcenter.ui.theme.AppDimens
+import com.example.tvcontrolcenter.ui.theme.AppPalette
+import com.example.tvcontrolcenter.ui.theme.AppType
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
-import com.example.tvcontrolcenter.ui.theme.PanelType
 import com.example.tvcontrolcenter.ui.theme.ProvideUiScale
 import kotlin.math.roundToInt
 
 /**
  * Edit Control Center. The right side is the real panel; pick a control with OK, then size,
- * move or hide it with the buttons on the left. Hidden controls are listed under "Add
- * controls". Everything saves as you go, and the panel everywhere else follows at once.
+ * move or hide it with the rows on the left. Hidden controls are listed under "Add controls".
+ * Everything saves as you go, and the panel everywhere else follows at once.
+ *
+ * The one-row-per-setting model is intentional: one focus stop per setting, OK for the next
+ * value and Left for the previous one keeps customizing fast with a remote.
  */
 @Composable
 fun EditScreen(viewModel: ControlCenterViewModel, onDone: () -> Unit) {
@@ -123,7 +116,7 @@ fun EditScreen(viewModel: ControlCenterViewModel, onDone: () -> Unit) {
     val needed = gridHeight(rows) + PanelDimens.sheetPadding * 2 +
         PanelDimens.headerFor(state.settings.topSize) + state.settings.headerGap.dp + PanelDimens.sheetPadding + 56.dp
     ProvideUiScale(1f, neededHeight = needed) {
-        // Lite glass: flat fills and no animation, so this page with its many buttons stays quick.
+        // Lite glass: flat fills and no animation, so this page with its many controls stays quick.
         CompositionLocalProvider(
             LocalLiteGlass provides true,
             LocalInvertFocus provides state.settings.invertFocus,
@@ -142,6 +135,7 @@ fun EditScreen(viewModel: ControlCenterViewModel, onDone: () -> Unit) {
 @Composable
 private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, onDone: () -> Unit) {
     val layout = state.layout
+    val settings = state.settings
     val placed = remember(layout) { GridPacker.pack(layout.visibleItems()) }
     val pinned = remember(layout) { GridPacker.pinned(layout.visibleItems()) }
     val currentPlaced by rememberUpdatedState(pinned + placed)
@@ -184,24 +178,43 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                 } else false
             },
     ) {
-        AppWallpaper(state.settings.wallpaper, Modifier.fillMaxSize())
+        AppScreenBackground(state.settings.wallpaper, Modifier.fillMaxSize())
         Row(
-            Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 28.dp),
-            horizontalArrangement = Arrangement.spacedBy(32.dp),
+            Modifier
+                .fillMaxSize()
+                .padding(
+                    horizontal = AppDimens.screenHorizontal,
+                    vertical = AppDimens.screenVertical,
+                ),
+            horizontalArrangement = Arrangement.spacedBy(AppDimens.columnGap),
         ) {
-            Column(
-                Modifier.weight(1f).fillMaxHeight(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                val settings = state.settings
-                BasicText(stringResource(R.string.edit_title), style = PanelType.title.copy(color = GlassTokens.textPrimary))
-                Hint(stringResource(R.string.edit_live))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    EditTab.entries.forEach { t ->
-                        EditChip(stringResource(t.label), highlighted = tab == t, width = 96.dp) { tab = t }
+            Column(Modifier.weight(1f).fillMaxHeight()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        AppEyebrow(stringResource(R.string.edit_eyebrow))
+                        Spacer(Modifier.height(5.dp))
+                        BasicText(
+                            stringResource(R.string.edit_title),
+                            style = AppType.heading.copy(color = AppPalette.textPrimary),
+                            maxLines = 1,
+                        )
                     }
-                    EditChip(stringResource(R.string.edit_done), width = 84.dp, onClick = onDone)
+                    AppButton(
+                        label = stringResource(R.string.edit_done),
+                        onClick = onDone,
+                        modifier = Modifier.width(104.dp),
+                        tone = AppButtonTone.Secondary,
+                        height = 40.dp,
+                    )
                 }
+                Spacer(Modifier.height(12.dp))
+
+                AppTabBar(
+                    labels = EditTab.entries.map { stringResource(it.label) },
+                    selectedIndex = EditTab.entries.indexOf(tab),
+                    onSelect = { tab = EditTab.entries[it] },
+                )
+                Spacer(Modifier.height(10.dp))
 
                 // Photo pickers live here so they are not re-created when the tab changes.
                 val context = LocalContext.current
@@ -215,358 +228,490 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                 val openDoc = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument(), picked)
                 val getContent = rememberLauncherForActivityResult(ActivityResultContracts.GetContent(), picked)
 
-                Column(
-                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    when (tab) {
-                        EditTab.CONTROLS -> {
-                            val item = selected?.let { layout.item(it) }
-                            if (item == null) {
-                                Hint(stringResource(R.string.edit_hint_pick))
-                            } else {
-                                Section(stringResource(lookOf(item.id).label))
-                                val sizes = TileSize.entries.filter {
-                                    it != TileSize.TOP || item.id == TileId.EDIT || item.id == TileId.PROFILE || item.id == TileId.NOW_PLAYING
-                                }
-                                StepRow(
-                                    stringResource(R.string.edit_size),
-                                    stringResource(sizeLabel(item.size)),
-                                    requester = firstAction,
-                                ) { d -> vm.setTileSize(item.id, sizes.step(item.size, d)) }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    EditChip(stringResource(R.string.edit_move_earlier), width = 132.dp) { vm.moveTile(item.id, -1) }
-                                    EditChip(stringResource(R.string.edit_move_later), width = 132.dp) { vm.moveTile(item.id, 1) }
-                                    EditChip(stringResource(R.string.edit_hide), width = 100.dp) {
-                                        vm.setTileVisible(item.id, false)
-                                        returnTo = currentPlaced.firstOrNull { it.id != item.id }?.id
-                                        selected = null
-                                    }
-                                }
-                            }
-                            val hidden = layout.hiddenItems()
-                            if (hidden.isNotEmpty()) {
-                                Section(stringResource(R.string.edit_add))
-                                hidden.chunked(3).forEach { row ->
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        row.forEach { hiddenItem ->
-                                            AddChip(hiddenItem.id) {
-                                                vm.setTileVisible(hiddenItem.id, true)
-                                                selected = hiddenItem.id
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            EditChip(stringResource(R.string.edit_reset), width = 160.dp) {
-                                vm.resetLayout()
-                                selected = null
-                            }
+                AppCard(Modifier.weight(1f).fillMaxWidth()) {
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(AppDimens.cardPadding),
+                        verticalArrangement = Arrangement.spacedBy(AppDimens.gap),
+                    ) {
+                        if (tab == EditTab.LOOK || tab == EditTab.TOPBAR || tab == EditTab.BLUR) {
+                            AppNote(stringResource(R.string.edit_howto))
                         }
-
-                        EditTab.LOOK -> {
-                            StepRow(stringResource(R.string.edit_wallpaper), stringResource(wallpaperLabel(settings.wallpaper))) { d ->
-                                vm.updateSettings { it.copy(wallpaper = Wallpaper.entries.step(it.wallpaper, d)) }
-                            }
-                            Hint(stringResource(R.string.edit_wallpaper_note))
-                            StepRow(stringResource(R.string.edit_frost), stringResource(frostLabel(settings.frost))) { d ->
-                                vm.updateSettings { it.copy(frost = FrostStyle.entries.step(it.frost, d)) }
-                            }
-                            StepRow(stringResource(R.string.edit_panel_size), "${(settings.uiScale * 100).roundToInt()}%") { d ->
-                                vm.setUiScale(UiScaleSteps.step(settings.uiScale, d))
-                            }
-                            StepRow(stringResource(R.string.edit_text_size), "${(settings.textScale * 100).roundToInt()}%") { d ->
-                                vm.updateSettings { it.copy(textScale = TextScaleSteps.step(it.textScale, d)) }
-                            }
-                            StepRow(
-                                stringResource(R.string.edit_position),
-                                TopOffsetSteps.indexOf(settings.topOffset).let { if (it <= 0) stringResource(R.string.edit_pos_top) else "$it" },
-                            ) { d -> vm.updateSettings { it.copy(topOffset = TopOffsetSteps.step(it.topOffset, d)) } }
-                            StepRow(stringResource(R.string.edit_header_gap), "${settings.headerGap}") { d ->
-                                vm.updateSettings { it.copy(headerGap = HeaderGapSteps.step(it.headerGap, d)) }
-                            }
-                            val motions = listOf(
-                                WindowMotion.FROM_CONTROL to R.string.motion_from_control,
-                                WindowMotion.MID_AIR to R.string.motion_mid_air,
-                                WindowMotion.OFF to R.string.motion_none,
-                            )
-                            StepRow(
-                                stringResource(R.string.edit_window_motion),
-                                stringResource(motions.first { it.first == settings.windowMotion }.second),
-                            ) { d ->
-                                val next = motions[Math.floorMod(motions.indexOfFirst { it.first == settings.windowMotion } + d, motions.size)].first
-                                vm.updateSettings { it.copy(windowMotion = next) }
-                            }
-                            Hint(stringResource(R.string.edit_window_motion_note))
-                            StepRow(stringResource(R.string.edit_card), onOff(settings.card)) {
-                                vm.updateSettings { it.copy(card = !it.card) }
-                            }
-                            Hint(stringResource(R.string.edit_card_note))
-                            val edge = settings.edgeWidth
-                            StepRow(
-                                stringResource(R.string.edit_edge),
-                                when {
-                                    edge <= 0f -> stringResource(R.string.edge_none)
-                                    // Whole dp reads as "2", not "2.0"; the finer steps keep their decimals.
-                                    edge % 1f == 0f -> "${edge.toInt()}"
-                                    else -> "$edge"
-                                },
-                            ) { d -> vm.updateSettings { it.copy(edgeWidth = EdgeWidthSteps.step(it.edgeWidth, d)) } }
-                            val iconNames = listOf(
-                                IconStyle.FILLED to R.string.icons_filled,
-                                IconStyle.OUTLINED to R.string.icons_outlined,
-                                IconStyle.ROUNDED to R.string.icons_rounded,
-                            )
-                            StepRow(
-                                stringResource(R.string.edit_icons),
-                                stringResource(iconNames.first { it.first == settings.iconStyle }.second),
-                            ) { d ->
-                                val next = iconNames[Math.floorMod(iconNames.indexOfFirst { it.first == settings.iconStyle } + d, iconNames.size)].first
-                                vm.updateSettings { it.copy(iconStyle = next) }
-                            }
-                            val iconPacks = listOf(
-                                IconPack.MATERIAL to R.string.pack_system,
-                                IconPack.PHOSPHOR to R.string.pack_phosphor,
-                            )
-                            StepRow(
-                                stringResource(R.string.edit_icon_pack),
-                                stringResource(iconPacks.first { it.first == settings.iconPack }.second),
-                            ) { d ->
-                                val next = iconPacks[Math.floorMod(iconPacks.indexOfFirst { it.first == settings.iconPack } + d, iconPacks.size)].first
-                                vm.updateSettings { it.copy(iconPack = next) }
-                            }
-                            if (settings.iconPack == IconPack.PHOSPHOR) {
-                                Hint(stringResource(R.string.edit_icon_pack_note))
-                                val weightNames = listOf(
-                                    PhosphorWeight.THIN to R.string.weight_thin,
-                                    PhosphorWeight.LIGHT to R.string.weight_light,
-                                    PhosphorWeight.REGULAR to R.string.weight_regular,
-                                    PhosphorWeight.BOLD to R.string.weight_bold,
-                                    PhosphorWeight.FILL to R.string.weight_fill,
-                                    PhosphorWeight.DUOTONE to R.string.weight_duotone,
-                                )
-                                StepRow(
-                                    stringResource(R.string.edit_phosphor_weight),
-                                    stringResource(weightNames.first { it.first == settings.phosphorWeight }.second),
-                                ) { d ->
-                                    val at = weightNames.indexOfFirst { it.first == settings.phosphorWeight }
-                                    vm.updateSettings {
-                                        it.copy(phosphorWeight = weightNames[Math.floorMod(at + d, weightNames.size)].first)
+                        when (tab) {
+                            EditTab.CONTROLS -> {
+                                val item = selected?.let { layout.item(it) }
+                                if (item == null) {
+                                    AppNote(stringResource(R.string.edit_hint_pick))
+                                } else {
+                                    AppSectionLabel(stringResource(lookOf(item.id).label))
+                                    val sizes = TileSize.entries.filter {
+                                        it != TileSize.TOP || item.id == TileId.EDIT || item.id == TileId.PROFILE || item.id == TileId.NOW_PLAYING
                                     }
-                                }
-                                Hint(stringResource(R.string.edit_phosphor_weight_note))
-                            }
-                            val bluetoothIcons = listOf(
-                                BluetoothIcon.STANDARD to R.string.bt_icon_standard,
-                                BluetoothIcon.HEADPHONES to R.string.bt_icon_headphones,
-                            )
-                            StepRow(
-                                stringResource(R.string.edit_bluetooth_icon),
-                                stringResource(bluetoothIcons.first { it.first == settings.bluetoothIcon }.second),
-                            ) { d ->
-                                val at = bluetoothIcons.indexOfFirst { it.first == settings.bluetoothIcon }
-                                vm.updateSettings {
-                                    it.copy(bluetoothIcon = bluetoothIcons[Math.floorMod(at + d, bluetoothIcons.size)].first)
-                                }
-                            }
-                            Hint(stringResource(R.string.edit_bluetooth_icon_note))
-                            val menuIcons = listOf(
-                                MenuIcon.BARS to R.string.menu_icon_bars,
-                                MenuIcon.TOGGLES to R.string.menu_icon_toggles,
-                            )
-                            StepRow(
-                                stringResource(R.string.edit_menu_icon),
-                                stringResource(menuIcons.first { it.first == settings.menuIcon }.second),
-                            ) { d ->
-                                val at = menuIcons.indexOfFirst { it.first == settings.menuIcon }
-                                vm.updateSettings {
-                                    it.copy(menuIcon = menuIcons[Math.floorMod(at + d, menuIcons.size)].first)
-                                }
-                            }
-                            Hint(stringResource(R.string.edit_menu_icon_note))
-                            StepRow(
-                                stringResource(R.string.edit_invert),
-                                stringResource(if (settings.invertFocus) R.string.invert_yes else R.string.invert_no),
-                            ) { vm.updateSettings { it.copy(invertFocus = !it.invertFocus) } }
-                            StepRow(
-                                stringResource(R.string.edit_auto_ink),
-                                onOff(settings.autoInk),
-                            ) { vm.updateSettings { it.copy(autoInk = !it.autoInk) } }
-                            Hint(stringResource(R.string.edit_auto_ink_note))
-                            StepRow(
-                                stringResource(R.string.edit_active_highlight),
-                                onOff(settings.activeHighlight),
-                            ) { vm.updateSettings { it.copy(activeHighlight = !it.activeHighlight) } }
-                            Hint(stringResource(R.string.edit_active_highlight_note))
-                            StepRow(stringResource(R.string.edit_sound_cues), onOff(settings.soundCues)) {
-                                vm.updateSettings { it.copy(soundCues = !it.soundCues) }
-                            }
-                            StepRow(stringResource(R.string.edit_volume_step), "${settings.volumeStep}%") { d ->
-                                vm.updateSettings { it.copy(volumeStep = VolumeStepSteps.step(it.volumeStep, d)) }
-                            }
-                        }
-
-                        EditTab.TOPBAR -> {
-                            listOf(TileId.EDIT to R.string.edit_btn_menu, TileId.PROFILE to R.string.edit_btn_profile).forEach { (id, name) ->
-                                val on = layout.item(id)?.visible == true
-                                StepRow(stringResource(name), onOff(on)) { vm.setTileVisible(id, !on) }
-                            }
-                            val music = layout.item(TileId.NOW_PLAYING)
-                            val musicOn = music?.visible == true && music.size == TileSize.TOP
-                            StepRow(stringResource(R.string.edit_btn_music), onOff(musicOn)) {
-                                if (musicOn) vm.setTileSize(TileId.NOW_PLAYING, TileSize.FULL)
-                                else {
-                                    vm.setTileVisible(TileId.NOW_PLAYING, true)
-                                    vm.setTileSize(TileId.NOW_PLAYING, TileSize.TOP)
-                                }
-                            }
-                            StepRow(stringResource(R.string.edit_top_size), "${settings.topSize}") { d ->
-                                vm.updateSettings { it.copy(topSize = TopSizeSteps.step(it.topSize, d)) }
-                            }
-                            StepRow(stringResource(R.string.edit_top_flat), onOff(settings.topBorderless)) {
-                                vm.updateSettings { it.copy(topBorderless = !it.topBorderless) }
-                            }
-                            StepRow(stringResource(R.string.edit_menu_home), onOff(settings.menuIsHome)) {
-                                vm.updateSettings { it.copy(menuIsHome = !it.menuIsHome) }
-                            }
-                            val musicStyles = listOf(MusicStyle.COMPACT to R.string.music_compact, MusicStyle.BIG to R.string.music_big)
-                            StepRow(
-                                stringResource(R.string.edit_music_style),
-                                stringResource(musicStyles.first { it.first == settings.musicStyle }.second),
-                            ) { d ->
-                                val next = musicStyles[Math.floorMod(musicStyles.indexOfFirst { it.first == settings.musicStyle } + d, musicStyles.size)].first
-                                vm.updateSettings { it.copy(musicStyle = next) }
-                            }
-                            Hint(stringResource(R.string.edit_menu_note))
-                            Hint(stringResource(R.string.edit_music_note))
-                            Hint(stringResource(R.string.edit_longpress_note))
-
-                            Section(stringResource(R.string.edit_photo))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                EditChip(stringResource(R.string.edit_photo_choose), width = 124.dp) {
-                                    try {
-                                        openDoc.launch(arrayOf("image/*"))
-                                    } catch (_: ActivityNotFoundException) {
-                                        try {
-                                            getContent.launch("image/*")
-                                        } catch (_: ActivityNotFoundException) {
-                                            Toast.makeText(context, R.string.edit_photo_no_picker, Toast.LENGTH_LONG).show()
-                                        }
-                                    }
-                                }
-                                EditChip(stringResource(R.string.edit_photo_remove), width = 104.dp) {
-                                    ProfilePhoto.clear(context)
-                                    vm.updateSettings { it.copy(profilePhotoVersion = 0) }
-                                }
-                            }
-                            StepRow(
-                                stringResource(R.string.edit_photo_color),
-                                "${settings.profileColor.mod(AvatarColors.size) + 1}",
-                                swatch = AvatarColors[settings.profileColor.mod(AvatarColors.size)],
-                            ) { d -> vm.updateSettings { it.copy(profileColor = Math.floorMod(it.profileColor + d, AvatarColors.size)) } }
-                        }
-
-                        EditTab.APPS -> {
-                            // The slot the next app press fills; 0 is the first.
-                            var slot by remember { mutableStateOf(0) }
-                            Section(stringResource(R.string.edit_app_slots))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                AppSlots.forEachIndexed { index, _ ->
-                                    val name = appLabelOf(settings.appSlots.getOrNull(index))
-                                        ?: stringResource(R.string.edit_app_empty)
-                                    EditChip(
-                                        label = "${index + 1} · $name",
-                                        highlighted = slot == index,
-                                        width = 132.dp,
-                                    ) { slot = index }
-                                }
-                            }
-                            Hint(stringResource(R.string.edit_app_note))
-                            EditChip(stringResource(R.string.edit_app_clear), width = 160.dp) {
-                                vm.updateSettings { it.copy(appSlots = it.appSlots.withSlot(slot, null)) }
-                                vm.setTileVisible(AppSlots[slot], false)
-                            }
-                            Section(stringResource(R.string.edit_apps_installed))
-                            val apps = remember { vm.installedApps() }
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                apps.forEach { app ->
-                                    EditChip(
-                                        label = app.label,
-                                        highlighted = settings.appSlots.getOrNull(slot) == app.packageName,
-                                        width = 340.dp,
+                                    AppSettingRow(
+                                        label = stringResource(R.string.edit_size),
+                                        value = stringResource(sizeLabel(item.size)),
+                                        requester = firstAction,
+                                    ) { d -> vm.setTileSize(item.id, sizes.step(item.size, d)) }
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(AppDimens.gap),
                                     ) {
-                                        vm.updateSettings {
-                                            it.copy(appSlots = it.appSlots.withSlot(slot, app.packageName))
+                                        AppActionChip(
+                                            label = stringResource(R.string.edit_move_earlier),
+                                            onClick = { vm.moveTile(item.id, -1) },
+                                            modifier = Modifier.width(132.dp),
+                                        )
+                                        AppActionChip(
+                                            label = stringResource(R.string.edit_move_later),
+                                            onClick = { vm.moveTile(item.id, 1) },
+                                            modifier = Modifier.width(132.dp),
+                                        )
+                                        AppActionChip(
+                                            label = stringResource(R.string.edit_hide),
+                                            onClick = {
+                                                vm.setTileVisible(item.id, false)
+                                                returnTo = currentPlaced.firstOrNull { it.id != item.id }?.id
+                                                selected = null
+                                            },
+                                            modifier = Modifier.width(100.dp),
+                                        )
+                                    }
+                                }
+                                val hidden = layout.hiddenItems()
+                                if (hidden.isNotEmpty()) {
+                                    AppSectionLabel(stringResource(R.string.edit_add))
+                                    hidden.chunked(3).forEach { row ->
+                                        Row(
+                                            Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(AppDimens.gap),
+                                        ) {
+                                            row.forEach { hiddenItem ->
+                                                AddChip(hiddenItem.id, Modifier.weight(1f)) {
+                                                    vm.setTileVisible(hiddenItem.id, true)
+                                                    selected = hiddenItem.id
+                                                }
+                                            }
+                                            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                                         }
-                                        vm.setTileVisible(AppSlots[slot], true)
+                                    }
+                                }
+                                AppActionChip(
+                                    label = stringResource(R.string.edit_reset),
+                                    onClick = {
+                                        vm.resetLayout()
+                                        selected = null
+                                    },
+                                    modifier = Modifier.width(160.dp),
+                                )
+                            }
+
+                            EditTab.LOOK -> {
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_wallpaper),
+                                    value = stringResource(wallpaperLabel(settings.wallpaper)),
+                                ) { d ->
+                                    vm.updateSettings { it.copy(wallpaper = Wallpaper.entries.step(it.wallpaper, d)) }
+                                }
+                                AppNote(stringResource(R.string.edit_wallpaper_note))
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_frost),
+                                    value = stringResource(frostLabel(settings.frost)),
+                                ) { d ->
+                                    vm.updateSettings { it.copy(frost = FrostStyle.entries.step(it.frost, d)) }
+                                }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_panel_size),
+                                    value = "${(settings.uiScale * 100).roundToInt()}%",
+                                ) { d -> vm.setUiScale(UiScaleSteps.step(settings.uiScale, d)) }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_text_size),
+                                    value = "${(settings.textScale * 100).roundToInt()}%",
+                                ) { d ->
+                                    vm.updateSettings { it.copy(textScale = TextScaleSteps.step(it.textScale, d)) }
+                                }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_position),
+                                    value = TopOffsetSteps.indexOf(settings.topOffset).let {
+                                        if (it <= 0) stringResource(R.string.edit_pos_top) else "$it"
+                                    },
+                                ) { d ->
+                                    vm.updateSettings { it.copy(topOffset = TopOffsetSteps.step(it.topOffset, d)) }
+                                }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_header_gap),
+                                    value = "${settings.headerGap}",
+                                ) { d ->
+                                    vm.updateSettings { it.copy(headerGap = HeaderGapSteps.step(it.headerGap, d)) }
+                                }
+                                val motions = listOf(
+                                    WindowMotion.FROM_CONTROL to R.string.motion_from_control,
+                                    WindowMotion.MID_AIR to R.string.motion_mid_air,
+                                    WindowMotion.OFF to R.string.motion_none,
+                                )
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_window_motion),
+                                    value = stringResource(motions.first { it.first == settings.windowMotion }.second),
+                                ) { d ->
+                                    val at = motions.indexOfFirst { it.first == settings.windowMotion }
+                                    vm.updateSettings {
+                                        it.copy(windowMotion = motions[Math.floorMod(at + d, motions.size)].first)
+                                    }
+                                }
+                                AppNote(stringResource(R.string.edit_window_motion_note))
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_card),
+                                    value = onOff(settings.card),
+                                ) { vm.updateSettings { it.copy(card = !it.card) } }
+                                AppNote(stringResource(R.string.edit_card_note))
+                                val edge = settings.edgeWidth
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_edge),
+                                    value = when {
+                                        edge <= 0f -> stringResource(R.string.edge_none)
+                                        // Whole dp reads as "2", not "2.0"; the finer steps keep their decimals.
+                                        edge % 1f == 0f -> "${edge.toInt()}"
+                                        else -> "$edge"
+                                    },
+                                ) { d ->
+                                    vm.updateSettings { it.copy(edgeWidth = EdgeWidthSteps.step(it.edgeWidth, d)) }
+                                }
+                                val iconNames = listOf(
+                                    IconStyle.FILLED to R.string.icons_filled,
+                                    IconStyle.OUTLINED to R.string.icons_outlined,
+                                    IconStyle.ROUNDED to R.string.icons_rounded,
+                                )
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_icons),
+                                    value = stringResource(iconNames.first { it.first == settings.iconStyle }.second),
+                                ) { d ->
+                                    val at = iconNames.indexOfFirst { it.first == settings.iconStyle }
+                                    vm.updateSettings {
+                                        it.copy(iconStyle = iconNames[Math.floorMod(at + d, iconNames.size)].first)
+                                    }
+                                }
+                                val iconPacks = listOf(
+                                    IconPack.MATERIAL to R.string.pack_system,
+                                    IconPack.PHOSPHOR to R.string.pack_phosphor,
+                                )
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_icon_pack),
+                                    value = stringResource(iconPacks.first { it.first == settings.iconPack }.second),
+                                ) { d ->
+                                    val at = iconPacks.indexOfFirst { it.first == settings.iconPack }
+                                    vm.updateSettings {
+                                        it.copy(iconPack = iconPacks[Math.floorMod(at + d, iconPacks.size)].first)
+                                    }
+                                }
+                                if (settings.iconPack == IconPack.PHOSPHOR) {
+                                    AppNote(stringResource(R.string.edit_icon_pack_note))
+                                    val weightNames = listOf(
+                                        PhosphorWeight.THIN to R.string.weight_thin,
+                                        PhosphorWeight.LIGHT to R.string.weight_light,
+                                        PhosphorWeight.REGULAR to R.string.weight_regular,
+                                        PhosphorWeight.BOLD to R.string.weight_bold,
+                                        PhosphorWeight.FILL to R.string.weight_fill,
+                                        PhosphorWeight.DUOTONE to R.string.weight_duotone,
+                                    )
+                                    AppSettingRow(
+                                        label = stringResource(R.string.edit_phosphor_weight),
+                                        value = stringResource(weightNames.first { it.first == settings.phosphorWeight }.second),
+                                    ) { d ->
+                                        val at = weightNames.indexOfFirst { it.first == settings.phosphorWeight }
+                                        vm.updateSettings {
+                                            it.copy(phosphorWeight = weightNames[Math.floorMod(at + d, weightNames.size)].first)
+                                        }
+                                    }
+                                    AppNote(stringResource(R.string.edit_phosphor_weight_note))
+                                }
+                                val bluetoothIcons = listOf(
+                                    BluetoothIcon.STANDARD to R.string.bt_icon_standard,
+                                    BluetoothIcon.HEADPHONES to R.string.bt_icon_headphones,
+                                )
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_bluetooth_icon),
+                                    value = stringResource(bluetoothIcons.first { it.first == settings.bluetoothIcon }.second),
+                                ) { d ->
+                                    val at = bluetoothIcons.indexOfFirst { it.first == settings.bluetoothIcon }
+                                    vm.updateSettings {
+                                        it.copy(bluetoothIcon = bluetoothIcons[Math.floorMod(at + d, bluetoothIcons.size)].first)
+                                    }
+                                }
+                                AppNote(stringResource(R.string.edit_bluetooth_icon_note))
+                                val menuIcons = listOf(
+                                    MenuIcon.BARS to R.string.menu_icon_bars,
+                                    MenuIcon.TOGGLES to R.string.menu_icon_toggles,
+                                )
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_menu_icon),
+                                    value = stringResource(menuIcons.first { it.first == settings.menuIcon }.second),
+                                ) { d ->
+                                    val at = menuIcons.indexOfFirst { it.first == settings.menuIcon }
+                                    vm.updateSettings {
+                                        it.copy(menuIcon = menuIcons[Math.floorMod(at + d, menuIcons.size)].first)
+                                    }
+                                }
+                                AppNote(stringResource(R.string.edit_menu_icon_note))
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_invert),
+                                    value = stringResource(
+                                        if (settings.invertFocus) R.string.invert_yes else R.string.invert_no,
+                                    ),
+                                ) { vm.updateSettings { it.copy(invertFocus = !it.invertFocus) } }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_auto_ink),
+                                    value = onOff(settings.autoInk),
+                                ) { vm.updateSettings { it.copy(autoInk = !it.autoInk) } }
+                                AppNote(stringResource(R.string.edit_auto_ink_note))
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_active_highlight),
+                                    value = onOff(settings.activeHighlight),
+                                ) { vm.updateSettings { it.copy(activeHighlight = !it.activeHighlight) } }
+                                AppNote(stringResource(R.string.edit_active_highlight_note))
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_sound_cues),
+                                    value = onOff(settings.soundCues),
+                                ) { vm.updateSettings { it.copy(soundCues = !it.soundCues) } }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_volume_step),
+                                    value = "${settings.volumeStep}%",
+                                ) { d ->
+                                    vm.updateSettings { it.copy(volumeStep = VolumeStepSteps.step(it.volumeStep, d)) }
+                                }
+                            }
+
+                            EditTab.TOPBAR -> {
+                                listOf(
+                                    TileId.EDIT to R.string.edit_btn_menu,
+                                    TileId.PROFILE to R.string.edit_btn_profile,
+                                ).forEach { (id, name) ->
+                                    val on = layout.item(id)?.visible == true
+                                    AppSettingRow(
+                                        label = stringResource(name),
+                                        value = onOff(on),
+                                    ) { vm.setTileVisible(id, !on) }
+                                }
+                                val music = layout.item(TileId.NOW_PLAYING)
+                                val musicOn = music?.visible == true && music.size == TileSize.TOP
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_btn_music),
+                                    value = onOff(musicOn),
+                                ) {
+                                    if (musicOn) vm.setTileSize(TileId.NOW_PLAYING, TileSize.FULL)
+                                    else {
+                                        vm.setTileVisible(TileId.NOW_PLAYING, true)
+                                        vm.setTileSize(TileId.NOW_PLAYING, TileSize.TOP)
+                                    }
+                                }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_top_size),
+                                    value = "${settings.topSize}",
+                                ) { d ->
+                                    vm.updateSettings { it.copy(topSize = TopSizeSteps.step(it.topSize, d)) }
+                                }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_top_flat),
+                                    value = onOff(settings.topBorderless),
+                                ) { vm.updateSettings { it.copy(topBorderless = !it.topBorderless) } }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_menu_home),
+                                    value = onOff(settings.menuIsHome),
+                                ) { vm.updateSettings { it.copy(menuIsHome = !it.menuIsHome) } }
+                                val musicStyles = listOf(
+                                    MusicStyle.COMPACT to R.string.music_compact,
+                                    MusicStyle.BIG to R.string.music_big,
+                                )
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_music_style),
+                                    value = stringResource(musicStyles.first { it.first == settings.musicStyle }.second),
+                                ) { d ->
+                                    val at = musicStyles.indexOfFirst { it.first == settings.musicStyle }
+                                    vm.updateSettings {
+                                        it.copy(musicStyle = musicStyles[Math.floorMod(at + d, musicStyles.size)].first)
+                                    }
+                                }
+                                AppNote(stringResource(R.string.edit_menu_note))
+                                AppNote(stringResource(R.string.edit_music_note))
+                                AppNote(stringResource(R.string.edit_longpress_note))
+
+                                AppSectionLabel(stringResource(R.string.edit_photo))
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(AppDimens.gap),
+                                ) {
+                                    AppActionChip(
+                                        label = stringResource(R.string.edit_photo_choose),
+                                        onClick = {
+                                            try {
+                                                openDoc.launch(arrayOf("image/*"))
+                                            } catch (_: ActivityNotFoundException) {
+                                                try {
+                                                    getContent.launch("image/*")
+                                                } catch (_: ActivityNotFoundException) {
+                                                    Toast.makeText(context, R.string.edit_photo_no_picker, Toast.LENGTH_LONG).show()
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.width(140.dp),
+                                    )
+                                    AppActionChip(
+                                        label = stringResource(R.string.edit_photo_remove),
+                                        onClick = {
+                                            ProfilePhoto.clear(context)
+                                            vm.updateSettings { it.copy(profilePhotoVersion = 0) }
+                                        },
+                                        modifier = Modifier.width(116.dp),
+                                    )
+                                }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_photo_color),
+                                    value = "${settings.profileColor.mod(AvatarColors.size) + 1}",
+                                    swatch = AvatarColors[settings.profileColor.mod(AvatarColors.size)],
+                                ) { d ->
+                                    vm.updateSettings {
+                                        it.copy(profileColor = Math.floorMod(it.profileColor + d, AvatarColors.size))
                                     }
                                 }
                             }
-                            Section(stringResource(R.string.edit_capture))
-                            StepRow(stringResource(R.string.edit_capture_log), onOff(settings.activityLog)) {
-                                vm.updateSettings { it.copy(activityLog = !it.activityLog) }
-                            }
-                            Hint(stringResource(R.string.edit_capture_note))
-                        }
 
-                        EditTab.BLUR -> {
-                            val blurNames = listOf(R.string.blur_off, R.string.blur_light, R.string.blur_medium, R.string.blur_strong, R.string.blur_max)
-                                .map { stringResource(it) }
-                            StepRow(stringResource(R.string.edit_blur_level), blurNames[settings.effectiveBlur]) { d ->
-                                val level = Math.floorMod(settings.effectiveBlur + d, blurNames.size)
-                                vm.updateSettings { it.copy(blurBehind = level > 0, blurLevel = level) }
-                            }
-                            val methods = listOf(
-                                BlurMethod.AUTO to R.string.method_auto,
-                                BlurMethod.SCREENSHOT to R.string.method_screenshot,
-                                BlurMethod.WINDOW to R.string.method_window,
-                            )
-                            StepRow(
-                                stringResource(R.string.edit_blur_method),
-                                stringResource(methods.first { it.first == settings.blurMethod }.second),
-                            ) { d ->
-                                val next = methods[Math.floorMod(methods.indexOfFirst { it.first == settings.blurMethod } + d, methods.size)].first
-                                vm.updateSettings { it.copy(blurMethod = next) }
-                            }
-                            Hint(stringResource(R.string.blur_whole_note))
-                            Hint(
-                                stringResource(
-                                    if (wholeScreenBlurSupported(context)) R.string.blur_whole_ok
-                                    else R.string.blur_whole_unsupported,
-                                ),
-                            )
-                            StepRow(stringResource(R.string.edit_patient), onOff(settings.patientCapture)) {
-                                vm.updateSettings { it.copy(patientCapture = !it.patientCapture) }
-                            }
-                            Hint(stringResource(R.string.edit_patient_note))
-                            Hint(
-                                stringResource(
-                                    when (BackdropCapture.status()) {
-                                        BackdropCapture.Status.READY -> R.string.blur_status_ready
-                                        BackdropCapture.Status.NEEDS_SERVICE -> R.string.blur_status_service
-                                        BackdropCapture.Status.NEEDS_ANDROID_11 -> R.string.blur_status_old
+                            EditTab.APPS -> {
+                                // The slot the next app press fills; 0 is the first.
+                                var slot by remember { mutableStateOf(0) }
+                                AppSectionLabel(stringResource(R.string.edit_app_slots))
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(AppDimens.gap),
+                                ) {
+                                    AppSlots.forEachIndexed { index, _ ->
+                                        val name = appLabelOf(settings.appSlots.getOrNull(index))
+                                            ?: stringResource(R.string.edit_app_empty)
+                                        AppActionChip(
+                                            label = "${index + 1} · $name",
+                                            onClick = { slot = index },
+                                            modifier = Modifier.weight(1f),
+                                            highlighted = slot == index,
+                                        )
+                                    }
+                                }
+                                AppNote(stringResource(R.string.edit_app_note))
+                                AppActionChip(
+                                    label = stringResource(R.string.edit_app_clear),
+                                    onClick = {
+                                        vm.updateSettings { it.copy(appSlots = it.appSlots.withSlot(slot, null)) }
+                                        vm.setTileVisible(AppSlots[slot], false)
                                     },
-                                ),
-                            )
+                                    modifier = Modifier.width(160.dp),
+                                )
+                                AppSectionLabel(stringResource(R.string.edit_apps_installed))
+                                val apps = remember { vm.installedApps() }
+                                apps.chunked(2).forEach { row ->
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(AppDimens.gap),
+                                    ) {
+                                        row.forEach { app ->
+                                            AppActionChip(
+                                                label = app.label,
+                                                onClick = {
+                                                    vm.updateSettings {
+                                                        it.copy(appSlots = it.appSlots.withSlot(slot, app.packageName))
+                                                    }
+                                                    vm.setTileVisible(AppSlots[slot], true)
+                                                },
+                                                modifier = Modifier.weight(1f),
+                                                highlighted = settings.appSlots.getOrNull(slot) == app.packageName,
+                                            )
+                                        }
+                                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                                    }
+                                }
+                                AppSectionLabel(stringResource(R.string.edit_capture))
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_capture_log),
+                                    value = onOff(settings.activityLog),
+                                ) { vm.updateSettings { it.copy(activityLog = !it.activityLog) } }
+                                AppNote(stringResource(R.string.edit_capture_note))
+                            }
+
+                            EditTab.BLUR -> {
+                                val blurNames = listOf(
+                                    R.string.blur_off,
+                                    R.string.blur_light,
+                                    R.string.blur_medium,
+                                    R.string.blur_strong,
+                                    R.string.blur_max,
+                                ).map { stringResource(it) }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_blur_level),
+                                    value = blurNames[settings.effectiveBlur],
+                                ) { d ->
+                                    val level = Math.floorMod(settings.effectiveBlur + d, blurNames.size)
+                                    vm.updateSettings { it.copy(blurBehind = level > 0, blurLevel = level) }
+                                }
+                                val methods = listOf(
+                                    BlurMethod.AUTO to R.string.method_auto,
+                                    BlurMethod.SCREENSHOT to R.string.method_screenshot,
+                                    BlurMethod.WINDOW to R.string.method_window,
+                                )
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_blur_method),
+                                    value = stringResource(methods.first { it.first == settings.blurMethod }.second),
+                                ) { d ->
+                                    val at = methods.indexOfFirst { it.first == settings.blurMethod }
+                                    vm.updateSettings {
+                                        it.copy(blurMethod = methods[Math.floorMod(at + d, methods.size)].first)
+                                    }
+                                }
+                                AppNote(stringResource(R.string.blur_whole_note))
+                                AppNote(
+                                    stringResource(
+                                        if (wholeScreenBlurSupported(context)) R.string.blur_whole_ok
+                                        else R.string.blur_whole_unsupported,
+                                    ),
+                                )
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_patient),
+                                    value = onOff(settings.patientCapture),
+                                ) { vm.updateSettings { it.copy(patientCapture = !it.patientCapture) } }
+                                AppNote(stringResource(R.string.edit_patient_note))
+                                AppNote(
+                                    stringResource(
+                                        when (BackdropCapture.status()) {
+                                            BackdropCapture.Status.READY -> R.string.blur_status_ready
+                                            BackdropCapture.Status.NEEDS_SERVICE -> R.string.blur_status_service
+                                            BackdropCapture.Status.NEEDS_ANDROID_11 -> R.string.blur_status_old
+                                        },
+                                    ),
+                                )
+                            }
                         }
+                        Spacer(Modifier.height(2.dp))
                     }
                 }
             }
 
             // The real panel over a blurred screen: every setting shows here as you change it.
-            LivePanel(
-                state = state,
-                grid = placed,
-                pinned = pinned,
-                requesters = tileRequesters,
-                selected = selected,
-                interactive = false,
-                onActivate = {
-                    selected = it
-                    tab = EditTab.CONTROLS
-                },
-                modifier = Modifier.align(Alignment.Top),
-            )
+            Column(Modifier.width(AppDimens.previewWidth).fillMaxHeight()) {
+                AppPreview(
+                    label = stringResource(R.string.home_preview),
+                    note = stringResource(R.string.edit_preview_note),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    LivePanel(
+                        state = state,
+                        grid = placed,
+                        pinned = pinned,
+                        requesters = tileRequesters,
+                        selected = selected,
+                        interactive = false,
+                        onActivate = {
+                            selected = it
+                            tab = EditTab.CONTROLS
+                        },
+                    )
+                }
+            }
         }
     }
 }
@@ -613,147 +758,6 @@ private fun sizeLabel(size: TileSize): Int = when (size) {
 }
 
 @Composable
-private fun Section(text: String) {
-    BasicText(
-        text,
-        Modifier.padding(top = 8.dp),
-        style = PanelType.label.copy(color = GlassTokens.textSecondary),
-    )
-}
-
-@Composable
-private fun Hint(text: String) {
-    BasicText(text, style = PanelType.hint.copy(color = GlassTokens.textSecondary))
-}
-
-/**
- * A small flat button. [highlighted] marks the current choice in a group (outlined), focus turns
- * it white. One fill and no animation: this page has dozens of them, so they must stay cheap.
- */
-@OptIn(ExperimentalComposeUiApi::class)
-@Composable
-private fun FlatButton(
-    label: String,
-    width: Dp,
-    highlighted: Boolean,
-    requester: FocusRequester?,
-    activate: () -> Unit,
-    onKeyExtra: (KeyEvent) -> Boolean = { false },
-    content: @Composable BoxScope.() -> Unit,
-) {
-    val r = requester ?: remember { FocusRequester() }
-    val invert = LocalInvertFocus.current
-    var focused by remember { mutableStateOf(false) }
-    val pressed = remember { booleanArrayOf(false) }
-    val ink = if (focused && invert) GlassTokens.inkDark else Color.White
-    Box(
-        Modifier
-            .size(width, 40.dp)
-            .focusRequester(r)
-            .onFocusChanged { focused = it.isFocused }
-            .onKeyEvent { e ->
-                when {
-                    onKeyExtra(e) -> true
-                    e.key.isSelectKey() && e.type == KeyEventType.KeyDown -> {
-                        // A repeat means OK was already held when this appeared (long press that
-                        // opened the editor): not a press.
-                        if (e.nativeKeyEvent.repeatCount == 0) pressed[0] = true
-                        true
-                    }
-                    e.key.isSelectKey() && e.type == KeyEventType.KeyUp -> {
-                        if (pressed[0]) activate()
-                        pressed[0] = false
-                        true
-                    }
-                    else -> false
-                }
-            }
-            .focusable()
-            .semantics(mergeDescendants = true) {
-                contentDescription = label
-                role = Role.Button
-                onClick(label = label) { activate(); true }
-            }
-            .drawBehind {
-                val radius = CornerRadius(size.height / 2f)
-                val fill = when {
-                    focused && invert -> Color.White
-                    focused -> Color.White.copy(alpha = 0.32f)
-                    highlighted -> Color.White.copy(alpha = 0.24f)
-                    else -> Color.Black.copy(alpha = 0.42f)
-                }
-                drawRoundRect(fill, cornerRadius = radius)
-                if (highlighted && !focused) {
-                    val w = 2.dp.toPx()
-                    drawRoundRect(
-                        Color.White.copy(alpha = 0.9f),
-                        topLeft = Offset(w / 2f, w / 2f),
-                        size = androidx.compose.ui.geometry.Size(size.width - w, size.height - w),
-                        cornerRadius = CornerRadius(radius.x - w / 2f),
-                        style = Stroke(w),
-                    )
-                }
-            },
-    ) {
-        CompositionLocalProvider(LocalTileInk provides ink) { content() }
-    }
-}
-
-private fun Key.isSelectKey() = this == Key.DirectionCenter || this == Key.Enter || this == Key.NumPadEnter
-
-@Composable
-private fun EditChip(
-    label: String,
-    highlighted: Boolean = false,
-    width: Dp = 84.dp,
-    requester: FocusRequester? = null,
-    tint: Color? = null,
-    onClick: () -> Unit,
-) {
-    FlatButton(label, width, highlighted, requester, onClick) {
-        if (tint != null) Box(Modifier.align(Alignment.Center).size(18.dp).background(tint, CircleShape))
-        else Label(label, Modifier.align(Alignment.Center).padding(horizontal = 6.dp), maxLines = 1)
-    }
-}
-
-/**
- * One setting on one row: name on the left, current value on the right. OK moves to the next
- * value (wrapping), Left to the previous one. A single focusable per setting keeps this page light.
- */
-@Composable
-private fun StepRow(
-    label: String,
-    value: String,
-    requester: FocusRequester? = null,
-    swatch: Color? = null,
-    onStep: (Int) -> Unit,
-) {
-    FlatButton(
-        label = "$label, $value",
-        width = 340.dp,
-        highlighted = false,
-        requester = requester,
-        activate = { onStep(1) },
-        onKeyExtra = { e ->
-            if (e.key == Key.DirectionLeft) {
-                if (e.type == KeyEventType.KeyDown) onStep(-1)
-                true
-            } else false
-        },
-    ) {
-        Row(
-            Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Label(label, Modifier.weight(1f), maxLines = 1)
-            if (swatch != null) Box(Modifier.size(16.dp).background(swatch, CircleShape))
-            Label(value, maxLines = 1)
-        }
-    }
-}
-
-@Composable
 private fun onOff(on: Boolean): String = stringResource(if (on) R.string.state_on else R.string.state_off)
 
 private fun <T> List<T>.step(current: T, delta: Int): T {
@@ -766,17 +770,13 @@ private fun List<String?>.withSlot(index: Int, value: String?): List<String?> =
     toMutableList().also { if (index in it.indices) it[index] = value }
 
 @Composable
-private fun AddChip(id: TileId, onClick: () -> Unit) {
+private fun AddChip(id: TileId, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val look = lookOf(id)
     val label = stringResource(look.label)
-    FlatButton(label, 168.dp, false, null, onClick) {
-        Row(
-            Modifier.align(Alignment.CenterStart).padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            TileIcon(lookIcon(id), 18.dp)
-            Label(label, style = PanelType.label, maxLines = 1)
-        }
-    }
+    AppActionChip(
+        label = label,
+        onClick = onClick,
+        modifier = modifier,
+        leading = { TileIcon(lookIcon(id), 16.dp) },
+    )
 }
