@@ -1,8 +1,9 @@
 name: Android CI
 
 on:
+  # main and feature branches build the release APK and publish it as an artifact.
   push:
-    branches: [main]
+    branches: [main, "feature/**"]
   pull_request:
   workflow_dispatch:
     inputs:
