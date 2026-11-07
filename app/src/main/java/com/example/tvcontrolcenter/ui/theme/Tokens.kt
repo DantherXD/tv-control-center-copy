@@ -118,24 +118,25 @@ object PanelType {
  * opacities so translucency reads as light rather than as a grey fill.
  */
 object AppPalette {
-    val accent = Color(0xFFA78BFA)
-    val accentBright = Color(0xFFD8CFFF)
-    val violet = Color(0xFF7C5CFF)
-    val indigo = Color(0xFF4B4FA8)
-    val blue = Color(0xFF5C7CFF)
+    // Restrained lavender for selection ticks, the eyebrow dot and focus light only.
+    val accent = Color(0xFF9E93D9)
+    val accentBright = Color(0xFFDDD8F0)
+    val violet = Color(0xFF7A6FA8)
+    val indigo = Color(0xFF3C4559)
+    val blue = Color(0xFF4E6E9E)
 
     val textPrimary = Color(0xF2FFFFFF)
-    val textSecondary = Color(0xB8FFFFFF)
-    val textTertiary = Color(0x8AFFFFFF)
-    val textMuted = Color(0x66FFFFFF)
+    val textSecondary = Color(0xC6FFFFFF)
+    val textTertiary = Color(0xA0FFFFFF)
+    val textMuted = Color(0x7AFFFFFF)
 
-    val success = Color(0xFF7BE3B8)
-    val warning = Color(0xFFFFC978)
-    val danger = Color(0xFFFF9D9D)
+    val success = Color(0xFF78DFB8)
+    val warning = Color(0xFFF0C27A)
+    val danger = Color(0xFFE7A0A0)
 
-    val midnight = Color(0xFF070812)
-    val midnightSoft = Color(0xFF0C0E1E)
-    val shadow = Color(0xFF02030A)
+    val midnight = Color(0xFF08090E)
+    val midnightSoft = Color(0xFF10131A)
+    val shadow = Color(0xFF020306)
 }
 
 /**
@@ -143,29 +144,30 @@ object AppPalette {
  * a directional rim; nothing is opaque and nothing relies on a flat outline.
  */
 object AppMaterial {
-    val primaryTop = Color(0x29FFFFFF)
-    val primaryBottom = Color(0x0AFFFFFF)
-    val secondaryTop = Color(0x16FFFFFF)
-    val secondaryBottom = Color(0x05FFFFFF)
-    val floatingTop = Color(0x33FFFFFF)
-    val floatingBottom = Color(0x10FFFFFF)
-    val interactiveTop = Color(0x3DFFFFFF)
-    val interactiveBottom = Color(0x17FFFFFF)
+    // Cool silver-white over the charcoal backdrop reads as smoky graphite, not flat grey.
+    val primaryTop = Color(0x29EDF0F6)
+    val primaryBottom = Color(0x0AE7EBF2)
+    val secondaryTop = Color(0x16E3E8F0)
+    val secondaryBottom = Color(0x05E6EAF2)
+    val floatingTop = Color(0x33ECEFF5)
+    val floatingBottom = Color(0x10E8ECF3)
+    val interactiveTop = Color(0x3DEDF0F7)
+    val interactiveBottom = Color(0x17E9EDF4)
 
-    val rimStart = Color(0x73FFFFFF)
-    val rimEnd = Color(0x0AFFFFFF)
+    val rimStart = Color(0x5CFFFFFF)
+    val rimEnd = Color(0x08FFFFFF)
     val specular = Color(0x2EFFFFFF)
-    val focusGlow = Color(0x24A78BFA)
+    val focusGlow = Color(0x1FA89BD8)
 
-    val accentTop = Color(0xC48B5CF6)
-    val accentBottom = Color(0xA85B4BD6)
-    val accentFocusTop = Color(0xE0A78BFA)
-    val accentFocusBottom = Color(0xC46D5BE8)
-    val accentPressedTop = Color(0xB06A45E0)
-    val accentPressedBottom = Color(0x99402BB0)
+    val accentTop = Color(0xC49E93D9)
+    val accentBottom = Color(0xA8756CAF)
+    val accentFocusTop = Color(0xE0B2A8E3)
+    val accentFocusBottom = Color(0xC48178B8)
+    val accentPressedTop = Color(0xB07D73AD)
+    val accentPressedBottom = Color(0x9962598A)
 
-    val selectedTint = Color(0x2EA78BFA)
-    val divider = Color(0x0FFFFFFF)
+    val selectedTint = Color(0x2690A4C0)
+    val divider = Color(0x0AFFFFFF)
 }
 
 /** Sizes for the app's own pages, in dp on the same 960 x 540 reference screen. */

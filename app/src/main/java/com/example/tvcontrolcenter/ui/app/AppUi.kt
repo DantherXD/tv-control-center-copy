@@ -89,17 +89,17 @@ fun AppScreenBackground(modifier: Modifier = Modifier) {
             .fillMaxSize()
             .drawWithCache {
                 val base = Brush.verticalGradient(
-                    0f to Color(0xFF0A0B1A),
-                    0.55f to Color(0xFF0C0E22),
-                    1f to Color(0xFF05060F),
+                    0f to Color(0xFF0A0B10),
+                    0.55f to Color(0xFF0E1119),
+                    1f to Color(0xFF06070B),
                 )
                 val violet = Brush.radialGradient(
-                    colors = listOf(Color(0x33A78BFA), Color(0x125C7CFF), Color.Transparent),
+                    colors = listOf(Color(0x149E93D9), Color(0x0A4E6E9E), Color.Transparent),
                     center = Offset(size.width * 0.78f, size.height * 0.18f),
                     radius = size.maxDimension * 0.72f,
                 )
                 val blue = Brush.radialGradient(
-                    colors = listOf(Color(0x1F4C6FFF), Color.Transparent),
+                    colors = listOf(Color(0x1C41618A), Color.Transparent),
                     center = Offset(size.width * 0.12f, size.height * 0.92f),
                     radius = size.maxDimension * 0.58f,
                 )
@@ -132,7 +132,7 @@ fun AppGlassPanel(
             shape = shape,
             clip = false,
             ambientColor = Color.Black.copy(alpha = 0.55f),
-            spotColor = AppPalette.violet.copy(alpha = 0.30f),
+            spotColor = AppPalette.blue.copy(alpha = 0.16f),
         )
     } else Modifier
 
@@ -168,7 +168,7 @@ fun AppGlassPanel(
                     radius = size.width * 0.72f,
                 )
                 val rim = Brush.linearGradient(
-                    colors = listOf(Color(0x73FFFFFF), Color(0x0AFFFFFF)),
+                    colors = listOf(AppMaterial.rimStart, AppMaterial.rimEnd),
                     start = Offset.Zero,
                     end = Offset(size.width, size.height),
                 )
@@ -178,9 +178,9 @@ fun AppGlassPanel(
                 // A group sheet catches much less light than a floating surface; this keeps the
                 // edge reading as a reflection instead of an outline around every container.
                 val rimAlpha = when (level) {
-                    AppGlassLevel.Secondary -> 0.20f
-                    AppGlassLevel.Primary -> 0.34f
-                    AppGlassLevel.Floating -> 0.44f
+                    AppGlassLevel.Secondary -> 0.16f
+                    AppGlassLevel.Primary -> 0.28f
+                    AppGlassLevel.Floating -> 0.36f
                 }
                 val corner = CornerRadius(radius.toPx())
                 onDrawBehind {
@@ -287,7 +287,7 @@ internal fun AppInteractive(
             shape = shape,
             clip = false,
             ambientColor = Color.Black.copy(alpha = 0.50f),
-            spotColor = AppPalette.violet.copy(alpha = 0.28f),
+            spotColor = AppPalette.blue.copy(alpha = 0.16f),
         )
     } else Modifier
 
@@ -343,7 +343,7 @@ internal fun AppInteractive(
                     radius = size.width * 0.9f,
                 )
                 val rim = Brush.linearGradient(
-                    colors = listOf(Color(0x73FFFFFF), Color(0x0AFFFFFF)),
+                    colors = listOf(AppMaterial.rimStart, AppMaterial.rimEnd),
                     start = Offset.Zero,
                     end = Offset(size.width, size.height),
                 )
@@ -398,9 +398,9 @@ fun AppButton(
     showArrow: Boolean = false,
 ) {
     val primary = tone == AppButtonTone.Primary
-    val ink = Color(0xFF15121F)
+    val ink = Color(0xFF141519)
     val baseFill = if (primary) {
-        Brush.verticalGradient(listOf(Color(0xE8FFFFFF), Color(0xD9E9E4FF)))
+        Brush.verticalGradient(listOf(Color(0xE8F5F6F9), Color(0xD9D9DFE8)))
     } else {
         Brush.verticalGradient(listOf(AppMaterial.floatingTop, AppMaterial.floatingBottom))
     }
@@ -413,7 +413,7 @@ fun AppButton(
         scaleOnFocus = true,
         elevation = if (primary) 22.dp else 10.dp,
         baseFill = baseFill,
-        rimBase = if (primary) 0.60f else 0.24f,
+        rimBase = if (primary) 0.50f else 0.20f,
         specular = true,
         glow = primary,
     ) { _ ->
@@ -456,7 +456,7 @@ fun AppActionChip(
         scaleOnFocus = true,
         baseFill = if (highlighted) {
             Brush.verticalGradient(
-                listOf(AppMaterial.selectedTint, Color(0x12A78BFA)),
+                listOf(AppMaterial.selectedTint, Color(0x0F90A4C0)),
             )
         } else {
             Brush.verticalGradient(listOf(AppMaterial.secondaryTop, AppMaterial.secondaryBottom))
@@ -748,12 +748,12 @@ fun AppTabRail(
                         shape = RoundedCornerShape(19.dp),
                         clip = false,
                         ambientColor = Color.Black.copy(alpha = 0.40f),
-                        spotColor = AppPalette.violet.copy(alpha = 0.25f),
+                        spotColor = AppPalette.blue.copy(alpha = 0.12f),
                     )
                     .clip(RoundedCornerShape(19.dp))
                     .drawWithCache {
                         val fill = Brush.verticalGradient(
-                            listOf(Color(0x29FFFFFF), Color(0x0DFFFFFF)),
+                            listOf(Color(0x2BEDEAF7), Color(0x10E6E2F0)),
                         )
                         val specular = Brush.radialGradient(
                             colors = listOf(Color(0x33FFFFFF), Color.Transparent),
@@ -761,7 +761,7 @@ fun AppTabRail(
                             radius = size.width * 0.9f,
                         )
                         val rim = Brush.linearGradient(
-                            colors = listOf(Color(0x59FFFFFF), Color(0x08FFFFFF)),
+                            colors = listOf(Color(0x4DFFFFFF), Color(0x06FFFFFF)),
                             start = Offset.Zero,
                             end = Offset(size.width, size.height),
                         )
@@ -884,7 +884,7 @@ fun AppSlotCard(
         radius = 16.dp,
         scaleOnFocus = true,
         baseFill = if (selected) {
-            Brush.verticalGradient(listOf(AppMaterial.selectedTint, Color(0x0FA78BFA)))
+            Brush.verticalGradient(listOf(AppMaterial.selectedTint, Color(0x0F90A4C0)))
         } else {
             Brush.verticalGradient(listOf(AppMaterial.secondaryTop, AppMaterial.secondaryBottom))
         },
@@ -963,7 +963,7 @@ fun AppPreview(
                     .matchParentSize()
                     .drawWithCache {
                         val rim = Brush.linearGradient(
-                            colors = listOf(Color(0x40FFFFFF), Color(0x08FFFFFF)),
+                            colors = listOf(Color(0x33FFFFFF), Color(0x06FFFFFF)),
                             start = Offset.Zero,
                             end = Offset(size.width, size.height),
                         )
