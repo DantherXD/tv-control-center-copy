@@ -1,19 +1,23 @@
 package com.example.tvcontrolcenter.ui.app
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,14 +34,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
@@ -50,500 +56,455 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.tvcontrolcenter.domain.model.Wallpaper
 import com.example.tvcontrolcenter.ui.background.AppWallpaper
 import com.example.tvcontrolcenter.ui.theme.AppDimens
+import com.example.tvcontrolcenter.ui.theme.AppMaterial
 import com.example.tvcontrolcenter.ui.theme.AppMotion
 import com.example.tvcontrolcenter.ui.theme.AppPalette
 import com.example.tvcontrolcenter.ui.theme.AppType
 
 /**
- * Wallpaper plus the two quiet veils that keep the app's own pages readable. Only the home page
- * and the editor use this; the panel keeps its own backdrop and scrim.
+ * App-page liquid glass.
+ *
+ * The app pages are built from four optical layers, none of which needs a runtime blur: a hazy
+ * midnight atmosphere, a translucent fill, a specular light source, and a directional rim that
+ * catches light at the top-left and disappears into the lower edge. Focus adds light, not outline.
+ * The Control Center keeps its own glass and is never routed through these components.
  */
+
+enum class AppGlassLevel { Secondary, Primary, Floating }
+
+/** Full-screen atmosphere: the chosen wallpaper under a midnight grade and three soft light blooms. */
 @Composable
-internal fun AppScreenBackground(wallpaper: Wallpaper, modifier: Modifier = Modifier) {
+fun AppScreenBackground(wallpaper: Wallpaper, modifier: Modifier = Modifier) {
     Box(modifier) {
         AppWallpaper(wallpaper, Modifier.fillMaxSize())
-        Box(
+        Spacer(
             Modifier
                 .fillMaxSize()
                 .drawWithCache {
-                    // Built once per size, not once per frame: focus animations redraw often.
-                    val depth = Brush.verticalGradient(
-                        0f to Color(0xE6070510),
-                        0.55f to Color(0xB3080514),
-                        1f to Color(0xF207050E),
+                    val grade = Brush.verticalGradient(
+                        0f to Color(0xD10A0B1C),
+                        0.52f to Color(0x990C0E22),
+                        1f to Color(0xD9050612),
                     )
-                    // A little more shade on the reading side, a little more picture on the right.
-                    val readingSide = Brush.horizontalGradient(
-                        0f to Color(0xD905040B),
-                        0.5f to Color(0x8C05040B),
-                        1f to Color(0x3305040B),
+                    val violet = Brush.radialGradient(
+                        colors = listOf(Color(0x4DA78BFA), Color.Transparent),
+                        center = Offset(size.width * 0.82f, size.height * 0.08f),
+                        radius = size.maxDimension * 0.62f,
                     )
-                    val floor = Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.68f to Color.Transparent,
-                        1f to Color(0x9905040B),
+                    val blue = Brush.radialGradient(
+                        colors = listOf(Color(0x3D4C6FFF), Color.Transparent),
+                        center = Offset(size.width * 0.10f, size.height * 0.92f),
+                        radius = size.maxDimension * 0.56f,
+                    )
+                    val rose = Brush.radialGradient(
+                        colors = listOf(Color(0x2EFF7AB6), Color.Transparent),
+                        center = Offset(size.width * 0.64f, size.height * 1.02f),
+                        radius = size.maxDimension * 0.46f,
+                    )
+                    // A single wide sheen makes the backdrop feel printed on glass rather than flat.
+                    val sheen = Brush.linearGradient(
+                        colors = listOf(Color(0x14FFFFFF), Color.Transparent, Color(0x0AFFFFFF)),
+                        start = Offset.Zero,
+                        end = Offset(size.width, size.height),
+                    )
+                    val leftShade = Brush.horizontalGradient(
+                        colors = listOf(Color(0x59000000), Color.Transparent),
+                        startX = 0f,
+                        endX = size.width * 0.68f,
+                    )
+                    val vignette = Brush.radialGradient(
+                        colors = listOf(Color.Transparent, Color.Transparent, Color(0x8A02030A)),
+                        center = Offset(size.width * 0.50f, size.height * 0.48f),
+                        radius = size.maxDimension * 0.82f,
                     )
                     onDrawBehind {
-                        drawRect(depth)
-                        drawRect(readingSide)
-                        drawRect(floor)
+                        drawRect(grade)
+                        drawRect(violet)
+                        drawRect(blue)
+                        drawRect(rose)
+                        drawRect(sheen)
+                        drawRect(leftShade)
+                        drawRect(vignette)
                     }
                 },
         )
     }
 }
 
-/**
- * A restrained glass card for app content: one gradient fill, one hairline and a faint top sheen.
- * No blur pass, so a card costs a single draw and behaves on weak hardware.
- */
+/** One continuous piece of glass: fill, specular, caustic, rim and an inner lower shadow. */
 @Composable
-internal fun AppCard(
+fun AppGlassPanel(
+    level: AppGlassLevel,
     modifier: Modifier = Modifier,
-    radius: Dp = AppDimens.cardRadius,
+    radius: Dp = AppDimens.groupRadius,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(radius)
+    val elevation = when (level) {
+        AppGlassLevel.Floating -> 28.dp
+        AppGlassLevel.Primary -> 18.dp
+        AppGlassLevel.Secondary -> 0.dp
+    }
+    val shadow = if (elevation > 0.dp) {
+        Modifier.shadow(
+            elevation = elevation,
+            shape = shape,
+            clip = false,
+            ambientColor = Color.Black.copy(alpha = 0.55f),
+            spotColor = AppPalette.violet.copy(alpha = 0.30f),
+        )
+    } else Modifier
+
     Box(
         modifier
+            .then(shadow)
             .clip(shape)
-            .background(Brush.verticalGradient(listOf(AppPalette.cardTop, AppPalette.cardBottom)))
-            .border(1.dp, AppPalette.hairline, shape),
-    ) {
-        Box(
-            Modifier
-                .matchParentSize()
-                .drawWithCache {
-                    val sheen = Brush.verticalGradient(
-                        0f to Color.White.copy(alpha = 0.055f),
-                        0.45f to Color.Transparent,
+            .drawWithCache {
+                val fill = when (level) {
+                    AppGlassLevel.Secondary -> Brush.verticalGradient(
+                        listOf(AppMaterial.secondaryTop, AppMaterial.secondaryBottom),
                     )
-                    onDrawBehind { drawRect(sheen) }
-                },
-        )
+                    AppGlassLevel.Primary -> Brush.verticalGradient(
+                        listOf(AppMaterial.primaryTop, AppMaterial.primaryBottom),
+                    )
+                    AppGlassLevel.Floating -> Brush.verticalGradient(
+                        listOf(AppMaterial.floatingTop, AppMaterial.floatingBottom),
+                    )
+                }
+                val specular = Brush.radialGradient(
+                    colors = listOf(Color(0x29FFFFFF), Color.Transparent),
+                    center = Offset(size.width * 0.24f, -size.height * 0.08f),
+                    radius = size.width * 0.82f,
+                )
+                val sheen = Brush.linearGradient(
+                    colors = listOf(Color.Transparent, Color(0x0BFFFFFF), Color.Transparent),
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, 0f),
+                )
+                val caustic = Brush.radialGradient(
+                    colors = listOf(AppPalette.blue.copy(alpha = 0.10f), Color.Transparent),
+                    center = Offset(size.width * 0.86f, size.height),
+                    radius = size.width * 0.72f,
+                )
+                val rim = Brush.linearGradient(
+                    colors = listOf(Color(0x73FFFFFF), Color(0x0AFFFFFF)),
+                    start = Offset.Zero,
+                    end = Offset(size.width, size.height),
+                )
+                val innerShadow = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.14f)),
+                )
+                // A group sheet catches much less light than a floating surface; this keeps the
+                // edge reading as a reflection instead of an outline around every container.
+                val rimAlpha = when (level) {
+                    AppGlassLevel.Secondary -> 0.20f
+                    AppGlassLevel.Primary -> 0.34f
+                    AppGlassLevel.Floating -> 0.44f
+                }
+                val corner = CornerRadius(radius.toPx())
+                onDrawBehind {
+                    drawRoundRect(fill, cornerRadius = corner)
+                    drawRoundRect(specular, cornerRadius = corner)
+                    drawRoundRect(sheen, cornerRadius = corner)
+                    drawRoundRect(caustic, cornerRadius = corner)
+                    drawRoundRect(
+                        brush = rim,
+                        cornerRadius = corner,
+                        style = Stroke(1.dp.toPx()),
+                        alpha = rimAlpha,
+                    )
+                    drawRoundRect(innerShadow, cornerRadius = corner, style = Stroke(2.dp.toPx()))
+                }
+            },
+    ) {
         content()
     }
 }
 
-/** Small label above a heading: accent dot, then the words in a wide, quiet caps style. */
+/** A small lit dot and a quiet tracked label, used above the preview and as an app eyebrow. */
 @Composable
-internal fun AppEyebrow(text: String, modifier: Modifier = Modifier) {
-    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(5.dp).background(AppPalette.accentBright, CircleShape))
-        Spacer(Modifier.width(7.dp))
+fun AppEyebrow(text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(14.dp)
+                .drawWithCache {
+                    onDrawBehind {
+                        drawCircle(AppPalette.accent.copy(alpha = 0.20f), radius = size.minDimension * 0.5f)
+                        drawCircle(AppPalette.accentBright, radius = size.minDimension * 0.20f)
+                    }
+                },
+        )
+        Spacer(Modifier.width(3.dp))
         BasicText(
-            text,
-            style = AppType.eyebrow.copy(color = AppPalette.accentBright),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            text.uppercase(),
+            style = AppType.eyebrow.copy(color = AppPalette.textSecondary),
         )
     }
 }
 
-/** Section heading inside the editor: a short accent rule, then the label. */
+/** A footnote that belongs to the page, not to a card. */
 @Composable
-internal fun AppSectionLabel(text: String, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .width(3.dp)
-                .height(12.dp)
-                .background(AppPalette.accent, RoundedCornerShape(2.dp)),
-        )
-        Spacer(Modifier.width(8.dp))
-        BasicText(
-            text,
-            style = AppType.section.copy(color = AppPalette.accentBright),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-/** A contextual note. The short rule ties it to the setting above without shouting. */
-@Composable
-internal fun AppNote(text: String, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth()) {
-        Box(
-            Modifier
-                .padding(top = 2.dp)
-                .width(2.dp)
-                .height(14.dp)
-                .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(1.dp)),
-        )
-        Spacer(Modifier.width(8.dp))
-        BasicText(
-            text,
-            Modifier.weight(1f),
-            style = AppType.note.copy(color = AppPalette.textMuted),
-        )
-    }
+fun AppNote(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = AppPalette.textMuted,
+) {
+    BasicText(
+        text,
+        modifier.padding(horizontal = 16.dp, vertical = 5.dp),
+        style = AppType.note.copy(color = color),
+    )
 }
 
 /**
- * The shared focus/press behaviour for every app-page control. It follows the editor's existing
- * remote rules: OK activates on key up (so a long press that opened the page is not a press),
- * extra keys such as Left are handled by the caller, and focus is always visible as a border,
- * a brighter surface and, for buttons, a small lift.
+ * A focusable glass control. The light lifts over a short spring instead of switching on, and the
+ * rim only becomes visible as the control takes focus.
  */
 @Composable
 internal fun AppInteractive(
     label: String,
     onActivate: () -> Unit,
-    modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(AppDimens.rowRadius),
+    modifier: Modifier,
+    radius: Dp,
     requester: FocusRequester? = null,
     semanticRole: Role = Role.Button,
     scaleOnFocus: Boolean = false,
-    fill: (focused: Boolean, pressed: Boolean) -> Brush,
-    borderColor: (focused: Boolean) -> Color = { focused ->
-        if (focused) AppPalette.accentBright else AppPalette.hairline
-    },
-    borderWidth: (focused: Boolean) -> Dp = { focused ->
-        if (focused) AppDimens.focusBorder else 1.dp
-    },
-    onKeyExtra: (KeyEvent) -> Boolean = { false },
+    elevation: Dp = 0.dp,
+    baseFill: Brush,
+    rimBase: Float = 0f,
+    focusOverlay: Boolean = true,
+    specular: Boolean = false,
+    glow: Boolean = false,
+    onKeyExtra: ((KeyEvent) -> Boolean)? = null,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
-    val focusRequester = requester ?: remember { FocusRequester() }
+    val localRequester = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
     var pressed by remember { mutableStateOf(false) }
+    val focusProgress by animateFloatAsState(
+        targetValue = if (focused) 1f else 0f,
+        animationSpec = AppMotion.focusSpring(),
+        label = "glassFocus",
+    )
+    val pressProgress by animateFloatAsState(
+        targetValue = if (pressed) 1f else 0f,
+        animationSpec = AppMotion.focusSpring(),
+        label = "glassPress",
+    )
+    val scale = if (scaleOnFocus) {
+        1f + (AppMotion.focusScale - 1f) * focusProgress - 0.015f * pressProgress
+    } else 1f
+    val shape = RoundedCornerShape(radius)
+    val shadow = if (elevation > 0.dp) {
+        Modifier.shadow(
+            elevation = elevation,
+            shape = shape,
+            clip = false,
+            ambientColor = Color.Black.copy(alpha = 0.50f),
+            spotColor = AppPalette.violet.copy(alpha = 0.28f),
+        )
+    } else Modifier
+
     Box(
         modifier
-            .appFocusScale(scaleOnFocus, focused, pressed)
-            .focusRequester(focusRequester)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .then(shadow)
+            .focusRequester(requester ?: localRequester)
             .onFocusChanged {
                 focused = it.isFocused
                 if (!it.isFocused) pressed = false
             }
             .onKeyEvent { event ->
                 when {
-                    onKeyExtra(event) -> true
-                    event.key.isAppSelectKey() && event.type == KeyEventType.KeyDown -> {
-                        if (event.nativeKeyEvent.repeatCount == 0) pressed = true
-                        true
-                    }
-                    event.key.isAppSelectKey() && event.type == KeyEventType.KeyUp -> {
-                        if (pressed) onActivate()
-                        pressed = false
+                    onKeyExtra?.invoke(event) == true -> true
+                    isAppSelectKey(event) -> {
+                        when (event.type) {
+                            KeyEventType.KeyDown -> pressed = true
+                            KeyEventType.KeyUp -> {
+                                pressed = false
+                                onActivate()
+                            }
+                            else -> Unit
+                        }
                         true
                     }
                     else -> false
                 }
             }
             .focusable()
-            .semantics(mergeDescendants = true) {
-                contentDescription = label
+            .semantics {
                 role = semanticRole
+                contentDescription = label
                 onClick(label = label) {
                     onActivate()
                     true
                 }
             }
             .clip(shape)
-            .background(fill(focused, pressed))
-            .border(borderWidth(focused), borderColor(focused), shape),
+            .drawWithCache {
+                val focusFill = Brush.verticalGradient(
+                    listOf(Color(0x26FFFFFF), Color(0x0AFFFFFF)),
+                )
+                val specularBrush = Brush.radialGradient(
+                    colors = listOf(Color(0x3DFFFFFF), Color.Transparent),
+                    center = Offset(size.width * 0.28f, -size.height * 0.18f),
+                    radius = size.width * 0.9f,
+                )
+                val rim = Brush.linearGradient(
+                    colors = listOf(Color(0x73FFFFFF), Color(0x0AFFFFFF)),
+                    start = Offset.Zero,
+                    end = Offset(size.width, size.height),
+                )
+                val corner = CornerRadius(radius.toPx())
+                onDrawBehind {
+                    drawRoundRect(baseFill, cornerRadius = corner)
+                    if (specular) drawRoundRect(specularBrush, cornerRadius = corner)
+                    if (focusOverlay && focusProgress > 0f) {
+                        drawRoundRect(focusFill, cornerRadius = corner, alpha = focusProgress)
+                    }
+                    if (pressProgress > 0f) {
+                        drawRoundRect(
+                            color = Color.Black,
+                            cornerRadius = corner,
+                            alpha = 0.06f * pressProgress,
+                        )
+                    }
+                    if (rimBase > 0f || focusProgress > 0f) {
+                        drawRoundRect(
+                            brush = rim,
+                            cornerRadius = corner,
+                            style = Stroke(AppDimens.focusRim.toPx()),
+                            alpha = rimBase + (1f - rimBase) * focusProgress,
+                        )
+                    }
+                    if (glow && focusProgress > 0f) {
+                        drawRoundRect(
+                            color = AppMaterial.focusGlow,
+                            cornerRadius = corner,
+                            style = Stroke(6.dp.toPx()),
+                            alpha = focusProgress,
+                        )
+                    }
+                }
+            },
     ) {
         content(focused)
     }
 }
 
+enum class AppButtonTone { Primary, Secondary }
+
+/** A milky glass primary action, or a darker glass secondary one; both are capsules. */
 @Composable
-private fun Modifier.appFocusScale(enabled: Boolean, focused: Boolean, pressed: Boolean): Modifier {
-    if (!enabled) return this
-    val scale by animateFloatAsState(
-        targetValue = when {
-            pressed -> AppMotion.pressScale
-            focused -> AppMotion.focusScale
-            else -> 1f
-        },
-        animationSpec = AppMotion.focusSpring(),
-        label = "appFocusScale",
-    )
-    return graphicsLayer {
-        scaleX = scale
-        scaleY = scale
-    }
-}
-
-private fun Key.isAppSelectKey(): Boolean =
-    this == Key.DirectionCenter || this == Key.Enter || this == Key.NumPadEnter
-
-internal enum class AppButtonTone { Primary, Secondary }
-
-/** Primary or secondary action. The primary one is the only filled violet surface in the UI. */
-@Composable
-internal fun AppButton(
+fun AppButton(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     tone: AppButtonTone = AppButtonTone.Secondary,
     requester: FocusRequester? = null,
-    height: Dp = AppDimens.chipHeight,
+    height: Dp = AppDimens.secondaryHeight,
     showArrow: Boolean = false,
 ) {
+    val primary = tone == AppButtonTone.Primary
+    val ink = Color(0xFF15121F)
+    val baseFill = if (primary) {
+        Brush.verticalGradient(listOf(Color(0xE8FFFFFF), Color(0xD9E9E4FF)))
+    } else {
+        Brush.verticalGradient(listOf(AppMaterial.floatingTop, AppMaterial.floatingBottom))
+    }
     AppInteractive(
         label = label,
         onActivate = onClick,
         modifier = modifier.height(height),
-        shape = RoundedCornerShape(AppDimens.buttonRadius),
+        radius = height * 0.5f,
         requester = requester,
         scaleOnFocus = true,
-        fill = { focused, pressed ->
-            when (tone) {
-                AppButtonTone.Primary -> when {
-                    pressed -> Brush.linearGradient(listOf(Color(0xFF5334BC), Color(0xFF6B4CE0)))
-                    focused -> Brush.linearGradient(listOf(Color(0xFF7B5CF0), Color(0xFFAC96FF)))
-                    else -> Brush.linearGradient(listOf(Color(0xFF6344E0), Color(0xFF8B6DFF)))
-                }
-                AppButtonTone.Secondary -> when {
-                    pressed -> Brush.verticalGradient(listOf(AppPalette.cardPressedTop, AppPalette.cardPressedBottom))
-                    focused -> Brush.verticalGradient(listOf(AppPalette.cardFocusedTop, AppPalette.cardFocusedBottom))
-                    else -> Brush.verticalGradient(listOf(AppPalette.controlTop, AppPalette.controlBottom))
-                }
-            }
-        },
-        borderColor = { focused ->
-            when {
-                focused && tone == AppButtonTone.Primary -> Color.White.copy(alpha = 0.92f)
-                focused -> AppPalette.accentBright
-                tone == AppButtonTone.Primary -> Color.White.copy(alpha = 0.16f)
-                else -> AppPalette.hairline
-            }
-        },
-    ) { focused ->
-        Row(
-            Modifier.fillMaxSize().padding(horizontal = 18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
+        elevation = if (primary) 22.dp else 10.dp,
+        baseFill = baseFill,
+        rimBase = if (primary) 0.60f else 0.24f,
+        specular = true,
+        glow = primary,
+    ) { _ ->
+        Box(
+            Modifier.fillMaxSize().padding(horizontal = 22.dp),
+            contentAlignment = Alignment.Center,
         ) {
             BasicText(
                 label,
-                style = AppType.labelStrong.copy(color = AppPalette.textPrimary),
+                style = AppType.labelStrong.copy(
+                    color = if (primary) ink else AppPalette.textPrimary,
+                ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             if (showArrow) {
-                Spacer(Modifier.width(10.dp))
                 Chevron(
-                    color = if (focused) AppPalette.textPrimary else AppPalette.accentBright,
-                    size = 10.dp,
+                    pointsLeft = false,
+                    color = if (primary) ink.copy(alpha = 0.72f) else AppPalette.textSecondary,
+                    modifier = Modifier.align(Alignment.CenterEnd).size(8.dp),
                 )
             }
         }
     }
 }
 
-/**
- * A flat action chip: move, hide, reset, tab-like choices and app rows. [highlighted] marks the
- * current choice with an accent edge; focus is an accent border plus a lifted surface.
- */
+/** A quiet capsule action, used only where a full settings row would be too heavy. */
 @Composable
-internal fun AppActionChip(
+fun AppActionChip(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     highlighted: Boolean = false,
-    requester: FocusRequester? = null,
-    leading: (@Composable () -> Unit)? = null,
 ) {
     AppInteractive(
         label = label,
         onActivate = onClick,
         modifier = modifier.height(AppDimens.chipHeight),
-        shape = RoundedCornerShape(AppDimens.chipRadius),
-        requester = requester,
-        fill = { focused, pressed ->
-            when {
-                pressed -> Brush.verticalGradient(listOf(AppPalette.cardPressedTop, AppPalette.cardPressedBottom))
-                focused -> Brush.verticalGradient(listOf(AppPalette.cardFocusedTop, AppPalette.cardFocusedBottom))
-                highlighted -> Brush.verticalGradient(listOf(AppPalette.accentFocus, AppPalette.accentSoft))
-                else -> Brush.verticalGradient(listOf(AppPalette.controlTop, AppPalette.controlBottom))
-            }
-        },
-        borderColor = { focused ->
-            when {
-                focused -> AppPalette.accentBright
-                highlighted -> AppPalette.accentLine
-                else -> AppPalette.hairline
-            }
-        },
-    ) {
-        Row(
-            Modifier.fillMaxSize().padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            if (leading != null) {
-                leading()
-                Spacer(Modifier.width(8.dp))
-            }
-            BasicText(
-                label,
-                style = AppType.label.copy(color = AppPalette.textPrimary),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        radius = AppDimens.chipRadius,
+        scaleOnFocus = true,
+        baseFill = if (highlighted) {
+            Brush.verticalGradient(
+                listOf(AppMaterial.selectedTint, Color(0x12A78BFA)),
             )
-        }
-    }
-}
-
-/** One editor tab. Selected and focused are different states: a fill plus underline, then a border. */
-@Composable
-internal fun AppTab(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    AppInteractive(
-        label = label,
-        onActivate = onClick,
-        modifier = modifier.height(AppDimens.tabHeight),
-        shape = RoundedCornerShape(AppDimens.chipRadius),
-        semanticRole = Role.Tab,
-        fill = { focused, pressed ->
-            when {
-                pressed -> Brush.verticalGradient(listOf(AppPalette.cardPressedTop, AppPalette.cardPressedBottom))
-                focused -> Brush.verticalGradient(listOf(AppPalette.cardFocusedTop, AppPalette.cardFocusedBottom))
-                selected -> Brush.verticalGradient(listOf(AppPalette.accentFocus, AppPalette.accentSoft))
-                else -> Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
-            }
+        } else {
+            Brush.verticalGradient(listOf(AppMaterial.secondaryTop, AppMaterial.secondaryBottom))
         },
-        borderColor = { focused ->
-            when {
-                focused -> AppPalette.accentBright
-                selected -> AppPalette.accentLine
-                else -> Color.Transparent
-            }
-        },
+        rimBase = if (highlighted) 0.10f else 0f,
+        focusOverlay = true,
     ) { focused ->
-        Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier.fillMaxSize().padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             BasicText(
                 label,
-                Modifier.align(Alignment.Center),
-                style = AppType.tab.copy(
-                    color = if (selected || focused) AppPalette.textPrimary else AppPalette.textSecondary,
+                style = AppType.label.copy(
+                    color = if (focused || highlighted) AppPalette.textPrimary else AppPalette.textSecondary,
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (selected) {
-                Box(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 6.dp)
-                        .width(18.dp)
-                        .height(2.dp)
-                        .background(AppPalette.accentBright, RoundedCornerShape(1.dp)),
-                )
-            }
-        }
-    }
-}
-
-/** A segmented tab bar on one glass card. Focus order is simply left to right. */
-@Composable
-internal fun AppTabBar(
-    labels: List<String>,
-    selectedIndex: Int,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    AppCard(modifier, radius = AppDimens.tabBarRadius) {
-        Row(
-            Modifier.fillMaxWidth().padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            labels.forEachIndexed { index, label ->
-                AppTab(
-                    label = label,
-                    selected = index == selectedIndex,
-                    onClick = { onSelect(index) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
         }
     }
 }
 
 /**
- * One permission on the home page: live status, the name, and a clear action state. Pressing it
- * performs exactly what the row did before (open settings, or toggle the overlay service).
+ * A flat settings row inside the group's glass. There is no row card: focus itself is the
+ * material change. The little chevron before the value is the only cue that Left adjusts it.
  */
 @Composable
-internal fun AppSetupRow(
-    label: String,
-    ok: Boolean,
-    status: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    AppInteractive(
-        label = "$label, $status",
-        onActivate = onClick,
-        modifier = modifier.fillMaxWidth().height(48.dp),
-        shape = RoundedCornerShape(AppDimens.rowRadius),
-        fill = { focused, pressed ->
-            when {
-                pressed -> Brush.verticalGradient(listOf(AppPalette.rowPressed, AppPalette.rowBottom))
-                focused -> Brush.verticalGradient(listOf(AppPalette.rowFocusedTop, AppPalette.rowFocusedBottom))
-                else -> Brush.verticalGradient(listOf(AppPalette.rowTop, AppPalette.rowBottom))
-            }
-        },
-    ) { focused ->
-        Row(
-            Modifier.fillMaxSize().padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Box(
-                Modifier
-                    .size(8.dp)
-                    .background(if (ok) AppPalette.success else AppPalette.warning, CircleShape),
-            )
-            BasicText(
-                label,
-                Modifier.weight(1f),
-                style = AppType.label.copy(color = AppPalette.textPrimary),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(7.dp))
-                    .background(if (ok) AppPalette.successSoft else AppPalette.warningSoft)
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-            ) {
-                BasicText(
-                    status,
-                    style = AppType.badge.copy(
-                        color = if (ok) AppPalette.success else AppPalette.warning,
-                    ),
-                    maxLines = 1,
-                )
-            }
-            Chevron(
-                color = if (focused) AppPalette.accentBright else AppPalette.textMuted,
-                size = 9.dp,
-            )
-        }
-    }
-}
-
-/**
- * One setting on one row, keeping the product's one-row model: OK goes to the next value, Left
- * goes back one, Right leaves the row to the preview. The value sits in its own quiet pill so long
- * labels and long values never clip each other.
- */
-@Composable
-internal fun AppSettingRow(
+fun AppSettingRow(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
@@ -554,65 +515,293 @@ internal fun AppSettingRow(
     AppInteractive(
         label = "$label, $value",
         onActivate = { onStep(1) },
-        modifier = modifier.fillMaxWidth().height(AppDimens.rowHeight),
-        shape = RoundedCornerShape(AppDimens.rowRadius),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(AppDimens.rowHeight)
+            .padding(horizontal = 6.dp),
+        radius = AppDimens.rowRadius,
         requester = requester,
-        fill = { focused, pressed ->
-            when {
-                pressed -> Brush.verticalGradient(listOf(AppPalette.rowPressed, AppPalette.rowBottom))
-                focused -> Brush.verticalGradient(listOf(AppPalette.rowFocusedTop, AppPalette.rowFocusedBottom))
-                else -> Brush.verticalGradient(listOf(AppPalette.rowTop, AppPalette.rowBottom))
-            }
-        },
+        baseFill = Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent)),
+        rimBase = 0f,
         onKeyExtra = { event ->
             if (event.key == Key.DirectionLeft) {
-                if (event.type == KeyEventType.KeyDown) onStep(-1)
+                if (event.type == KeyEventType.KeyUp) onStep(-1)
                 true
-            } else {
-                false
-            }
+            } else false
         },
     ) { focused ->
         Row(
-            Modifier.fillMaxSize().padding(horizontal = 14.dp),
+            Modifier.fillMaxSize().padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (swatch != null) {
+                Box(
+                    Modifier
+                        .size(13.dp)
+                        .background(swatch, CircleShape),
+                )
+                Spacer(Modifier.width(10.dp))
+            }
+            BasicText(
+                label,
+                Modifier.weight(1f),
+                style = AppType.label.copy(
+                    color = if (focused) AppPalette.textPrimary else AppPalette.textSecondary,
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.width(12.dp))
+            Chevron(
+                pointsLeft = true,
+                color = if (focused) AppPalette.accentBright else AppPalette.textMuted,
+                modifier = Modifier.size(6.dp),
+            )
+            Spacer(Modifier.width(7.dp))
+            BasicText(
+                value,
+                Modifier.widthIn(min = 54.dp, max = 190.dp),
+                style = AppType.value.copy(
+                    color = if (focused) AppPalette.textPrimary else AppPalette.textTertiary,
+                    textAlign = TextAlign.End,
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** A direct action row, for moves, pickers and quiet destructive actions. */
+@Composable
+fun AppActionRow(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    value: String? = null,
+    selected: Boolean = false,
+    destructive: Boolean = false,
+    showChevron: Boolean = false,
+) {
+    AppInteractive(
+        label = label,
+        onActivate = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(AppDimens.rowHeight)
+            .padding(horizontal = 6.dp),
+        radius = AppDimens.rowRadius,
+        baseFill = Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent)),
+        rimBase = 0f,
+    ) { focused ->
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BasicText(
                 label,
                 Modifier.weight(1f),
-                style = AppType.label.copy(color = AppPalette.textPrimary),
+                style = AppType.label.copy(
+                    color = when {
+                        destructive -> AppPalette.danger
+                        focused -> AppPalette.textPrimary
+                        else -> AppPalette.textSecondary
+                    },
+                ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (swatch != null) {
+            if (value != null) {
                 Spacer(Modifier.width(10.dp))
-                Box(Modifier.size(14.dp).background(swatch, CircleShape))
+                BasicText(
+                    value,
+                    style = AppType.value.copy(color = AppPalette.textTertiary),
+                    maxLines = 1,
+                )
             }
-            Spacer(Modifier.width(12.dp))
+            if (selected) {
+                Spacer(Modifier.width(8.dp))
+                Box(Modifier.size(5.dp).background(AppPalette.accentBright, CircleShape))
+            }
+            if (showChevron) {
+                Spacer(Modifier.width(8.dp))
+                Chevron(
+                    pointsLeft = false,
+                    color = if (focused) AppPalette.textSecondary else AppPalette.textMuted,
+                    modifier = Modifier.size(7.dp),
+                )
+            }
+        }
+    }
+}
+
+/** A readiness row in the home setup sheet. The dot carries the state, the text confirms it. */
+@Composable
+fun AppStatusRow(
+    label: String,
+    status: String,
+    tone: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AppInteractive(
+        label = "$label, $status",
+        onActivate = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(AppDimens.rowHeight)
+            .padding(horizontal = 6.dp),
+        radius = AppDimens.rowRadius,
+        baseFill = Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent)),
+        rimBase = 0f,
+    ) { focused ->
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Box(
                 Modifier
-                    .widthIn(max = 190.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (focused) AppPalette.accentSoft else Color.White.copy(alpha = 0.06f),
-                    )
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .size(12.dp)
+                    .drawWithCache {
+                        onDrawBehind {
+                            drawCircle(tone.copy(alpha = 0.18f), radius = size.minDimension * 0.5f)
+                            drawCircle(tone, radius = size.minDimension * 0.24f)
+                        }
+                    },
+            )
+            Spacer(Modifier.width(10.dp))
+            BasicText(
+                label,
+                Modifier.weight(1f),
+                style = AppType.label.copy(
+                    color = if (focused) AppPalette.textPrimary else AppPalette.textSecondary,
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.width(10.dp))
+            BasicText(
+                status,
+                style = AppType.value.copy(color = tone),
+                maxLines = 1,
+            )
+            Spacer(Modifier.width(8.dp))
+            Chevron(
+                pointsLeft = false,
+                color = if (focused) AppPalette.textSecondary else AppPalette.textMuted,
+                modifier = Modifier.size(7.dp),
+            )
+        }
+    }
+}
+
+/** A glass group: one sheet, a tracked section label, and an inset list of rows. */
+@Composable
+fun AppSettingGroup(
+    title: String? = null,
+    modifier: Modifier = Modifier,
+    trailing: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(modifier.fillMaxWidth()) {
+        if (title != null) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // The left mark is the one honest stepper affordance: Left goes back a value.
-                    Chevron(
-                        color = if (focused) AppPalette.accentBright else AppPalette.textMuted,
-                        size = 7.dp,
-                        pointsLeft = true,
+                BasicText(
+                    title.uppercase(),
+                    Modifier.weight(1f),
+                    style = AppType.section.copy(color = AppPalette.textTertiary),
+                )
+                trailing?.invoke()
+            }
+            Spacer(Modifier.height(9.dp))
+        }
+        AppGlassPanel(
+            level = AppGlassLevel.Secondary,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                content = content,
+            )
+        }
+    }
+}
+
+/**
+ * Segmented navigation with a pill that glides between equal-width tabs. The selected pill is
+ * always present; focus adds a second, brighter layer of light on top of any tab.
+ */
+@Composable
+fun AppTabRail(
+    labels: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (labels.isEmpty()) return
+    val count = labels.size
+    val selected = selectedIndex.coerceIn(0, count - 1)
+    AppGlassPanel(
+        level = AppGlassLevel.Floating,
+        modifier = modifier.fillMaxWidth().height(AppDimens.tabRailHeight),
+        radius = AppDimens.tabRailRadius,
+    ) {
+        BoxWithConstraints(Modifier.fillMaxSize().padding(4.dp)) {
+            val gap = 3.dp
+            val tabWidth = (maxWidth - gap * (count - 1).toFloat()) / count.toFloat()
+            val pillOffset by animateDpAsState(
+                targetValue = (tabWidth + gap) * selected.toFloat(),
+                animationSpec = AppMotion.tabSpring(),
+                label = "tabPill",
+            )
+            Box(
+                Modifier
+                    .offset(x = pillOffset)
+                    .width(tabWidth)
+                    .fillMaxHeight()
+                    .shadow(
+                        elevation = 6.dp,
+                        shape = RoundedCornerShape(19.dp),
+                        clip = false,
+                        ambientColor = Color.Black.copy(alpha = 0.40f),
+                        spotColor = AppPalette.violet.copy(alpha = 0.25f),
                     )
-                    Spacer(Modifier.width(5.dp))
-                    BasicText(
-                        value,
-                        style = AppType.value.copy(
-                            color = if (focused) AppPalette.accentBright else AppPalette.textSecondary,
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                    .clip(RoundedCornerShape(19.dp))
+                    .drawWithCache {
+                        val fill = Brush.verticalGradient(
+                            listOf(Color(0x29FFFFFF), Color(0x0DFFFFFF)),
+                        )
+                        val specular = Brush.radialGradient(
+                            colors = listOf(Color(0x33FFFFFF), Color.Transparent),
+                            center = Offset(size.width * 0.3f, -size.height * 0.2f),
+                            radius = size.width * 0.9f,
+                        )
+                        val rim = Brush.linearGradient(
+                            colors = listOf(Color(0x59FFFFFF), Color(0x08FFFFFF)),
+                            start = Offset.Zero,
+                            end = Offset(size.width, size.height),
+                        )
+                        val corner = CornerRadius(19.dp.toPx())
+                        onDrawBehind {
+                            drawRoundRect(fill, cornerRadius = corner)
+                            drawRoundRect(specular, cornerRadius = corner)
+                            drawRoundRect(rim, cornerRadius = corner, style = Stroke(1.dp.toPx()))
+                        }
+                    },
+            )
+            Row(
+                Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(gap),
+            ) {
+                labels.forEachIndexed { index, label ->
+                    AppTab(
+                        label = label,
+                        selected = index == selected,
+                        onClick = { onSelect(index) },
+                        modifier = Modifier.width(tabWidth).fillMaxHeight(),
                     )
                 }
             }
@@ -620,41 +809,77 @@ internal fun AppSettingRow(
     }
 }
 
-/**
- * Framing for the real Control Center preview: a label, a glass card that only frames the panel,
- * and an optional caption. The previewed panel itself is unchanged.
- */
 @Composable
-internal fun AppPreview(
+private fun AppTab(
     label: String,
-    note: String?,
+    selected: Boolean,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
 ) {
-    Column(modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(6.dp).background(AppPalette.accentBright, CircleShape))
-            Spacer(Modifier.width(8.dp))
+    AppInteractive(
+        label = label,
+        onActivate = onClick,
+        modifier = modifier,
+        radius = 19.dp,
+        baseFill = Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent)),
+        rimBase = 0f,
+        focusOverlay = true,
+    ) { focused ->
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             BasicText(
                 label,
-                style = AppType.section.copy(color = AppPalette.accentBright),
+                style = AppType.tab.copy(
+                    color = when {
+                        selected || focused -> AppPalette.textPrimary
+                        else -> AppPalette.textSecondary
+                    },
+                ),
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
-        Spacer(Modifier.height(8.dp))
-        AppCard(Modifier.fillMaxWidth()) {
+    }
+}
+
+/** A control in the add-controls grid: an icon lit inside its own small glass disc. */
+@Composable
+fun AppControlCard(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    leading: @Composable () -> Unit,
+) {
+    AppInteractive(
+        label = label,
+        onActivate = onClick,
+        modifier = modifier.height(60.dp),
+        radius = 16.dp,
+        scaleOnFocus = true,
+        baseFill = Brush.verticalGradient(
+            listOf(AppMaterial.secondaryTop, AppMaterial.secondaryBottom),
+        ),
+        rimBase = 0f,
+        specular = true,
+    ) { focused ->
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Box(
-                Modifier.fillMaxWidth().padding(AppDimens.previewPadding),
+                Modifier
+                    .size(32.dp)
+                    .background(Color.White.copy(alpha = 0.07f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                content()
+                leading()
             }
-        }
-        if (note != null) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.width(9.dp))
             BasicText(
-                note,
-                style = AppType.note.copy(color = AppPalette.textMuted),
+                label,
+                Modifier.weight(1f),
+                style = AppType.label.copy(
+                    color = if (focused) AppPalette.textPrimary else AppPalette.textSecondary,
+                ),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -662,28 +887,209 @@ internal fun AppPreview(
     }
 }
 
-/** A small drawn chevron: no bitmap, no icon font, the same weight at every size. */
+/** One of the four app slots: a glass tile with a number, a name and a selected light. */
 @Composable
-private fun Chevron(color: Color, size: Dp, pointsLeft: Boolean = false) {
-    Canvas(Modifier.size(size)) {
-        val w = this.size.width
-        val h = this.size.height
-        val stroke = (size.toPx() * 0.13f).coerceAtLeast(1f)
-        val outer = if (pointsLeft) w * 0.64f else w * 0.36f
-        val tip = if (pointsLeft) w * 0.34f else w * 0.66f
-        drawLine(
-            color = color,
-            start = Offset(outer, h * 0.2f),
-            end = Offset(tip, h * 0.5f),
-            strokeWidth = stroke,
-            cap = StrokeCap.Round,
-        )
-        drawLine(
-            color = color,
-            start = Offset(tip, h * 0.5f),
-            end = Offset(outer, h * 0.8f),
-            strokeWidth = stroke,
-            cap = StrokeCap.Round,
+fun AppSlotCard(
+    index: Int,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AppInteractive(
+        label = "$index, $label",
+        onActivate = onClick,
+        modifier = modifier.height(56.dp),
+        radius = 16.dp,
+        scaleOnFocus = true,
+        baseFill = if (selected) {
+            Brush.verticalGradient(listOf(AppMaterial.selectedTint, Color(0x0FA78BFA)))
+        } else {
+            Brush.verticalGradient(listOf(AppMaterial.secondaryTop, AppMaterial.secondaryBottom))
+        },
+        rimBase = if (selected) 0.12f else 0f,
+        specular = true,
+    ) { focused ->
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier
+                    .size(22.dp)
+                    .background(Color.White.copy(alpha = 0.08f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                BasicText(
+                    "$index",
+                    style = AppType.badge.copy(
+                        color = if (selected || focused) AppPalette.textPrimary else AppPalette.textTertiary,
+                    ),
+                )
+            }
+            Spacer(Modifier.width(7.dp))
+            BasicText(
+                label,
+                Modifier.weight(1f),
+                style = AppType.label.copy(
+                    color = if (focused || selected) AppPalette.textPrimary else AppPalette.textSecondary,
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (selected) {
+                Spacer(Modifier.width(5.dp))
+                Box(Modifier.size(4.dp).background(AppPalette.accentBright, CircleShape))
+            }
+        }
+    }
+}
+
+/**
+ * The real panel, floating. There is deliberately no framing card: a soft bloom under it and a
+ * broad shadow give the screen its depth, and a hairline of light catches the panel's own edge.
+ */
+@Composable
+fun AppPreview(
+    label: String,
+    note: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(12.dp)
+                    .drawWithCache {
+                        onDrawBehind {
+                            drawCircle(AppPalette.accent.copy(alpha = 0.20f), radius = size.minDimension * 0.5f)
+                            drawCircle(AppPalette.accentBright, radius = size.minDimension * 0.20f)
+                        }
+                    },
+            )
+            Spacer(Modifier.width(4.dp))
+            BasicText(
+                label.uppercase(),
+                style = AppType.section.copy(color = AppPalette.textTertiary),
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Box(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+            Spacer(
+                Modifier
+                    .matchParentSize()
+                    .drawWithCache {
+                        val bloom = Brush.radialGradient(
+                            colors = listOf(
+                                AppPalette.violet.copy(alpha = 0.28f),
+                                AppPalette.blue.copy(alpha = 0.12f),
+                                Color.Transparent,
+                            ),
+                            center = Offset(size.width * 0.5f, size.height * 0.48f),
+                            radius = size.maxDimension * 0.62f,
+                        )
+                        val plinth = Brush.radialGradient(
+                            colors = listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
+                            center = Offset(size.width * 0.5f, size.height * 0.96f),
+                            radius = size.width * 0.42f,
+                        )
+                        onDrawBehind {
+                            drawRect(bloom)
+                            drawRect(plinth)
+                        }
+                    },
+            )
+            Box(
+                Modifier
+                    .align(Alignment.Center)
+                    .shadow(
+                        elevation = 30.dp,
+                        shape = RoundedCornerShape(AppDimens.previewRadius),
+                        clip = false,
+                        ambientColor = Color.Black.copy(alpha = 0.72f),
+                        spotColor = AppPalette.violet.copy(alpha = 0.38f),
+                    ),
+            ) {
+                content()
+                Spacer(
+                    Modifier
+                        .matchParentSize()
+                        .drawWithCache {
+                            val rim = Brush.linearGradient(
+                                colors = listOf(Color(0x40FFFFFF), Color(0x08FFFFFF)),
+                                start = Offset.Zero,
+                                end = Offset(size.width, size.height),
+                            )
+                            onDrawBehind {
+                                drawRoundRect(
+                                    brush = rim,
+                                    cornerRadius = CornerRadius(AppDimens.previewRadius.toPx()),
+                                    style = Stroke(0.8.dp.toPx()),
+                                )
+                            }
+                        },
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        BasicText(
+            note,
+            Modifier.fillMaxWidth(),
+            style = AppType.note.copy(color = AppPalette.textMuted, textAlign = TextAlign.Center),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
+
+/** A two-stroke chevron, light enough to sit inside a row. */
+@Composable
+private fun Chevron(
+    pointsLeft: Boolean,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val stroke = 1.3.dp.toPx()
+        if (pointsLeft) {
+            drawLine(
+                color,
+                Offset(w * 0.72f, h * 0.16f),
+                Offset(w * 0.28f, h * 0.5f),
+                stroke,
+                StrokeCap.Round,
+            )
+            drawLine(
+                color,
+                Offset(w * 0.28f, h * 0.5f),
+                Offset(w * 0.72f, h * 0.84f),
+                stroke,
+                StrokeCap.Round,
+            )
+        } else {
+            drawLine(
+                color,
+                Offset(w * 0.28f, h * 0.16f),
+                Offset(w * 0.72f, h * 0.5f),
+                stroke,
+                StrokeCap.Round,
+            )
+            drawLine(
+                color,
+                Offset(w * 0.72f, h * 0.5f),
+                Offset(w * 0.28f, h * 0.84f),
+                stroke,
+                StrokeCap.Round,
+            )
+        }
+    }
+}
+
+private fun isAppSelectKey(event: KeyEvent): Boolean =
+    event.key == Key.DirectionCenter ||
+        event.key == Key.Enter ||
+        event.key == Key.NumPadEnter ||
+        event.key == Key.Spacebar

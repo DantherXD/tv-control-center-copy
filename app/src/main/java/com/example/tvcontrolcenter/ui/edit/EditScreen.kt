@@ -5,6 +5,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,8 +16,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -30,7 +33,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -65,17 +70,20 @@ import com.example.tvcontrolcenter.domain.model.Wallpaper
 import com.example.tvcontrolcenter.domain.model.WindowMotion
 import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
 import com.example.tvcontrolcenter.system.wholeScreenBlurSupported
-import com.example.tvcontrolcenter.ui.app.AppActionChip
+import com.example.tvcontrolcenter.ui.app.AppActionRow
 import com.example.tvcontrolcenter.ui.app.AppButton
 import com.example.tvcontrolcenter.ui.app.AppButtonTone
-import com.example.tvcontrolcenter.ui.app.AppCard
+import com.example.tvcontrolcenter.ui.app.AppControlCard
 import com.example.tvcontrolcenter.ui.app.AppEyebrow
+import com.example.tvcontrolcenter.ui.app.AppGlassLevel
+import com.example.tvcontrolcenter.ui.app.AppGlassPanel
 import com.example.tvcontrolcenter.ui.app.AppNote
 import com.example.tvcontrolcenter.ui.app.AppPreview
 import com.example.tvcontrolcenter.ui.app.AppScreenBackground
-import com.example.tvcontrolcenter.ui.app.AppSectionLabel
+import com.example.tvcontrolcenter.ui.app.AppSettingGroup
 import com.example.tvcontrolcenter.ui.app.AppSettingRow
-import com.example.tvcontrolcenter.ui.app.AppTabBar
+import com.example.tvcontrolcenter.ui.app.AppSlotCard
+import com.example.tvcontrolcenter.ui.app.AppTabRail
 import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
@@ -102,8 +110,8 @@ import kotlin.math.roundToInt
 
 /**
  * Edit Control Center. The right side is the real panel; pick a control with OK, then size,
- * move or hide it with the rows on the left. Hidden controls are listed under "Add controls".
- * Everything saves as you go, and the panel everywhere else follows at once.
+ * move or hide it on the left. Hidden controls are listed under "Add controls". Everything
+ * saves as you go, and the panel everywhere else follows at once.
  *
  * The one-row-per-setting model is intentional: one focus stop per setting, OK for the next
  * value and Left for the previous one keeps customizing fast with a remote.
@@ -202,19 +210,19 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                     AppButton(
                         label = stringResource(R.string.edit_done),
                         onClick = onDone,
-                        modifier = Modifier.width(104.dp),
+                        modifier = Modifier.width(96.dp),
                         tone = AppButtonTone.Secondary,
                         height = 40.dp,
                     )
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
 
-                AppTabBar(
+                AppTabRail(
                     labels = EditTab.entries.map { stringResource(it.label) },
                     selectedIndex = EditTab.entries.indexOf(tab),
                     onSelect = { tab = EditTab.entries[it] },
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
 
                 // Photo pickers live here so they are not re-created when the tab changes.
                 val context = LocalContext.current
@@ -228,24 +236,65 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                 val openDoc = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument(), picked)
                 val getContent = rememberLauncherForActivityResult(ActivityResultContracts.GetContent(), picked)
 
-                AppCard(Modifier.weight(1f).fillMaxWidth()) {
-                    Column(
-                        Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(AppDimens.cardPadding),
-                        verticalArrangement = Arrangement.spacedBy(AppDimens.gap),
-                    ) {
-                        if (tab == EditTab.LOOK || tab == EditTab.TOPBAR || tab == EditTab.BLUR) {
-                            AppNote(stringResource(R.string.edit_howto))
-                        }
-                        when (tab) {
-                            EditTab.CONTROLS -> {
-                                val item = selected?.let { layout.item(it) }
-                                if (item == null) {
-                                    AppNote(stringResource(R.string.edit_hint_pick))
-                                } else {
-                                    AppSectionLabel(stringResource(lookOf(item.id).label))
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    if (tab == EditTab.LOOK || tab == EditTab.TOPBAR || tab == EditTab.BLUR) {
+                        AppNote(stringResource(R.string.edit_howto))
+                        Spacer(Modifier.height(10.dp))
+                    }
+                    when (tab) {
+                        EditTab.CONTROLS -> {
+                            val item = selected?.let { layout.item(it) }
+                            if (item == null) {
+                                AppGlassPanel(level = AppGlassLevel.Primary) {
+                                    Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                                        BasicText(
+                                            stringResource(R.string.empty_selection_title),
+                                            style = AppType.headingSmall.copy(color = AppPalette.textPrimary),
+                                        )
+                                        Spacer(Modifier.height(6.dp))
+                                        BasicText(
+                                            stringResource(R.string.edit_hint_pick),
+                                            style = AppType.note.copy(color = AppPalette.textSecondary),
+                                        )
+                                    }
+                                }
+                            } else {
+                                AppGlassPanel(level = AppGlassLevel.Primary) {
+                                    Row(
+                                        Modifier.fillMaxWidth().padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Box(
+                                            Modifier
+                                                .size(46.dp)
+                                                .clip(CircleShape)
+                                                .background(Color.White.copy(alpha = 0.08f)),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            TileIcon(lookIcon(item.id), 24.dp)
+                                        }
+                                        Spacer(Modifier.width(14.dp))
+                                        Column(Modifier.weight(1f)) {
+                                            BasicText(
+                                                stringResource(lookOf(item.id).label),
+                                                style = AppType.headingSmall.copy(color = AppPalette.textPrimary),
+                                                maxLines = 1,
+                                            )
+                                            Spacer(Modifier.height(2.dp))
+                                            BasicText(
+                                                stringResource(sizeLabel(item.size)),
+                                                style = AppType.note.copy(color = AppPalette.textSecondary),
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(Modifier.height(AppDimens.groupGap))
+                                AppSettingGroup(title = stringResource(R.string.group_layout)) {
                                     val sizes = TileSize.entries.filter {
                                         it != TileSize.TOP || item.id == TileId.EDIT || item.id == TileId.PROFILE || item.id == TileId.NOW_PLAYING
                                     }
@@ -254,41 +303,42 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                         value = stringResource(sizeLabel(item.size)),
                                         requester = firstAction,
                                     ) { d -> vm.setTileSize(item.id, sizes.step(item.size, d)) }
-                                    Row(
-                                        Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(AppDimens.gap),
-                                    ) {
-                                        AppActionChip(
-                                            label = stringResource(R.string.edit_move_earlier),
-                                            onClick = { vm.moveTile(item.id, -1) },
-                                            modifier = Modifier.width(132.dp),
-                                        )
-                                        AppActionChip(
-                                            label = stringResource(R.string.edit_move_later),
-                                            onClick = { vm.moveTile(item.id, 1) },
-                                            modifier = Modifier.width(132.dp),
-                                        )
-                                        AppActionChip(
-                                            label = stringResource(R.string.edit_hide),
-                                            onClick = {
-                                                vm.setTileVisible(item.id, false)
-                                                returnTo = currentPlaced.firstOrNull { it.id != item.id }?.id
-                                                selected = null
-                                            },
-                                            modifier = Modifier.width(100.dp),
-                                        )
-                                    }
+                                    AppActionRow(
+                                        label = stringResource(R.string.edit_move_earlier),
+                                        onClick = { vm.moveTile(item.id, -1) },
+                                    )
+                                    AppActionRow(
+                                        label = stringResource(R.string.edit_move_later),
+                                        onClick = { vm.moveTile(item.id, 1) },
+                                    )
+                                    AppActionRow(
+                                        label = stringResource(R.string.edit_hide),
+                                        onClick = {
+                                            vm.setTileVisible(item.id, false)
+                                            returnTo = currentPlaced.firstOrNull { it.id != item.id }?.id
+                                            selected = null
+                                        },
+                                    )
                                 }
+                            }
+                            Spacer(Modifier.height(AppDimens.groupGap))
+                            AppSettingGroup(title = stringResource(R.string.edit_add)) {
                                 val hidden = layout.hiddenItems()
-                                if (hidden.isNotEmpty()) {
-                                    AppSectionLabel(stringResource(R.string.edit_add))
+                                if (hidden.isEmpty()) {
+                                    AppNote(stringResource(R.string.edit_nothing_hidden))
+                                } else {
                                     hidden.chunked(3).forEach { row ->
                                         Row(
-                                            Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(AppDimens.gap),
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                                         ) {
                                             row.forEach { hiddenItem ->
-                                                AddChip(hiddenItem.id, Modifier.weight(1f)) {
+                                                AddControlCard(
+                                                    id = hiddenItem.id,
+                                                    modifier = Modifier.weight(1f),
+                                                ) {
                                                     vm.setTileVisible(hiddenItem.id, true)
                                                     selected = hiddenItem.id
                                                 }
@@ -297,17 +347,22 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                         }
                                     }
                                 }
-                                AppActionChip(
+                            }
+                            Spacer(Modifier.height(AppDimens.groupGap))
+                            AppSettingGroup {
+                                AppActionRow(
                                     label = stringResource(R.string.edit_reset),
                                     onClick = {
                                         vm.resetLayout()
                                         selected = null
                                     },
-                                    modifier = Modifier.width(160.dp),
+                                    destructive = true,
                                 )
                             }
+                        }
 
-                            EditTab.LOOK -> {
+                        EditTab.LOOK -> {
+                            AppSettingGroup(title = stringResource(R.string.group_appearance)) {
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_wallpaper),
                                     value = stringResource(wallpaperLabel(settings.wallpaper)),
@@ -331,6 +386,9 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 ) { d ->
                                     vm.updateSettings { it.copy(textScale = TextScaleSteps.step(it.textScale, d)) }
                                 }
+                            }
+                            Spacer(Modifier.height(AppDimens.groupGap))
+                            AppSettingGroup(title = stringResource(R.string.group_layout)) {
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_position),
                                     value = TopOffsetSteps.indexOf(settings.topOffset).let {
@@ -345,6 +403,9 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 ) { d ->
                                     vm.updateSettings { it.copy(headerGap = HeaderGapSteps.step(it.headerGap, d)) }
                                 }
+                            }
+                            Spacer(Modifier.height(AppDimens.groupGap))
+                            AppSettingGroup(title = stringResource(R.string.group_windows)) {
                                 val motions = listOf(
                                     WindowMotion.FROM_CONTROL to R.string.motion_from_control,
                                     WindowMotion.MID_AIR to R.string.motion_mid_air,
@@ -365,6 +426,9 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                     value = onOff(settings.card),
                                 ) { vm.updateSettings { it.copy(card = !it.card) } }
                                 AppNote(stringResource(R.string.edit_card_note))
+                            }
+                            Spacer(Modifier.height(AppDimens.groupGap))
+                            AppSettingGroup(title = stringResource(R.string.group_glass)) {
                                 val edge = settings.edgeWidth
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_edge),
@@ -453,6 +517,9 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                     }
                                 }
                                 AppNote(stringResource(R.string.edit_menu_icon_note))
+                            }
+                            Spacer(Modifier.height(AppDimens.groupGap))
+                            AppSettingGroup(title = stringResource(R.string.group_behaviour)) {
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_invert),
                                     value = stringResource(
@@ -480,8 +547,10 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                     vm.updateSettings { it.copy(volumeStep = VolumeStepSteps.step(it.volumeStep, d)) }
                                 }
                             }
+                        }
 
-                            EditTab.TOPBAR -> {
+                        EditTab.TOPBAR -> {
+                            AppSettingGroup(title = stringResource(R.string.group_topbar)) {
                                 listOf(
                                     TileId.EDIT to R.string.edit_btn_menu,
                                     TileId.PROFILE to R.string.edit_btn_profile,
@@ -514,6 +583,9 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                     label = stringResource(R.string.edit_top_flat),
                                     value = onOff(settings.topBorderless),
                                 ) { vm.updateSettings { it.copy(topBorderless = !it.topBorderless) } }
+                            }
+                            Spacer(Modifier.height(AppDimens.groupGap))
+                            AppSettingGroup(title = stringResource(R.string.group_behaviour)) {
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_menu_home),
                                     value = onOff(settings.menuIsHome),
@@ -534,36 +606,31 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 AppNote(stringResource(R.string.edit_menu_note))
                                 AppNote(stringResource(R.string.edit_music_note))
                                 AppNote(stringResource(R.string.edit_longpress_note))
-
-                                AppSectionLabel(stringResource(R.string.edit_photo))
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(AppDimens.gap),
-                                ) {
-                                    AppActionChip(
-                                        label = stringResource(R.string.edit_photo_choose),
-                                        onClick = {
+                            }
+                            Spacer(Modifier.height(AppDimens.groupGap))
+                            AppSettingGroup(title = stringResource(R.string.group_profile)) {
+                                AppActionRow(
+                                    label = stringResource(R.string.edit_photo_choose),
+                                    onClick = {
+                                        try {
+                                            openDoc.launch(arrayOf("image/*"))
+                                        } catch (_: ActivityNotFoundException) {
                                             try {
-                                                openDoc.launch(arrayOf("image/*"))
+                                                getContent.launch("image/*")
                                             } catch (_: ActivityNotFoundException) {
-                                                try {
-                                                    getContent.launch("image/*")
-                                                } catch (_: ActivityNotFoundException) {
-                                                    Toast.makeText(context, R.string.edit_photo_no_picker, Toast.LENGTH_LONG).show()
-                                                }
+                                                Toast.makeText(context, R.string.edit_photo_no_picker, Toast.LENGTH_LONG).show()
                                             }
-                                        },
-                                        modifier = Modifier.width(140.dp),
-                                    )
-                                    AppActionChip(
-                                        label = stringResource(R.string.edit_photo_remove),
-                                        onClick = {
-                                            ProfilePhoto.clear(context)
-                                            vm.updateSettings { it.copy(profilePhotoVersion = 0) }
-                                        },
-                                        modifier = Modifier.width(116.dp),
-                                    )
-                                }
+                                        }
+                                    },
+                                    showChevron = true,
+                                )
+                                AppActionRow(
+                                    label = stringResource(R.string.edit_photo_remove),
+                                    onClick = {
+                                        ProfilePhoto.clear(context)
+                                        vm.updateSettings { it.copy(profilePhotoVersion = 0) }
+                                    },
+                                )
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_photo_color),
                                     value = "${settings.profileColor.mod(AvatarColors.size) + 1}",
@@ -574,67 +641,67 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                     }
                                 }
                             }
+                        }
 
-                            EditTab.APPS -> {
-                                // The slot the next app press fills; 0 is the first.
-                                var slot by remember { mutableStateOf(0) }
-                                AppSectionLabel(stringResource(R.string.edit_app_slots))
+                        EditTab.APPS -> {
+                            // The slot the next app press fills; 0 is the first.
+                            var slot by remember { mutableStateOf(0) }
+                            AppSettingGroup(title = stringResource(R.string.group_slots)) {
                                 Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(AppDimens.gap),
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
                                     AppSlots.forEachIndexed { index, _ ->
                                         val name = appLabelOf(settings.appSlots.getOrNull(index))
                                             ?: stringResource(R.string.edit_app_empty)
-                                        AppActionChip(
-                                            label = "${index + 1} · $name",
+                                        AppSlotCard(
+                                            index = index + 1,
+                                            label = name,
+                                            selected = slot == index,
                                             onClick = { slot = index },
                                             modifier = Modifier.weight(1f),
-                                            highlighted = slot == index,
                                         )
                                     }
                                 }
                                 AppNote(stringResource(R.string.edit_app_note))
-                                AppActionChip(
+                                AppActionRow(
                                     label = stringResource(R.string.edit_app_clear),
                                     onClick = {
                                         vm.updateSettings { it.copy(appSlots = it.appSlots.withSlot(slot, null)) }
                                         vm.setTileVisible(AppSlots[slot], false)
                                     },
-                                    modifier = Modifier.width(160.dp),
                                 )
-                                AppSectionLabel(stringResource(R.string.edit_apps_installed))
+                            }
+                            Spacer(Modifier.height(AppDimens.groupGap))
+                            AppSettingGroup(title = stringResource(R.string.group_apps)) {
                                 val apps = remember { vm.installedApps() }
-                                apps.chunked(2).forEach { row ->
-                                    Row(
-                                        Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(AppDimens.gap),
-                                    ) {
-                                        row.forEach { app ->
-                                            AppActionChip(
-                                                label = app.label,
-                                                onClick = {
-                                                    vm.updateSettings {
-                                                        it.copy(appSlots = it.appSlots.withSlot(slot, app.packageName))
-                                                    }
-                                                    vm.setTileVisible(AppSlots[slot], true)
-                                                },
-                                                modifier = Modifier.weight(1f),
-                                                highlighted = settings.appSlots.getOrNull(slot) == app.packageName,
-                                            )
-                                        }
-                                        if (row.size == 1) Spacer(Modifier.weight(1f))
-                                    }
+                                apps.forEach { app ->
+                                    AppActionRow(
+                                        label = app.label,
+                                        onClick = {
+                                            vm.updateSettings {
+                                                it.copy(appSlots = it.appSlots.withSlot(slot, app.packageName))
+                                            }
+                                            vm.setTileVisible(AppSlots[slot], true)
+                                        },
+                                        selected = settings.appSlots.getOrNull(slot) == app.packageName,
+                                    )
                                 }
-                                AppSectionLabel(stringResource(R.string.edit_capture))
+                            }
+                            Spacer(Modifier.height(AppDimens.groupGap))
+                            AppSettingGroup(title = stringResource(R.string.group_diagnostics)) {
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_capture_log),
                                     value = onOff(settings.activityLog),
                                 ) { vm.updateSettings { it.copy(activityLog = !it.activityLog) } }
                                 AppNote(stringResource(R.string.edit_capture_note))
                             }
+                        }
 
-                            EditTab.BLUR -> {
+                        EditTab.BLUR -> {
+                            AppSettingGroup(title = stringResource(R.string.group_blur)) {
                                 val blurNames = listOf(
                                     R.string.blur_off,
                                     R.string.blur_light,
@@ -670,29 +737,41 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                         else R.string.blur_whole_unsupported,
                                     ),
                                 )
+                            }
+                            Spacer(Modifier.height(AppDimens.groupGap))
+                            AppSettingGroup(title = stringResource(R.string.group_capture)) {
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_patient),
                                     value = onOff(settings.patientCapture),
                                 ) { vm.updateSettings { it.copy(patientCapture = !it.patientCapture) } }
                                 AppNote(stringResource(R.string.edit_patient_note))
+                                val status = BackdropCapture.status()
                                 AppNote(
                                     stringResource(
-                                        when (BackdropCapture.status()) {
+                                        when (status) {
                                             BackdropCapture.Status.READY -> R.string.blur_status_ready
                                             BackdropCapture.Status.NEEDS_SERVICE -> R.string.blur_status_service
                                             BackdropCapture.Status.NEEDS_ANDROID_11 -> R.string.blur_status_old
                                         },
                                     ),
+                                    color = if (status == BackdropCapture.Status.READY) {
+                                        AppPalette.success
+                                    } else {
+                                        AppPalette.warning
+                                    },
                                 )
                             }
                         }
-                        Spacer(Modifier.height(2.dp))
                     }
+                    Spacer(Modifier.height(6.dp))
                 }
             }
 
             // The real panel over a blurred screen: every setting shows here as you change it.
-            Column(Modifier.width(AppDimens.previewWidth).fillMaxHeight()) {
+            Column(
+                Modifier.width(AppDimens.previewWidth).fillMaxHeight(),
+                verticalArrangement = Arrangement.Center,
+            ) {
                 AppPreview(
                     label = stringResource(R.string.home_preview),
                     note = stringResource(R.string.edit_preview_note),
@@ -770,13 +849,13 @@ private fun List<String?>.withSlot(index: Int, value: String?): List<String?> =
     toMutableList().also { if (index in it.indices) it[index] = value }
 
 @Composable
-private fun AddChip(id: TileId, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun AddControlCard(id: TileId, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val look = lookOf(id)
     val label = stringResource(look.label)
-    AppActionChip(
+    AppControlCard(
         label = label,
         onClick = onClick,
         modifier = modifier,
-        leading = { TileIcon(lookIcon(id), 16.dp) },
+        leading = { TileIcon(lookIcon(id), 18.dp) },
     )
 }

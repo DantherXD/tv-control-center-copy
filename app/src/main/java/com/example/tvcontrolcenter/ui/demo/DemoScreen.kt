@@ -40,12 +40,11 @@ import com.example.tvcontrolcenter.system.overlay.OverlayService
 import com.example.tvcontrolcenter.system.trigger.ControlCenterAccessibilityService
 import com.example.tvcontrolcenter.ui.app.AppButton
 import com.example.tvcontrolcenter.ui.app.AppButtonTone
-import com.example.tvcontrolcenter.ui.app.AppCard
 import com.example.tvcontrolcenter.ui.app.AppEyebrow
 import com.example.tvcontrolcenter.ui.app.AppPreview
 import com.example.tvcontrolcenter.ui.app.AppScreenBackground
-import com.example.tvcontrolcenter.ui.app.AppSectionLabel
-import com.example.tvcontrolcenter.ui.app.AppSetupRow
+import com.example.tvcontrolcenter.ui.app.AppSettingGroup
+import com.example.tvcontrolcenter.ui.app.AppStatusRow
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
@@ -56,10 +55,9 @@ import com.example.tvcontrolcenter.ui.theme.AppType
 import com.example.tvcontrolcenter.ui.theme.ProvideUiScale
 
 /**
- * Home page. The left side explains the app in one line, offers one unmistakable action and a
- * compact permission checklist (each row opens the right system screen). The right side frames
- * the real panel drawing, so every editor change shows here too. The panel itself opens over this
- * page.
+ * Home page. A quiet product dashboard over the atmospheric background: the title and one
+ * unmistakable primary action on the left, a compact status overview below, and the real panel
+ * preview floating on the right. The Control Center itself opens over this page.
  */
 @Composable
 fun DemoScreen(
@@ -73,6 +71,12 @@ fun DemoScreen(
     val openRequester = remember { FocusRequester() }
     val setup = rememberSetupState()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val ready = listOf(setup.accessibility, setup.overlay, setup.media).count { it }
+    val summary = if (ready == 3) {
+        stringResource(R.string.home_setup_all)
+    } else {
+        stringResource(R.string.home_setup_summary, ready, 3)
+    }
 
     Box(Modifier.fillMaxSize()) {
         AppScreenBackground(state.settings.wallpaper, Modifier.fillMaxSize())
@@ -94,80 +98,83 @@ fun DemoScreen(
                     verticalArrangement = Arrangement.Center,
                 ) {
                     AppEyebrow(stringResource(R.string.home_eyebrow))
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     BasicText(
                         stringResource(R.string.home_title),
                         style = AppType.display.copy(color = AppPalette.textPrimary),
                         maxLines = 1,
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
                     BasicText(
                         stringResource(R.string.home_hint),
-                        Modifier.fillMaxWidth(0.9f),
+                        Modifier.fillMaxWidth(0.88f),
                         style = AppType.subtitle.copy(color = AppPalette.textSecondary),
                     )
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
                     // Everything here is inert while the panel is open over it.
                     if (!panelVisible) {
                         AppButton(
                             label = stringResource(R.string.home_open),
                             onClick = { onPanelVisibleChange(true) },
-                            modifier = Modifier.width(320.dp),
+                            modifier = Modifier.width(360.dp),
                             tone = AppButtonTone.Primary,
                             requester = openRequester,
-                            height = 54.dp,
+                            height = 58.dp,
                             showArrow = true,
                         )
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(10.dp))
                         AppButton(
                             label = stringResource(R.string.demo_edit),
                             onClick = onEdit,
-                            modifier = Modifier.width(320.dp),
+                            modifier = Modifier.width(360.dp),
                             tone = AppButtonTone.Secondary,
-                            height = 44.dp,
+                            height = AppDimens.secondaryHeight,
                         )
 
-                        Spacer(Modifier.height(20.dp))
-                        AppSectionLabel(stringResource(R.string.home_setup))
-                        Spacer(Modifier.height(8.dp))
-                        AppCard(Modifier.fillMaxWidth()) {
-                            Column(
-                                Modifier.fillMaxWidth().padding(10.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                AppSetupRow(
-                                    label = stringResource(R.string.setup_accessibility),
-                                    ok = setup.accessibility,
-                                    status = stringResource(
-                                        if (setup.accessibility) R.string.setup_on else R.string.setup_off,
+                        Spacer(Modifier.height(22.dp))
+                        AppSettingGroup(
+                            title = stringResource(R.string.home_setup),
+                            trailing = {
+                                BasicText(
+                                    summary,
+                                    style = AppType.badge.copy(
+                                        color = if (ready == 3) AppPalette.success else AppPalette.textTertiary,
                                     ),
-                                    onClick = {
-                                        context.openCapabilitySettings(Capability.ACCESSIBILITY_SERVICE)
-                                    },
                                 )
-                                AppSetupRow(
-                                    label = stringResource(R.string.setup_overlay),
-                                    ok = setup.overlay,
-                                    status = stringResource(
-                                        if (setup.overlay) R.string.setup_on else R.string.setup_off,
-                                    ),
-                                    onClick = {
-                                        if (setup.overlay) OverlayService.toggle(context)
-                                        else context.openCapabilitySettings(Capability.OVERLAY)
-                                    },
-                                )
-                                AppSetupRow(
-                                    label = stringResource(R.string.setup_media),
-                                    ok = setup.media,
-                                    status = stringResource(
-                                        if (setup.media) R.string.setup_on else R.string.setup_off,
-                                    ),
-                                    onClick = {
-                                        context.openCapabilitySettings(Capability.NOTIFICATION_LISTENER)
-                                    },
-                                )
-                            }
+                            },
+                        ) {
+                            AppStatusRow(
+                                label = stringResource(R.string.setup_accessibility),
+                                status = stringResource(
+                                    if (setup.accessibility) R.string.setup_on else R.string.setup_off,
+                                ),
+                                tone = if (setup.accessibility) AppPalette.success else AppPalette.warning,
+                                onClick = {
+                                    context.openCapabilitySettings(Capability.ACCESSIBILITY_SERVICE)
+                                },
+                            )
+                            AppStatusRow(
+                                label = stringResource(R.string.setup_overlay),
+                                status = stringResource(
+                                    if (setup.overlay) R.string.setup_on else R.string.setup_off,
+                                ),
+                                tone = if (setup.overlay) AppPalette.success else AppPalette.warning,
+                                onClick = {
+                                    if (setup.overlay) OverlayService.toggle(context)
+                                    else context.openCapabilitySettings(Capability.OVERLAY)
+                                },
+                            )
+                            AppStatusRow(
+                                label = stringResource(R.string.setup_media),
+                                status = stringResource(
+                                    if (setup.media) R.string.setup_on else R.string.setup_off,
+                                ),
+                                tone = if (setup.media) AppPalette.success else AppPalette.warning,
+                                onClick = {
+                                    context.openCapabilitySettings(Capability.NOTIFICATION_LISTENER)
+                                },
+                            )
                         }
                         LaunchedEffect(Unit) { runCatching { openRequester.requestFocus() } }
                     }
@@ -177,7 +184,7 @@ fun DemoScreen(
                     Modifier.width(AppDimens.previewWidth).fillMaxHeight(),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    // Live preview: the real panel drawing, not clickable.
+                    // The real panel drawing, floating, with no app-side chrome around it.
                     AppPreview(
                         label = stringResource(R.string.home_preview),
                         note = stringResource(R.string.home_preview_note),
