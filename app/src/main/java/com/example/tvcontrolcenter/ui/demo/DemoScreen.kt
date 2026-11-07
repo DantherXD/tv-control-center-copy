@@ -1,12 +1,9 @@
 package com.example.tvcontrolcenter.ui.demo
 
 import android.provider.Settings
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,34 +27,29 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.Capability
-import com.example.tvcontrolcenter.domain.model.GridPacker
-import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.system.openCapabilitySettings
 import com.example.tvcontrolcenter.system.overlay.OverlayService
 import com.example.tvcontrolcenter.system.trigger.ControlCenterAccessibilityService
 import com.example.tvcontrolcenter.ui.app.AppButton
 import com.example.tvcontrolcenter.ui.app.AppButtonTone
 import com.example.tvcontrolcenter.ui.app.AppEyebrow
-import com.example.tvcontrolcenter.ui.app.AppPreview
 import com.example.tvcontrolcenter.ui.app.AppScreenBackground
 import com.example.tvcontrolcenter.ui.app.AppSettingGroup
 import com.example.tvcontrolcenter.ui.app.AppStatusRow
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
-import com.example.tvcontrolcenter.ui.panel.LivePanel
 import com.example.tvcontrolcenter.ui.theme.AppDimens
 import com.example.tvcontrolcenter.ui.theme.AppPalette
 import com.example.tvcontrolcenter.ui.theme.AppType
 import com.example.tvcontrolcenter.ui.theme.ProvideUiScale
 
 /**
- * Home page. A quiet product dashboard over the atmospheric background: the title and one
- * unmistakable primary action on the left, a compact status overview below, and the real panel
- * preview floating on the right. The Control Center itself opens over this page.
+ * Home page. It deliberately does not compose a second panel: the live preview belongs to the
+ * editor, and the real Control Center opens over this page on demand. That keeps the home screen
+ * free of the panel's wallpaper painting and blur work.
  */
 @Composable
 fun DemoScreen(
@@ -70,7 +62,6 @@ fun DemoScreen(
     val context = LocalContext.current
     val openRequester = remember { FocusRequester() }
     val setup = rememberSetupState()
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
     val ready = listOf(setup.accessibility, setup.overlay, setup.media).count { it }
     val summary = if (ready == 3) {
         stringResource(R.string.home_setup_all)
@@ -79,24 +70,17 @@ fun DemoScreen(
     }
 
     Box(Modifier.fillMaxSize()) {
-        AppScreenBackground(state.settings.wallpaper, Modifier.fillMaxSize())
+        AppScreenBackground(Modifier.fillMaxSize())
 
         // Fits the screen but ignores the user's panel size: the home page is not the panel.
         ProvideUiScale(1f) {
-            Row(
+            Box(
                 Modifier
                     .fillMaxSize()
-                    .padding(
-                        horizontal = AppDimens.screenHorizontal,
-                        vertical = AppDimens.screenVertical,
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(AppDimens.columnGap),
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(horizontal = 64.dp, vertical = 32.dp),
+                contentAlignment = Alignment.CenterStart,
             ) {
-                Column(
-                    Modifier.weight(1f).fillMaxHeight(),
-                    verticalArrangement = Arrangement.Center,
-                ) {
+                Column(Modifier.width(620.dp)) {
                     AppEyebrow(stringResource(R.string.home_eyebrow))
                     Spacer(Modifier.height(8.dp))
                     BasicText(
@@ -107,7 +91,7 @@ fun DemoScreen(
                     Spacer(Modifier.height(10.dp))
                     BasicText(
                         stringResource(R.string.home_hint),
-                        Modifier.fillMaxWidth(0.88f),
+                        Modifier.fillMaxWidth(0.9f),
                         style = AppType.subtitle.copy(color = AppPalette.textSecondary),
                     )
 
@@ -179,20 +163,6 @@ fun DemoScreen(
                         LaunchedEffect(Unit) { runCatching { openRequester.requestFocus() } }
                     }
                 }
-
-                Column(
-                    Modifier.width(AppDimens.previewWidth).fillMaxHeight(),
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    // The real panel drawing, floating, with no app-side chrome around it.
-                    AppPreview(
-                        label = stringResource(R.string.home_preview),
-                        note = stringResource(R.string.home_preview_note),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        LivePreview(viewModel)
-                    }
-                }
             }
         }
 
@@ -230,23 +200,4 @@ private fun rememberSetupState(): SetupState {
             media = NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName),
         )
     }
-}
-
-@Composable
-private fun LivePreview(viewModel: ControlCenterViewModel) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val layout = state.layout
-    val placed = remember(layout) { GridPacker.pack(layout.visibleItems()) }
-    val pinned = remember(layout) { GridPacker.pinned(layout.visibleItems()) }
-    val requesters = remember { TileId.entries.associateWith { FocusRequester() } }
-    // The real panel over a blurred screen, so the blur settings show here too.
-    LivePanel(
-        state = state,
-        grid = placed,
-        pinned = pinned,
-        requesters = requesters,
-        selected = null,
-        interactive = false,
-        onActivate = {},
-    )
 }

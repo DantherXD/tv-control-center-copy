@@ -186,7 +186,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                 } else false
             },
     ) {
-        AppScreenBackground(state.settings.wallpaper, Modifier.fillMaxSize())
+        AppScreenBackground(Modifier.fillMaxSize())
         Row(
             Modifier
                 .fillMaxSize()

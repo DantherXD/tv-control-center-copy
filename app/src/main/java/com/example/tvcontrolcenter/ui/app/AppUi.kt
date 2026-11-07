@@ -60,8 +60,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.tvcontrolcenter.domain.model.Wallpaper
-import com.example.tvcontrolcenter.ui.background.AppWallpaper
 import com.example.tvcontrolcenter.ui.theme.AppDimens
 import com.example.tvcontrolcenter.ui.theme.AppMaterial
 import com.example.tvcontrolcenter.ui.theme.AppMotion
@@ -79,63 +77,39 @@ import com.example.tvcontrolcenter.ui.theme.AppType
 
 enum class AppGlassLevel { Secondary, Primary, Floating }
 
-/** Full-screen atmosphere: the chosen wallpaper under a midnight grade and three soft light blooms. */
+/**
+ * The app-page backdrop. It is painted from two cheap gradients and deliberately does not render
+ * the wallpaper or any hidden decoration: those were full-screen work behind the editor's glass.
+ * The Control Center keeps its own wallpaper and backdrop pipeline.
+ */
 @Composable
-fun AppScreenBackground(wallpaper: Wallpaper, modifier: Modifier = Modifier) {
-    Box(modifier) {
-        AppWallpaper(wallpaper, Modifier.fillMaxSize())
-        Spacer(
-            Modifier
-                .fillMaxSize()
-                .drawWithCache {
-                    val grade = Brush.verticalGradient(
-                        0f to Color(0xD10A0B1C),
-                        0.52f to Color(0x990C0E22),
-                        1f to Color(0xD9050612),
-                    )
-                    val violet = Brush.radialGradient(
-                        colors = listOf(Color(0x4DA78BFA), Color.Transparent),
-                        center = Offset(size.width * 0.82f, size.height * 0.08f),
-                        radius = size.maxDimension * 0.62f,
-                    )
-                    val blue = Brush.radialGradient(
-                        colors = listOf(Color(0x3D4C6FFF), Color.Transparent),
-                        center = Offset(size.width * 0.10f, size.height * 0.92f),
-                        radius = size.maxDimension * 0.56f,
-                    )
-                    val rose = Brush.radialGradient(
-                        colors = listOf(Color(0x2EFF7AB6), Color.Transparent),
-                        center = Offset(size.width * 0.64f, size.height * 1.02f),
-                        radius = size.maxDimension * 0.46f,
-                    )
-                    // A single wide sheen makes the backdrop feel printed on glass rather than flat.
-                    val sheen = Brush.linearGradient(
-                        colors = listOf(Color(0x14FFFFFF), Color.Transparent, Color(0x0AFFFFFF)),
-                        start = Offset.Zero,
-                        end = Offset(size.width, size.height),
-                    )
-                    val leftShade = Brush.horizontalGradient(
-                        colors = listOf(Color(0x59000000), Color.Transparent),
-                        startX = 0f,
-                        endX = size.width * 0.68f,
-                    )
-                    val vignette = Brush.radialGradient(
-                        colors = listOf(Color.Transparent, Color.Transparent, Color(0x8A02030A)),
-                        center = Offset(size.width * 0.50f, size.height * 0.48f),
-                        radius = size.maxDimension * 0.82f,
-                    )
-                    onDrawBehind {
-                        drawRect(grade)
-                        drawRect(violet)
-                        drawRect(blue)
-                        drawRect(rose)
-                        drawRect(sheen)
-                        drawRect(leftShade)
-                        drawRect(vignette)
-                    }
-                },
-        )
-    }
+fun AppScreenBackground(modifier: Modifier = Modifier) {
+    Spacer(
+        modifier
+            .fillMaxSize()
+            .drawWithCache {
+                val base = Brush.verticalGradient(
+                    0f to Color(0xFF0A0B1A),
+                    0.55f to Color(0xFF0C0E22),
+                    1f to Color(0xFF05060F),
+                )
+                val violet = Brush.radialGradient(
+                    colors = listOf(Color(0x33A78BFA), Color(0x125C7CFF), Color.Transparent),
+                    center = Offset(size.width * 0.78f, size.height * 0.18f),
+                    radius = size.maxDimension * 0.72f,
+                )
+                val blue = Brush.radialGradient(
+                    colors = listOf(Color(0x1F4C6FFF), Color.Transparent),
+                    center = Offset(size.width * 0.12f, size.height * 0.92f),
+                    radius = size.maxDimension * 0.58f,
+                )
+                onDrawBehind {
+                    drawRect(base)
+                    drawRect(violet)
+                    drawRect(blue)
+                }
+            },
+    )
 }
 
 /** One continuous piece of glass: fill, specular, caustic, rim and an inner lower shadow. */
@@ -212,15 +186,19 @@ fun AppGlassPanel(
                 onDrawBehind {
                     drawRoundRect(fill, cornerRadius = corner)
                     drawRoundRect(specular, cornerRadius = corner)
-                    drawRoundRect(sheen, cornerRadius = corner)
-                    drawRoundRect(caustic, cornerRadius = corner)
+                    // Group sheets keep fill, highlight and rim. The extra refraction passes are
+                    // reserved for the few floating surfaces that are always visible.
+                    if (level != AppGlassLevel.Secondary) {
+                        drawRoundRect(sheen, cornerRadius = corner)
+                        drawRoundRect(caustic, cornerRadius = corner)
+                        drawRoundRect(innerShadow, cornerRadius = corner, style = Stroke(2.dp.toPx()))
+                    }
                     drawRoundRect(
                         brush = rim,
                         cornerRadius = corner,
                         style = Stroke(1.dp.toPx()),
                         alpha = rimAlpha,
                     )
-                    drawRoundRect(innerShadow, cornerRadius = corner, style = Stroke(2.dp.toPx()))
                 }
             },
     ) {
@@ -313,12 +291,15 @@ internal fun AppInteractive(
         )
     } else Modifier
 
+    val scaled = if (scaleOnFocus) {
+        modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+    } else modifier
+
     Box(
-        modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
+        scaled
             .then(shadow)
             .focusRequester(requester ?: localRequester)
             .onFocusChanged {
@@ -946,8 +927,8 @@ fun AppSlotCard(
 }
 
 /**
- * The real panel, floating. There is deliberately no framing card: a soft bloom under it and a
- * broad shadow give the screen its depth, and a hairline of light catches the panel's own edge.
+ * The real panel in the editor. No bloom, no broad shadow and no framing card: just the panel and
+ * its hairline edge over the page, so the preview does not add another full-size effect layer.
  */
 @Composable
 fun AppPreview(
@@ -974,65 +955,29 @@ fun AppPreview(
                 style = AppType.section.copy(color = AppPalette.textTertiary),
             )
         }
-        Spacer(Modifier.height(12.dp))
-        Box(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+        Spacer(Modifier.height(10.dp))
+        Box(Modifier.padding(horizontal = 4.dp)) {
+            content()
             Spacer(
                 Modifier
                     .matchParentSize()
                     .drawWithCache {
-                        val bloom = Brush.radialGradient(
-                            colors = listOf(
-                                AppPalette.violet.copy(alpha = 0.28f),
-                                AppPalette.blue.copy(alpha = 0.12f),
-                                Color.Transparent,
-                            ),
-                            center = Offset(size.width * 0.5f, size.height * 0.48f),
-                            radius = size.maxDimension * 0.62f,
-                        )
-                        val plinth = Brush.radialGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
-                            center = Offset(size.width * 0.5f, size.height * 0.96f),
-                            radius = size.width * 0.42f,
+                        val rim = Brush.linearGradient(
+                            colors = listOf(Color(0x40FFFFFF), Color(0x08FFFFFF)),
+                            start = Offset.Zero,
+                            end = Offset(size.width, size.height),
                         )
                         onDrawBehind {
-                            drawRect(bloom)
-                            drawRect(plinth)
+                            drawRoundRect(
+                                brush = rim,
+                                cornerRadius = CornerRadius(AppDimens.previewRadius.toPx()),
+                                style = Stroke(0.8.dp.toPx()),
+                            )
                         }
                     },
             )
-            Box(
-                Modifier
-                    .align(Alignment.Center)
-                    .shadow(
-                        elevation = 30.dp,
-                        shape = RoundedCornerShape(AppDimens.previewRadius),
-                        clip = false,
-                        ambientColor = Color.Black.copy(alpha = 0.72f),
-                        spotColor = AppPalette.violet.copy(alpha = 0.38f),
-                    ),
-            ) {
-                content()
-                Spacer(
-                    Modifier
-                        .matchParentSize()
-                        .drawWithCache {
-                            val rim = Brush.linearGradient(
-                                colors = listOf(Color(0x40FFFFFF), Color(0x08FFFFFF)),
-                                start = Offset.Zero,
-                                end = Offset(size.width, size.height),
-                            )
-                            onDrawBehind {
-                                drawRoundRect(
-                                    brush = rim,
-                                    cornerRadius = CornerRadius(AppDimens.previewRadius.toPx()),
-                                    style = Stroke(0.8.dp.toPx()),
-                                )
-                            }
-                        },
-                )
-            }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
         BasicText(
             note,
             Modifier.fillMaxWidth(),
