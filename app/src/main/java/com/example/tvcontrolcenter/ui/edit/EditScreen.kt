@@ -152,6 +152,12 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
     var selected by remember { mutableStateOf<TileId?>(null) }
     var returnTo by remember { mutableStateOf<TileId?>(null) }
     var tab by remember { mutableStateOf(EditTab.CONTROLS) }
+    // The preview skips wallpaper blur: the box blur is CPU work the editor should not pay for
+    // on every setting change. The real panel still applies the saved blur level.
+    val previewState = remember(state) {
+        if (state.settings.effectiveBlur == 0) state
+        else state.copy(settings = state.settings.copy(blurBehind = false, blurLevel = 0))
+    }
 
     LaunchedEffect(Unit) {
         withFrameNanos { }
@@ -767,7 +773,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                 }
             }
 
-            // The real panel over a blurred screen: every setting shows here as you change it.
+            // The real panel over a sharp wallpaper: every setting shows here as you change it.
             Column(
                 Modifier.width(AppDimens.previewWidth).fillMaxHeight(),
                 verticalArrangement = Arrangement.Center,
@@ -778,7 +784,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     LivePanel(
-                        state = state,
+                        state = previewState,
                         grid = placed,
                         pinned = pinned,
                         requesters = tileRequesters,

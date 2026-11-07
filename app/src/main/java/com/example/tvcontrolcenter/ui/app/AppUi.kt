@@ -34,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -44,7 +43,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -78,9 +76,9 @@ import com.example.tvcontrolcenter.ui.theme.AppType
 enum class AppGlassLevel { Secondary, Primary, Floating }
 
 /**
- * The app-page backdrop. It is painted from two cheap gradients and deliberately does not render
- * the wallpaper or any hidden decoration: those were full-screen work behind the editor's glass.
- * The Control Center keeps its own wallpaper and backdrop pipeline.
+ * The app-page backdrop. One diagonal gradient, painted in one pass: no wallpaper, blooms or
+ * extra full-screen layers behind the editor's glass. The Control Center keeps its own
+ * wallpaper and backdrop pipeline.
  */
 @Composable
 fun AppScreenBackground(modifier: Modifier = Modifier) {
@@ -88,26 +86,14 @@ fun AppScreenBackground(modifier: Modifier = Modifier) {
         modifier
             .fillMaxSize()
             .drawWithCache {
-                val base = Brush.verticalGradient(
-                    0f to Color(0xFF0A0B10),
-                    0.55f to Color(0xFF0E1119),
+                val base = Brush.linearGradient(
+                    0f to Color(0xFF0B0D13),
+                    0.5f to Color(0xFF0E1119),
                     1f to Color(0xFF06070B),
+                    start = Offset.Zero,
+                    end = Offset(size.width, size.height),
                 )
-                val violet = Brush.radialGradient(
-                    colors = listOf(Color(0x149E93D9), Color(0x0A4E6E9E), Color.Transparent),
-                    center = Offset(size.width * 0.78f, size.height * 0.18f),
-                    radius = size.maxDimension * 0.72f,
-                )
-                val blue = Brush.radialGradient(
-                    colors = listOf(Color(0x1C41618A), Color.Transparent),
-                    center = Offset(size.width * 0.12f, size.height * 0.92f),
-                    radius = size.maxDimension * 0.58f,
-                )
-                onDrawBehind {
-                    drawRect(base)
-                    drawRect(violet)
-                    drawRect(blue)
-                }
+                onDrawBehind { drawRect(base) }
             },
     )
 }
@@ -121,24 +107,9 @@ fun AppGlassPanel(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(radius)
-    val elevation = when (level) {
-        AppGlassLevel.Floating -> 28.dp
-        AppGlassLevel.Primary -> 18.dp
-        AppGlassLevel.Secondary -> 0.dp
-    }
-    val shadow = if (elevation > 0.dp) {
-        Modifier.shadow(
-            elevation = elevation,
-            shape = shape,
-            clip = false,
-            ambientColor = Color.Black.copy(alpha = 0.55f),
-            spotColor = AppPalette.blue.copy(alpha = 0.16f),
-        )
-    } else Modifier
 
     Box(
         modifier
-            .then(shadow)
             .clip(shape)
             .drawWithCache {
                 val fill = when (level) {
@@ -185,10 +156,10 @@ fun AppGlassPanel(
                 val corner = CornerRadius(radius.toPx())
                 onDrawBehind {
                     drawRoundRect(fill, cornerRadius = corner)
-                    drawRoundRect(specular, cornerRadius = corner)
-                    // Group sheets keep fill, highlight and rim. The extra refraction passes are
-                    // reserved for the few floating surfaces that are always visible.
+                    // Group sheets keep only fill and rim. The extra specular and refraction
+                    // passes are reserved for the few floating surfaces always on screen.
                     if (level != AppGlassLevel.Secondary) {
+                        drawRoundRect(specular, cornerRadius = corner)
                         drawRoundRect(sheen, cornerRadius = corner)
                         drawRoundRect(caustic, cornerRadius = corner)
                         drawRoundRect(innerShadow, cornerRadius = corner, style = Stroke(2.dp.toPx()))
@@ -254,8 +225,6 @@ internal fun AppInteractive(
     radius: Dp,
     requester: FocusRequester? = null,
     semanticRole: Role = Role.Button,
-    scaleOnFocus: Boolean = false,
-    elevation: Dp = 0.dp,
     baseFill: Brush,
     rimBase: Float = 0f,
     focusOverlay: Boolean = true,
@@ -277,30 +246,10 @@ internal fun AppInteractive(
         animationSpec = AppMotion.focusSpring(),
         label = "glassPress",
     )
-    val scale = if (scaleOnFocus) {
-        1f + (AppMotion.focusScale - 1f) * focusProgress - 0.015f * pressProgress
-    } else 1f
     val shape = RoundedCornerShape(radius)
-    val shadow = if (elevation > 0.dp) {
-        Modifier.shadow(
-            elevation = elevation,
-            shape = shape,
-            clip = false,
-            ambientColor = Color.Black.copy(alpha = 0.50f),
-            spotColor = AppPalette.blue.copy(alpha = 0.16f),
-        )
-    } else Modifier
-
-    val scaled = if (scaleOnFocus) {
-        modifier.graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        }
-    } else modifier
 
     Box(
-        scaled
-            .then(shadow)
+        modifier
             .focusRequester(requester ?: localRequester)
             .onFocusChanged {
                 focused = it.isFocused
@@ -410,8 +359,6 @@ fun AppButton(
         modifier = modifier.height(height),
         radius = height * 0.5f,
         requester = requester,
-        scaleOnFocus = true,
-        elevation = if (primary) 22.dp else 10.dp,
         baseFill = baseFill,
         rimBase = if (primary) 0.50f else 0.20f,
         specular = true,
@@ -453,7 +400,6 @@ fun AppActionChip(
         onActivate = onClick,
         modifier = modifier.height(AppDimens.chipHeight),
         radius = AppDimens.chipRadius,
-        scaleOnFocus = true,
         baseFill = if (highlighted) {
             Brush.verticalGradient(
                 listOf(AppMaterial.selectedTint, Color(0x0F90A4C0)),
@@ -743,13 +689,6 @@ fun AppTabRail(
                     .offset(x = pillOffset)
                     .width(tabWidth)
                     .fillMaxHeight()
-                    .shadow(
-                        elevation = 6.dp,
-                        shape = RoundedCornerShape(19.dp),
-                        clip = false,
-                        ambientColor = Color.Black.copy(alpha = 0.40f),
-                        spotColor = AppPalette.blue.copy(alpha = 0.12f),
-                    )
                     .clip(RoundedCornerShape(19.dp))
                     .drawWithCache {
                         val fill = Brush.verticalGradient(
@@ -835,7 +774,6 @@ fun AppControlCard(
         onActivate = onClick,
         modifier = modifier.height(60.dp),
         radius = 16.dp,
-        scaleOnFocus = true,
         baseFill = Brush.verticalGradient(
             listOf(AppMaterial.secondaryTop, AppMaterial.secondaryBottom),
         ),
@@ -882,7 +820,6 @@ fun AppSlotCard(
         onActivate = onClick,
         modifier = modifier.height(56.dp),
         radius = 16.dp,
-        scaleOnFocus = true,
         baseFill = if (selected) {
             Brush.verticalGradient(listOf(AppMaterial.selectedTint, Color(0x0F90A4C0)))
         } else {

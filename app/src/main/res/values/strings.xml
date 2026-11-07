@@ -210,7 +210,7 @@
     <string name="home_preview">Live preview</string>
     <string name="home_preview_note">Your panel, right now.</string>
     <string name="edit_eyebrow">Customize</string>
-    <string name="edit_preview_note">Mirrors the panel while you change it.</string>
+    <string name="edit_preview_note">Mirrors the layout; blur applies in the real panel.</string>
     <string name="home_setup_summary">%1$d of %2$d ready</string>
     <string name="home_setup_all">All ready</string>
     <string name="empty_selection_title">Pick a control</string>
