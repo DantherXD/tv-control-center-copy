@@ -5,9 +5,9 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,16 +33,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tvcontrolcenter.R
@@ -71,18 +71,15 @@ import com.example.tvcontrolcenter.domain.model.WindowMotion
 import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
 import com.example.tvcontrolcenter.system.wholeScreenBlurSupported
 import com.example.tvcontrolcenter.ui.app.AppActionRow
-import com.example.tvcontrolcenter.ui.app.AppButton
-import com.example.tvcontrolcenter.ui.app.AppButtonTone
 import com.example.tvcontrolcenter.ui.app.AppControlCard
-import com.example.tvcontrolcenter.ui.app.AppGlassLevel
-import com.example.tvcontrolcenter.ui.app.AppGlassPanel
+import com.example.tvcontrolcenter.ui.app.AppDestination
+import com.example.tvcontrolcenter.ui.app.AppNavigationRail
 import com.example.tvcontrolcenter.ui.app.AppNote
 import com.example.tvcontrolcenter.ui.app.AppPreview
 import com.example.tvcontrolcenter.ui.app.AppScreenBackground
 import com.example.tvcontrolcenter.ui.app.AppSettingGroup
 import com.example.tvcontrolcenter.ui.app.AppSettingRow
 import com.example.tvcontrolcenter.ui.app.AppSlotCard
-import com.example.tvcontrolcenter.ui.app.AppTabRail
 import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
@@ -112,11 +109,16 @@ import kotlin.math.roundToInt
  * move or hide it on the left. Hidden controls are listed under "Add controls". Everything
  * saves as you go, and the panel everywhere else follows at once.
  *
- * The one-row-per-setting model is intentional: one focus stop per setting, OK for the next
- * value and Left for the previous one keeps customizing fast with a remote.
+ * The one-row-per-setting model is intentional: one focus stop per setting and OK cycles its
+ * value. D-pad Left is left free, so the navigation rail is always one press away.
  */
 @Composable
-fun EditScreen(viewModel: ControlCenterViewModel, onDone: () -> Unit) {
+fun EditScreen(
+    viewModel: ControlCenterViewModel,
+    initialDestination: AppDestination,
+    onNavigate: (AppDestination) -> Unit,
+    onDone: () -> Unit,
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // Fits the screen but ignores the user's panel size, so the controls always have room.
     val rows = remember(state.layout) { GridPacker.rowCount(GridPacker.pack(state.layout.visibleItems())) }
@@ -134,13 +136,19 @@ fun EditScreen(viewModel: ControlCenterViewModel, onDone: () -> Unit) {
             LocalBluetoothIcon provides state.settings.bluetoothIcon,
             LocalMenuIcon provides state.settings.menuIcon,
         ) {
-            EditBody(state, viewModel, onDone)
+            EditBody(state, viewModel, initialDestination, onNavigate, onDone)
         }
     }
 }
 
 @Composable
-private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, onDone: () -> Unit) {
+private fun EditBody(
+    state: ControlCenterUiState,
+    vm: ControlCenterViewModel,
+    initialDestination: AppDestination,
+    onNavigate: (AppDestination) -> Unit,
+    onDone: () -> Unit,
+) {
     val layout = state.layout
     val settings = state.settings
     val placed = remember(layout) { GridPacker.pack(layout.visibleItems()) }
@@ -150,7 +158,6 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
     val firstAction = remember { FocusRequester() }
     var selected by remember { mutableStateOf<TileId?>(null) }
     var returnTo by remember { mutableStateOf<TileId?>(null) }
-    var tab by remember { mutableStateOf(EditTab.CONTROLS) }
     // The preview skips wallpaper blur: the box blur is CPU work the editor should not pay for
     // on every setting change. The real panel still applies the saved blur level.
     val previewState = remember(state) {
@@ -201,30 +208,24 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                 ),
             horizontalArrangement = Arrangement.spacedBy(AppDimens.columnGap),
         ) {
+            AppNavigationRail(
+                selected = initialDestination,
+                onSelect = onNavigate,
+            )
             Column(Modifier.weight(1f).fillMaxHeight()) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        BasicText(
-                            stringResource(R.string.edit_title),
-                            style = AppType.heading.copy(color = AppPalette.textPrimary),
-                            maxLines = 1,
-                        )
-                    }
-                    AppButton(
-                        label = stringResource(R.string.edit_done),
-                        onClick = onDone,
-                        modifier = Modifier.width(96.dp),
-                        tone = AppButtonTone.Secondary,
-                        height = 40.dp,
+                BasicText(
+                    stringResource(initialDestination.label),
+                    style = AppType.heading.copy(color = AppPalette.textPrimary),
+                    maxLines = 1,
+                )
+                if (initialDestination == AppDestination.Layout) {
+                    Spacer(Modifier.height(2.dp))
+                    BasicText(
+                        stringResource(R.string.edit_controls_hint),
+                        style = AppType.note.copy(color = AppPalette.textSecondary),
+                        maxLines = 1,
                     )
                 }
-                Spacer(Modifier.height(10.dp))
-
-                AppTabRail(
-                    labels = EditTab.entries.map { stringResource(it.label) },
-                    selectedIndex = EditTab.entries.indexOf(tab),
-                    onSelect = { tab = EditTab.entries[it] },
-                )
                 Spacer(Modifier.height(12.dp))
 
                 // Photo pickers live here so they are not re-created when the tab changes.
@@ -245,55 +246,28 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState()),
                 ) {
-                    when (tab) {
-                        EditTab.CONTROLS -> {
+                    when (initialDestination) {
+                        AppDestination.Layout -> {
                             val item = selected?.let { layout.item(it) }
-                            if (item == null) {
-                                AppGlassPanel(level = AppGlassLevel.Primary) {
-                                    Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                                        BasicText(
-                                            stringResource(R.string.empty_selection_title),
-                                            style = AppType.headingSmall.copy(color = AppPalette.textPrimary),
-                                        )
-                                        Spacer(Modifier.height(6.dp))
-                                        BasicText(
-                                            stringResource(R.string.edit_hint_pick),
-                                            style = AppType.note.copy(color = AppPalette.textSecondary),
+                            AppSettingGroup(title = stringResource(R.string.group_layout)) {
+                                if (currentPlaced.isEmpty()) {
+                                    AppNote(stringResource(R.string.edit_no_controls))
+                                } else {
+                                    currentPlaced.forEach { placedTile ->
+                                        val control = layout.item(placedTile.id) ?: return@forEach
+                                        AppActionRow(
+                                            label = stringResource(lookOf(control.id).label),
+                                            value = stringResource(sizeLabel(control.size)),
+                                            selected = selected == control.id,
+                                            onClick = { selected = control.id },
+                                            requester = tileRequesters.getValue(control.id),
                                         )
                                     }
                                 }
-                            } else {
-                                AppGlassPanel(level = AppGlassLevel.Primary) {
-                                    Row(
-                                        Modifier.fillMaxWidth().padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Box(
-                                            Modifier
-                                                .size(46.dp)
-                                                .clip(CircleShape)
-                                                .background(Color.White.copy(alpha = 0.08f)),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            TileIcon(lookIcon(item.id), 24.dp)
-                                        }
-                                        Spacer(Modifier.width(14.dp))
-                                        Column(Modifier.weight(1f)) {
-                                            BasicText(
-                                                stringResource(lookOf(item.id).label),
-                                                style = AppType.headingSmall.copy(color = AppPalette.textPrimary),
-                                                maxLines = 1,
-                                            )
-                                            Spacer(Modifier.height(2.dp))
-                                            BasicText(
-                                                stringResource(sizeLabel(item.size)),
-                                                style = AppType.note.copy(color = AppPalette.textSecondary),
-                                            )
-                                        }
-                                    }
-                                }
+                            }
+                            if (item != null) {
                                 Spacer(Modifier.height(AppDimens.groupGap))
-                                AppSettingGroup(title = stringResource(R.string.group_layout)) {
+                                AppSettingGroup(title = stringResource(R.string.group_selected)) {
                                     val sizes = TileSize.entries.filter {
                                         it != TileSize.TOP || item.id == TileId.EDIT || item.id == TileId.PROFILE || item.id == TileId.NOW_PLAYING
                                     }
@@ -360,7 +334,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                             }
                         }
 
-                        EditTab.LOOK -> {
+                        AppDestination.Style -> {
                             AppSettingGroup(title = stringResource(R.string.group_appearance)) {
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_wallpaper),
@@ -539,7 +513,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                             }
                         }
 
-                        EditTab.TOPBAR -> {
+                        AppDestination.TopBar -> {
                             AppSettingGroup(title = stringResource(R.string.group_topbar)) {
                                 listOf(
                                     TileId.EDIT to R.string.edit_btn_menu,
@@ -630,7 +604,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                             }
                         }
 
-                        EditTab.APPS -> {
+                        AppDestination.Apps -> {
                             // The slot the next app press fills; 0 is the first.
                             var slot by remember { mutableStateOf(0) }
                             AppSettingGroup(title = stringResource(R.string.group_slots)) {
@@ -685,7 +659,7 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                             }
                         }
 
-                        EditTab.BLUR -> {
+                        AppDestination.Blur -> {
                             AppSettingGroup(title = stringResource(R.string.group_blur)) {
                                 val blurNames = listOf(
                                     R.string.blur_off,
@@ -739,45 +713,50 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 )
                             }
                         }
+
+                        AppDestination.Home -> Unit
                     }
                     Spacer(Modifier.height(6.dp))
                 }
             }
 
-            // The real panel over a sharp wallpaper: every setting shows here as you change it.
-            Column(
-                Modifier.width(AppDimens.previewWidth).fillMaxHeight(),
-                verticalArrangement = Arrangement.Center,
+            // Passive preview over a sharp wallpaper. It never takes focus; the list owns the D-pad.
+            // The default panel has six grid rows, taller than this pane, so the preview is scaled
+            // down as a whole to fit rather than clipped.
+            BoxWithConstraints(
+                modifier = Modifier.width(AppDimens.previewWidth).fillMaxHeight(),
+                contentAlignment = Alignment.Center,
             ) {
-                AppPreview(
-                    label = stringResource(R.string.home_preview),
-                    note = stringResource(R.string.edit_preview_note),
-                    modifier = Modifier.fillMaxWidth(),
+                val previewRows = GridPacker.rowCount(placed)
+                val naturalHeight = gridHeight(previewRows) +
+                    PanelDimens.headerFor(settings.topSize) +
+                    settings.headerGap.dp +
+                    PanelDimens.sheetPadding * 2 + 26.dp
+                val fit = (maxHeight.value / naturalHeight.value.coerceAtLeast(1f))
+                    .coerceIn(0.70f, 1f)
+                val density = LocalDensity.current
+                CompositionLocalProvider(
+                    LocalDensity provides Density(density.density * fit, density.fontScale),
                 ) {
-                    LivePanel(
-                        state = previewState,
-                        grid = placed,
-                        pinned = pinned,
-                        requesters = tileRequesters,
-                        selected = selected,
-                        interactive = false,
-                        onActivate = {
-                            selected = it
-                            tab = EditTab.CONTROLS
-                        },
-                    )
+                    AppPreview(
+                        label = stringResource(R.string.home_preview),
+                        note = "",
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        LivePanel(
+                            state = previewState,
+                            grid = placed,
+                            pinned = pinned,
+                            requesters = tileRequesters,
+                            selected = selected,
+                            interactive = false,
+                            onActivate = { selected = it },
+                        )
+                    }
                 }
             }
         }
     }
-}
-
-private enum class EditTab(val label: Int) {
-    CONTROLS(R.string.tab_controls),
-    LOOK(R.string.tab_look),
-    TOPBAR(R.string.tab_topbar),
-    BLUR(R.string.tab_blur),
-    APPS(R.string.tab_apps),
 }
 
 private fun wallpaperLabel(style: Wallpaper): Int = when (style) {

@@ -1,15 +1,20 @@
 package com.example.tvcontrolcenter.ui.demo
 
 import android.provider.Settings
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -32,11 +37,12 @@ import com.example.tvcontrolcenter.domain.model.Capability
 import com.example.tvcontrolcenter.system.openCapabilitySettings
 import com.example.tvcontrolcenter.system.overlay.OverlayService
 import com.example.tvcontrolcenter.system.trigger.ControlCenterAccessibilityService
-import com.example.tvcontrolcenter.ui.app.AppButton
-import com.example.tvcontrolcenter.ui.app.AppButtonTone
+import com.example.tvcontrolcenter.ui.app.AppDestination
+import com.example.tvcontrolcenter.ui.app.AppNavigationRail
 import com.example.tvcontrolcenter.ui.app.AppScreenBackground
 import com.example.tvcontrolcenter.ui.app.AppSettingGroup
 import com.example.tvcontrolcenter.ui.app.AppStatusRow
+import com.example.tvcontrolcenter.ui.app.AppWideButton
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
@@ -46,9 +52,9 @@ import com.example.tvcontrolcenter.ui.theme.AppType
 import com.example.tvcontrolcenter.ui.theme.ProvideUiScale
 
 /**
- * Home page. It deliberately does not compose a second panel: the live preview belongs to the
- * editor, and the real Control Center opens over this page on demand. That keeps the home screen
- * free of the panel's wallpaper painting and blur work.
+ * Home page: a persistent navigation rail, one large title, one primary action and the setup
+ * list. The real Control Center is composed over this page only while it is open, so Home does
+ * not pay for the panel's wallpaper or blur work.
  */
 @Composable
 fun DemoScreen(
@@ -56,7 +62,7 @@ fun DemoScreen(
     panelVisible: Boolean,
     backdrop: Backdrop?,
     onPanelVisibleChange: (Boolean) -> Unit,
-    onEdit: () -> Unit,
+    onNavigate: (AppDestination) -> Unit,
 ) {
     val context = LocalContext.current
     val openRequester = remember { FocusRequester() }
@@ -73,54 +79,56 @@ fun DemoScreen(
 
         // Fits the screen but ignores the user's panel size: the home page is not the panel.
         ProvideUiScale(1f) {
-            Box(
+            Row(
                 Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 64.dp, vertical = 32.dp),
-                contentAlignment = Alignment.CenterStart,
+                    .padding(
+                        horizontal = AppDimens.screenHorizontal,
+                        vertical = AppDimens.screenVertical,
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(AppDimens.columnGap),
             ) {
-                Column(Modifier.width(620.dp)) {
+                AppNavigationRail(
+                    selected = AppDestination.Home,
+                    onSelect = onNavigate,
+                )
+
+                Column(
+                    Modifier.weight(1f).fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center,
+                ) {
                     BasicText(
                         stringResource(R.string.home_title),
                         style = AppType.display.copy(color = AppPalette.textPrimary),
                         maxLines = 1,
                     )
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(8.dp))
                     BasicText(
                         stringResource(R.string.home_hint),
-                        Modifier.fillMaxWidth(0.9f),
                         style = AppType.subtitle.copy(color = AppPalette.textSecondary),
+                        maxLines = 1,
                     )
 
                     Spacer(Modifier.height(24.dp))
                     // Everything here is inert while the panel is open over it.
                     if (!panelVisible) {
-                        AppButton(
-                            label = stringResource(R.string.home_open),
+                        AppWideButton(
+                            title = stringResource(R.string.home_open),
+                            subtitle = stringResource(R.string.home_open_subtitle),
+                            icon = Icons.Rounded.PowerSettingsNew,
                             onClick = { onPanelVisibleChange(true) },
-                            modifier = Modifier.width(360.dp),
-                            tone = AppButtonTone.Primary,
+                            modifier = Modifier.fillMaxWidth(),
                             requester = openRequester,
-                            height = 58.dp,
-                            showArrow = true,
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        AppButton(
-                            label = stringResource(R.string.demo_edit),
-                            onClick = onEdit,
-                            modifier = Modifier.width(360.dp),
-                            tone = AppButtonTone.Secondary,
-                            height = AppDimens.secondaryHeight,
                         )
 
-                        Spacer(Modifier.height(22.dp))
+                        Spacer(Modifier.height(28.dp))
                         AppSettingGroup(
                             title = stringResource(R.string.home_setup),
                             trailing = {
                                 BasicText(
                                     summary,
                                     style = AppType.badge.copy(
-                                        color = if (ready == 3) AppPalette.success else AppPalette.textTertiary,
+                                        color = if (ready == 3) AppPalette.success else AppPalette.textSecondary,
                                     ),
                                 )
                             },
@@ -170,7 +178,7 @@ fun DemoScreen(
             onClosed = {},
             onCapability = { context.openCapabilitySettings(it) },
             modifier = Modifier.fillMaxSize(),
-            onOpenEditor = onEdit,
+            onOpenEditor = { onNavigate(AppDestination.Layout) },
             backdrop = backdrop,
             scrimAlpha = 0.25f,
         )

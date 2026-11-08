@@ -114,152 +114,140 @@ object PanelType {
 // tile, change the glass or alter the panel's typography.
 
 /**
- * Colour of the app's own glass over the atmospheric background. Text is white at several
- * opacities so translucency reads as light rather than as a grey fill.
+ * Colours for the app's own pages: a near-black backdrop, two flat surface levels and white
+ * focus. Text is white at several opacities, so hierarchy comes from contrast, not decoration.
  */
 object AppPalette {
-    // Restrained lavender for selection ticks, the eyebrow dot and focus light only.
-    val accent = Color(0xFF9E93D9)
-    val accentBright = Color(0xFFDDD8F0)
-    val violet = Color(0xFF7A6FA8)
-    val indigo = Color(0xFF3C4559)
-    val blue = Color(0xFF4E6E9E)
+    /** Near-black, with just enough lift for surfaces and focus to read on a TV. */
+    val background = Color(0xFF0B0B0B)
+    val surface = Color(0xFF191919)
+    val surfaceHigh = Color(0xFF242424)
+    val outline = Color(0xFF333333)
 
-    val textPrimary = Color(0xF2FFFFFF)
-    val textSecondary = Color(0xC6FFFFFF)
-    val textTertiary = Color(0xA0FFFFFF)
-    val textMuted = Color(0x7AFFFFFF)
+    /** Blue is reserved for active state and the primary-action focus ring. */
+    val accent = Color(0xFF8AB4F8)
+    val accentBright = Color(0xFFD3E3FD)
 
-    /** Solid focus surface and the ink that sits on it, like tvOS. */
-    val focusFill = Color(0xFFF2F2F7)
-    val focusInk = Color(0xFF0B0B0D)
+    val textPrimary = Color(0xFFF2F2F2)
+    val textSecondary = Color(0xFFB3B3B3)
+    val textTertiary = Color(0xFF8A8A8A)
+    val textMuted = Color(0xFF6B6B6B)
 
-    val success = Color(0xFF78DFB8)
-    val warning = Color(0xFFF0C27A)
-    val danger = Color(0xFFE7A0A0)
+    /** Solid focus surface and the dark ink that sits on it. */
+    val focusFill = Color(0xFFF5F5F5)
+    val focusInk = Color(0xFF0B0B0B)
 
-    val midnight = Color(0xFF08090E)
-    val midnightSoft = Color(0xFF10131A)
-    val shadow = Color(0xFF020306)
-}
-
-/**
- * The four liquid-glass materials. Each is a translucent white gradient plus a light source and
- * a directional rim; nothing is opaque and nothing relies on a flat outline.
- */
-object AppMaterial {
-    // Cool silver-white over the charcoal backdrop reads as smoky graphite, not flat grey.
-    val primaryTop = Color(0x29EDF0F6)
-    val primaryBottom = Color(0x0AE7EBF2)
-    val secondaryTop = Color(0x16E3E8F0)
-    val secondaryBottom = Color(0x05E6EAF2)
-    val floatingTop = Color(0x33ECEFF5)
-    val floatingBottom = Color(0x10E8ECF3)
-    val interactiveTop = Color(0x3DEDF0F7)
-    val interactiveBottom = Color(0x17E9EDF4)
-
-    val rimStart = Color(0x5CFFFFFF)
-    val rimEnd = Color(0x08FFFFFF)
-    val specular = Color(0x2EFFFFFF)
-    val focusGlow = Color(0x1FA89BD8)
-
-    val accentTop = Color(0xC49E93D9)
-    val accentBottom = Color(0xA8756CAF)
-    val accentFocusTop = Color(0xE0B2A8E3)
-    val accentFocusBottom = Color(0xC48178B8)
-    val accentPressedTop = Color(0xB07D73AD)
-    val accentPressedBottom = Color(0x9962598A)
-
-    val selectedTint = Color(0x2690A4C0)
-    val divider = Color(0x0AFFFFFF)
+    val success = Color(0xFF81C995)
+    val warning = Color(0xFFFDD663)
+    val danger = Color(0xFFF2B8B5)
 }
 
 /** Sizes for the app's own pages, in dp on the same 960 x 540 reference screen. */
 object AppDimens {
-    val screenHorizontal = 44.dp
-    val screenVertical = 30.dp
-    val columnGap = 30.dp
+    // 960 x 540 reference: 58dp side margins and a 196dp rail leave a 624dp content column.
+    val screenHorizontal = 58.dp
+    val screenVertical = 28.dp
+    val railWidth = 196.dp
+    val columnGap = 24.dp
 
-    val groupRadius = 20.dp
-    val floatingRadius = 18.dp
-    val rowRadius = 12.dp
-    val chipRadius = 12.dp
-    val buttonRadius = 18.dp
-    val tabRailRadius = 20.dp
-    val previewRadius = 24.dp
+    val settingsWidth = 336.dp
+    val previewWidth = 264.dp
+    val paneGap = 20.dp
 
-    val groupPadding = 6.dp
-    val groupGap = 16.dp
-    val rowHeight = 48.dp
-    val tabHeight = 36.dp
-    val tabRailHeight = 46.dp
-    val chipHeight = 42.dp
-    val primaryHeight = 60.dp
+    val groupGap = 24.dp
+    val rowHeight = 52.dp
+    val navItemHeight = 52.dp
+    val chipHeight = 44.dp
+    val primaryHeight = 84.dp
     val secondaryHeight = 48.dp
 
-    val previewWidth = 304.dp
-    val previewGlowPadding = 10.dp
-
-    val focusRim = 1.2.dp
-    val focusBarHeight = 16.dp
+    val cardRadius = 12.dp
+    val rowRadius = 10.dp
+    val chipRadius = 22.dp
+    val previewRadius = 16.dp
 }
 
-/** Type scale for the app's own pages. Inter, with one confident display size and quieter detail. */
+/**
+ * Type scale for the app's own pages. Roboto, at 10-foot sizes: a 56sp display, 34sp page title,
+ * 16sp labels and 13sp notes. Nothing below 12sp, so it still reads from a couch.
+ */
 object AppType {
-    val eyebrow = TextStyle(
-        fontFamily = InterFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 10.5.sp,
-        lineHeight = 13.sp,
-        letterSpacing = 2.2.sp,
-    )
     val display = TextStyle(
-        fontFamily = InterFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 48.sp,
-        lineHeight = 52.sp,
-        letterSpacing = (-1).sp,
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 56.sp,
+        lineHeight = 60.sp,
+        letterSpacing = (-0.8).sp,
     )
     val heading = TextStyle(
-        fontFamily = InterFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 32.sp,
-        lineHeight = 37.sp,
-        letterSpacing = (-0.4).sp,
-    )
-    val headingSmall = TextStyle(
-        fontFamily = InterFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
-        lineHeight = 25.sp,
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Medium,
+        fontSize = 34.sp,
+        lineHeight = 40.sp,
         letterSpacing = (-0.2).sp,
     )
-    val subtitle = TextStyle(
-        fontFamily = InterFamily,
+    val title = TextStyle(
+        fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Medium,
+        fontSize = 22.sp,
+        lineHeight = 27.sp,
+    )
+    val headingSmall = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Medium,
+        fontSize = 20.sp,
+        lineHeight = 25.sp,
+    )
+    val subtitle = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 18.sp,
+        lineHeight = 25.sp,
+    )
+    val label = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 16.sp,
+        lineHeight = 21.sp,
+    )
+    val labelStrong = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Medium,
+        fontSize = 16.sp,
+        lineHeight = 21.sp,
+    )
+    val value = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
         fontSize = 15.sp,
-        lineHeight = 22.sp,
+        lineHeight = 20.sp,
     )
-    val label = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 19.sp)
-    val labelStrong = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 20.sp)
-    val value = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 17.sp)
-    val tab = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 17.sp)
     val section = TextStyle(
-        fontFamily = InterFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 10.5.sp,
-        lineHeight = 13.sp,
-        letterSpacing = 1.7.sp,
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 18.sp,
+        letterSpacing = 0.2.sp,
     )
-    val note = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Medium, fontSize = 11.5.sp, lineHeight = 16.sp)
-    val badge = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 10.5.sp, lineHeight = 13.sp)
+    val note = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+    )
+    val badge = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+    )
 }
 
-/** Motion for app focus, press and tab selection. Short and quiet, so a weak TV stays responsive. */
+/** Motion for app focus, press and rail selection. Short and quiet, so a weak TV stays responsive. */
 object AppMotion {
     fun <T> focusSpring() = spring<T>(dampingRatio = 0.9f, stiffness = 1200f)
     fun <T> tabSpring() = spring<T>(dampingRatio = 0.92f, stiffness = 900f)
-    const val focusScale = 1.02f
+    const val focusScale = 1.04f
     const val pressScale = 0.985f
 }
 

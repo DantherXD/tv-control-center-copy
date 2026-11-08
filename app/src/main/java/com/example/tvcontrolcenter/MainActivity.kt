@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.example.tvcontrolcenter.di.ControlCenterEntryPoint
 import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
+import com.example.tvcontrolcenter.ui.app.AppDestination
 import com.example.tvcontrolcenter.ui.demo.DemoScreen
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import kotlinx.coroutines.launch
@@ -32,7 +33,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private var panelVisible by mutableStateOf(false)
-    private var editing by mutableStateOf(false)
+    private var destination by mutableStateOf(AppDestination.Home)
     private var backdrop by mutableStateOf<Backdrop?>(null)
 
     /** Started straight into the editor by the panel's Edit control: closing it leaves the app. */
@@ -43,15 +44,20 @@ class MainActivity : ComponentActivity() {
         readIntent(intent)
         setContent {
             ControlCenterTheme {
-                if (editing) {
-                    EditScreen(viewModel = viewModel, onDone = { closeEditor() })
-                } else {
+                if (destination == AppDestination.Home) {
                     DemoScreen(
                         viewModel = viewModel,
                         panelVisible = panelVisible,
                         backdrop = backdrop,
                         onPanelVisibleChange = { open -> if (open) openPanel() else panelVisible = false },
-                        onEdit = { editing = true },
+                        onNavigate = { destination = it },
+                    )
+                } else {
+                    EditScreen(
+                        viewModel = viewModel,
+                        initialDestination = destination,
+                        onNavigate = { destination = it },
+                        onDone = { closeEditor() },
                     )
                 }
             }
@@ -67,7 +73,7 @@ class MainActivity : ComponentActivity() {
     private fun readIntent(intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_EDIT, false) == true) {
             openedForEdit = true
-            editing = true
+            destination = AppDestination.Layout
             panelVisible = false
         }
     }
@@ -83,12 +89,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun closeEditor() {
-        if (openedForEdit) finish() else editing = false
+        if (openedForEdit) finish() else destination = AppDestination.Home
     }
 
     // Long-press Menu opens the panel while this app is in front.
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_MENU && !panelVisible && !editing) {
+        if (keyCode == KeyEvent.KEYCODE_MENU && !panelVisible && destination == AppDestination.Home) {
             event.startTracking()
             return true
         }
@@ -96,7 +102,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onKeyLongPress(keyCode: Int, event: KeyEvent): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_MENU && !editing) {
+        if (keyCode == KeyEvent.KEYCODE_MENU && !panelVisible) {
             openPanel()
             return true
         }
