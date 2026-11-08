@@ -34,7 +34,6 @@ import com.example.tvcontrolcenter.system.overlay.OverlayService
 import com.example.tvcontrolcenter.system.trigger.ControlCenterAccessibilityService
 import com.example.tvcontrolcenter.ui.app.AppButton
 import com.example.tvcontrolcenter.ui.app.AppButtonTone
-import com.example.tvcontrolcenter.ui.app.AppEyebrow
 import com.example.tvcontrolcenter.ui.app.AppScreenBackground
 import com.example.tvcontrolcenter.ui.app.AppSettingGroup
 import com.example.tvcontrolcenter.ui.app.AppStatusRow
@@ -81,8 +80,6 @@ fun DemoScreen(
                 contentAlignment = Alignment.CenterStart,
             ) {
                 Column(Modifier.width(620.dp)) {
-                    AppEyebrow(stringResource(R.string.home_eyebrow))
-                    Spacer(Modifier.height(8.dp))
                     BasicText(
                         stringResource(R.string.home_title),
                         style = AppType.display.copy(color = AppPalette.textPrimary),

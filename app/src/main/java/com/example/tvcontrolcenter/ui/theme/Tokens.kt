@@ -130,6 +130,10 @@ object AppPalette {
     val textTertiary = Color(0xA0FFFFFF)
     val textMuted = Color(0x7AFFFFFF)
 
+    /** Solid focus surface and the ink that sits on it, like tvOS. */
+    val focusFill = Color(0xFFF2F2F7)
+    val focusInk = Color(0xFF0B0B0D)
+
     val success = Color(0xFF78DFB8)
     val warning = Color(0xFFF0C27A)
     val danger = Color(0xFFE7A0A0)
@@ -176,13 +180,13 @@ object AppDimens {
     val screenVertical = 30.dp
     val columnGap = 30.dp
 
-    val groupRadius = 24.dp
-    val floatingRadius = 20.dp
-    val rowRadius = 14.dp
-    val chipRadius = 14.dp
+    val groupRadius = 20.dp
+    val floatingRadius = 18.dp
+    val rowRadius = 12.dp
+    val chipRadius = 12.dp
     val buttonRadius = 18.dp
-    val tabRailRadius = 24.dp
-    val previewRadius = 30.dp
+    val tabRailRadius = 20.dp
+    val previewRadius = 24.dp
 
     val groupPadding = 6.dp
     val groupGap = 16.dp

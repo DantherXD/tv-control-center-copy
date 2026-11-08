@@ -74,7 +74,6 @@ import com.example.tvcontrolcenter.ui.app.AppActionRow
 import com.example.tvcontrolcenter.ui.app.AppButton
 import com.example.tvcontrolcenter.ui.app.AppButtonTone
 import com.example.tvcontrolcenter.ui.app.AppControlCard
-import com.example.tvcontrolcenter.ui.app.AppEyebrow
 import com.example.tvcontrolcenter.ui.app.AppGlassLevel
 import com.example.tvcontrolcenter.ui.app.AppGlassPanel
 import com.example.tvcontrolcenter.ui.app.AppNote
@@ -205,8 +204,6 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        AppEyebrow(stringResource(R.string.edit_eyebrow))
-                        Spacer(Modifier.height(5.dp))
                         BasicText(
                             stringResource(R.string.edit_title),
                             style = AppType.heading.copy(color = AppPalette.textPrimary),
@@ -248,10 +245,6 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState()),
                 ) {
-                    if (tab == EditTab.LOOK || tab == EditTab.TOPBAR || tab == EditTab.BLUR) {
-                        AppNote(stringResource(R.string.edit_howto))
-                        Spacer(Modifier.height(10.dp))
-                    }
                     when (tab) {
                         EditTab.CONTROLS -> {
                             val item = selected?.let { layout.item(it) }
@@ -375,7 +368,6 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                 ) { d ->
                                     vm.updateSettings { it.copy(wallpaper = Wallpaper.entries.step(it.wallpaper, d)) }
                                 }
-                                AppNote(stringResource(R.string.edit_wallpaper_note))
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_frost),
                                     value = stringResource(frostLabel(settings.frost)),
@@ -426,12 +418,10 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                         it.copy(windowMotion = motions[Math.floorMod(at + d, motions.size)].first)
                                     }
                                 }
-                                AppNote(stringResource(R.string.edit_window_motion_note))
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_card),
                                     value = onOff(settings.card),
                                 ) { vm.updateSettings { it.copy(card = !it.card) } }
-                                AppNote(stringResource(R.string.edit_card_note))
                             }
                             Spacer(Modifier.height(AppDimens.groupGap))
                             AppSettingGroup(title = stringResource(R.string.group_glass)) {
@@ -475,7 +465,6 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                     }
                                 }
                                 if (settings.iconPack == IconPack.PHOSPHOR) {
-                                    AppNote(stringResource(R.string.edit_icon_pack_note))
                                     val weightNames = listOf(
                                         PhosphorWeight.THIN to R.string.weight_thin,
                                         PhosphorWeight.LIGHT to R.string.weight_light,
@@ -493,7 +482,6 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                             it.copy(phosphorWeight = weightNames[Math.floorMod(at + d, weightNames.size)].first)
                                         }
                                     }
-                                    AppNote(stringResource(R.string.edit_phosphor_weight_note))
                                 }
                                 val bluetoothIcons = listOf(
                                     BluetoothIcon.STANDARD to R.string.bt_icon_standard,
@@ -508,7 +496,6 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                         it.copy(bluetoothIcon = bluetoothIcons[Math.floorMod(at + d, bluetoothIcons.size)].first)
                                     }
                                 }
-                                AppNote(stringResource(R.string.edit_bluetooth_icon_note))
                                 val menuIcons = listOf(
                                     MenuIcon.BARS to R.string.menu_icon_bars,
                                     MenuIcon.TOGGLES to R.string.menu_icon_toggles,
@@ -522,7 +509,6 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                         it.copy(menuIcon = menuIcons[Math.floorMod(at + d, menuIcons.size)].first)
                                     }
                                 }
-                                AppNote(stringResource(R.string.edit_menu_icon_note))
                             }
                             Spacer(Modifier.height(AppDimens.groupGap))
                             AppSettingGroup(title = stringResource(R.string.group_behaviour)) {
@@ -536,12 +522,10 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                     label = stringResource(R.string.edit_auto_ink),
                                     value = onOff(settings.autoInk),
                                 ) { vm.updateSettings { it.copy(autoInk = !it.autoInk) } }
-                                AppNote(stringResource(R.string.edit_auto_ink_note))
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_active_highlight),
                                     value = onOff(settings.activeHighlight),
                                 ) { vm.updateSettings { it.copy(activeHighlight = !it.activeHighlight) } }
-                                AppNote(stringResource(R.string.edit_active_highlight_note))
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_sound_cues),
                                     value = onOff(settings.soundCues),
@@ -609,9 +593,6 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                         it.copy(musicStyle = musicStyles[Math.floorMod(at + d, musicStyles.size)].first)
                                     }
                                 }
-                                AppNote(stringResource(R.string.edit_menu_note))
-                                AppNote(stringResource(R.string.edit_music_note))
-                                AppNote(stringResource(R.string.edit_longpress_note))
                             }
                             Spacer(Modifier.height(AppDimens.groupGap))
                             AppSettingGroup(title = stringResource(R.string.group_profile)) {
@@ -671,7 +652,6 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                         )
                                     }
                                 }
-                                AppNote(stringResource(R.string.edit_app_note))
                                 AppActionRow(
                                     label = stringResource(R.string.edit_app_clear),
                                     onClick = {
@@ -702,7 +682,6 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                     label = stringResource(R.string.edit_capture_log),
                                     value = onOff(settings.activityLog),
                                 ) { vm.updateSettings { it.copy(activityLog = !it.activityLog) } }
-                                AppNote(stringResource(R.string.edit_capture_note))
                             }
                         }
 
@@ -736,13 +715,6 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                         it.copy(blurMethod = methods[Math.floorMod(at + d, methods.size)].first)
                                     }
                                 }
-                                AppNote(stringResource(R.string.blur_whole_note))
-                                AppNote(
-                                    stringResource(
-                                        if (wholeScreenBlurSupported(context)) R.string.blur_whole_ok
-                                        else R.string.blur_whole_unsupported,
-                                    ),
-                                )
                             }
                             Spacer(Modifier.height(AppDimens.groupGap))
                             AppSettingGroup(title = stringResource(R.string.group_capture)) {
@@ -750,7 +722,6 @@ private fun EditBody(state: ControlCenterUiState, vm: ControlCenterViewModel, on
                                     label = stringResource(R.string.edit_patient),
                                     value = onOff(settings.patientCapture),
                                 ) { vm.updateSettings { it.copy(patientCapture = !it.patientCapture) } }
-                                AppNote(stringResource(R.string.edit_patient_note))
                                 val status = BackdropCapture.status()
                                 AppNote(
                                     stringResource(
