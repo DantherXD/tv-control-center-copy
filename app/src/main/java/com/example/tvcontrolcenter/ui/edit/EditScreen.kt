@@ -154,8 +154,14 @@ private fun EditBody(
     val placed = remember(layout) { GridPacker.pack(layout.visibleItems()) }
     val pinned = remember(layout) { GridPacker.pinned(layout.visibleItems()) }
     val currentPlaced by rememberUpdatedState(pinned + placed)
+    val hidden = remember(layout) { layout.hiddenItems() }
     val tileRequesters = remember { TileId.entries.associateWith { FocusRequester() } }
+    // The settings rows and the passive preview must not share focus targets. The preview keeps
+    // its own set; these requesters are only attached to the rows below.
+    val rowRequesters = remember { TileId.entries.associateWith { FocusRequester() } }
+    val pageFirst = remember { FocusRequester() }
     val firstAction = remember { FocusRequester() }
+    val listScroll = rememberScrollState()
     var selected by remember { mutableStateOf<TileId?>(null) }
     var returnTo by remember { mutableStateOf<TileId?>(null) }
     // The preview skips wallpaper blur: the box blur is CPU work the editor should not pay for
@@ -165,9 +171,17 @@ private fun EditBody(
         else state.copy(settings = state.settings.copy(blurBehind = false, blurLevel = 0))
     }
 
-    LaunchedEffect(Unit) {
+    // Every page opens at the top with focus on its first option, not on the rail that was just
+    // pressed. Layout is control-led; the other pages use pageFirst on their first setting.
+    LaunchedEffect(initialDestination) {
+        listScroll.scrollTo(0)
         withFrameNanos { }
-        currentPlaced.firstOrNull()?.let { runCatching { tileRequesters.getValue(it.id).requestFocus() } }
+        val target = if (initialDestination == AppDestination.Layout) {
+            currentPlaced.firstOrNull()?.let { rowRequesters.getValue(it.id) } ?: pageFirst
+        } else {
+            pageFirst
+        }
+        runCatching { target.requestFocus() }
     }
     LaunchedEffect(selected) {
         if (selected != null) {
@@ -178,7 +192,7 @@ private fun EditBody(
     LaunchedEffect(returnTo) {
         val id = returnTo ?: return@LaunchedEffect
         withFrameNanos { }
-        runCatching { tileRequesters.getValue(id).requestFocus() }
+        runCatching { rowRequesters.getValue(id).requestFocus() }
         returnTo = null
     }
 
@@ -244,7 +258,7 @@ private fun EditBody(
                     Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
+                        .verticalScroll(listScroll),
                 ) {
                     when (initialDestination) {
                         AppDestination.Layout -> {
@@ -260,7 +274,7 @@ private fun EditBody(
                                             value = stringResource(sizeLabel(control.size)),
                                             selected = selected == control.id,
                                             onClick = { selected = control.id },
-                                            requester = tileRequesters.getValue(control.id),
+                                            requester = rowRequesters.getValue(control.id),
                                         )
                                     }
                                 }
@@ -296,7 +310,6 @@ private fun EditBody(
                             }
                             Spacer(Modifier.height(AppDimens.groupGap))
                             AppSettingGroup(title = stringResource(R.string.edit_add)) {
-                                val hidden = layout.hiddenItems()
                                 if (hidden.isEmpty()) {
                                     AppNote(stringResource(R.string.edit_nothing_hidden))
                                 } else {
@@ -311,6 +324,11 @@ private fun EditBody(
                                                 AddControlCard(
                                                     id = hiddenItem.id,
                                                     modifier = Modifier.weight(1f),
+                                                    requester = if (currentPlaced.isEmpty() && hiddenItem == hidden.first()) {
+                                                        pageFirst
+                                                    } else {
+                                                        null
+                                                    },
                                                 ) {
                                                     vm.setTileVisible(hiddenItem.id, true)
                                                     selected = hiddenItem.id
@@ -330,6 +348,7 @@ private fun EditBody(
                                         selected = null
                                     },
                                     destructive = true,
+                                    requester = if (currentPlaced.isEmpty() && hidden.isEmpty()) pageFirst else null,
                                 )
                             }
                         }
@@ -339,6 +358,7 @@ private fun EditBody(
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_wallpaper),
                                     value = stringResource(wallpaperLabel(settings.wallpaper)),
+                                    requester = pageFirst,
                                 ) { d ->
                                     vm.updateSettings { it.copy(wallpaper = Wallpaper.entries.step(it.wallpaper, d)) }
                                 }
@@ -518,11 +538,12 @@ private fun EditBody(
                                 listOf(
                                     TileId.EDIT to R.string.edit_btn_menu,
                                     TileId.PROFILE to R.string.edit_btn_profile,
-                                ).forEach { (id, name) ->
+                                ).forEachIndexed { index, (id, name) ->
                                     val on = layout.item(id)?.visible == true
                                     AppSettingRow(
                                         label = stringResource(name),
                                         value = onOff(on),
+                                        requester = if (index == 0) pageFirst else null,
                                     ) { vm.setTileVisible(id, !on) }
                                 }
                                 val music = layout.item(TileId.NOW_PLAYING)
@@ -623,6 +644,7 @@ private fun EditBody(
                                             selected = slot == index,
                                             onClick = { slot = index },
                                             modifier = Modifier.weight(1f),
+                                            requester = if (index == 0) pageFirst else null,
                                         )
                                     }
                                 }
@@ -671,6 +693,7 @@ private fun EditBody(
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_blur_level),
                                     value = blurNames[settings.effectiveBlur],
+                                    requester = pageFirst,
                                 ) { d ->
                                     val level = Math.floorMod(settings.effectiveBlur + d, blurNames.size)
                                     vm.updateSettings { it.copy(blurBehind = level > 0, blurLevel = level) }
@@ -806,13 +829,19 @@ private fun List<String?>.withSlot(index: Int, value: String?): List<String?> =
     toMutableList().also { if (index in it.indices) it[index] = value }
 
 @Composable
-private fun AddControlCard(id: TileId, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun AddControlCard(
+    id: TileId,
+    modifier: Modifier = Modifier,
+    requester: FocusRequester? = null,
+    onClick: () -> Unit,
+) {
     val look = lookOf(id)
     val label = stringResource(look.label)
     AppControlCard(
         label = label,
         onClick = onClick,
         modifier = modifier,
+        requester = requester,
         leading = { TileIcon(lookIcon(id), 18.dp) },
     )
 }

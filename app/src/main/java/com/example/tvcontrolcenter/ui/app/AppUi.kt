@@ -592,6 +592,7 @@ fun AppControlCard(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    requester: FocusRequester? = null,
     leading: @Composable () -> Unit,
 ) {
     AppInteractive(
@@ -599,6 +600,7 @@ fun AppControlCard(
         onActivate = onClick,
         modifier = modifier.height(72.dp),
         radius = AppDimens.cardRadius,
+        requester = requester,
         scaleOnFocus = true,
         baseFill = SolidColor(AppPalette.surface),
     ) { focused ->
@@ -639,12 +641,14 @@ fun AppSlotCard(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    requester: FocusRequester? = null,
 ) {
     AppInteractive(
         label = "$index, $label",
         onActivate = onClick,
         modifier = modifier.height(64.dp),
         radius = AppDimens.cardRadius,
+        requester = requester,
         scaleOnFocus = true,
         baseFill = SolidColor(if (selected) AppPalette.surfaceHigh else AppPalette.surface),
     ) { focused ->
