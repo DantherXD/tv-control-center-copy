@@ -300,7 +300,7 @@ private fun EditBody(
                                 if (hidden.isEmpty()) {
                                     AppNote(stringResource(R.string.edit_nothing_hidden))
                                 } else {
-                                    hidden.chunked(3).forEach { row ->
+                                    hidden.chunked(2).forEach { row ->
                                         Row(
                                             Modifier
                                                 .fillMaxWidth()
@@ -316,7 +316,7 @@ private fun EditBody(
                                                     selected = hiddenItem.id
                                                 }
                                             }
-                                            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                                            repeat(2 - row.size) { Spacer(Modifier.weight(1f)) }
                                         }
                                     }
                                 }
