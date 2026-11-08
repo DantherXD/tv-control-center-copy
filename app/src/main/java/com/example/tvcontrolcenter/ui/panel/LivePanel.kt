@@ -56,6 +56,7 @@ internal fun LivePanel(
     selected: TileId?,
     interactive: Boolean,
     onActivate: (TileId) -> Unit,
+    showSheet: Boolean? = null,
     modifier: Modifier = Modifier,
 ) {
     var previewSize by remember { mutableStateOf(IntSize.Zero) }
@@ -75,8 +76,9 @@ internal fun LivePanel(
         if (level <= 0 || blurred == null) null else Backdrop(blurred, previewSize.width, previewSize.height)
     }
     // Same rule as the panel: a sheet only when the glass has no blurred screen to show, or
-    // when the card was asked for.
-    val sheet = mapped == null || state.settings.card
+    // when the card was asked for. The editor overrides it so its blur-free preview still
+    // reflects the saved card setting instead of always drawing the no-blur fallback.
+    val sheet = showSheet ?: (mapped == null || state.settings.card)
     // Whole screen blurs everything behind the panel. Every other method keeps the screen sharp
     // and blurs only inside the glass, which is what the panel really looks like.
     val screen = if (wholeScreen && level > 0) {

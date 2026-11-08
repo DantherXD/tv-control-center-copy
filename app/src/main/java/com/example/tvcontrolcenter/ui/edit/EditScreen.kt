@@ -751,6 +751,7 @@ private fun EditBody(
                             selected = selected,
                             interactive = false,
                             onActivate = { selected = it },
+                            showSheet = settings.card,
                         )
                     }
                 }
