@@ -218,9 +218,10 @@ enum class FrostStyle {
 }
 
 /**
- * Background of the app's own pages: the home page and the editor. All of them are painted on
- * the device into one image, so they cost a single draw per frame and nothing else. The panel
- * over other apps blurs the real screen instead and ignores this.
+ * Background of the app's own pages: the home page and the editor. Most styles are painted on
+ * the device into one image, so they cost a single draw per frame. Acrylic paints one image too,
+ * then pans it slowly instead of repainting. The panel over other apps blurs the real screen
+ * instead and ignores this.
  */
 enum class Wallpaper {
     /** Flat saturated squares, the look the app started with. */
@@ -237,6 +238,8 @@ enum class Wallpaper {
     NEBULA,
     /** Quiet technical grid. */
     GRID,
+    /** Soft acrylic colour wash that drifts slowly behind the app's pages. */
+    ACRYLIC,
     /** One dark tone, the quietest choice. */
     PLAIN,
 }
@@ -259,6 +262,8 @@ data class PanelSettings(
     val blurBehind: Boolean = true,
     val blurLevel: Int = 3,
     val blurMethod: BlurMethod = BlurMethod.AUTO,
+    /** Show the live blur sample on the Blur page. Editor only; the panel ignores it. */
+    val blurPreview: Boolean = true,
     val frost: FrostStyle = FrostStyle.SMOKE,
     /** Background of the app's own pages (home page and editor). */
     val wallpaper: Wallpaper = Wallpaper.BOXES,

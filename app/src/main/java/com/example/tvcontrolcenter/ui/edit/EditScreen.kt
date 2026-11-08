@@ -5,12 +5,16 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -27,13 +32,19 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -43,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tvcontrolcenter.R
@@ -80,6 +92,8 @@ import com.example.tvcontrolcenter.ui.app.AppScreenBackground
 import com.example.tvcontrolcenter.ui.app.AppSettingGroup
 import com.example.tvcontrolcenter.ui.app.AppSettingRow
 import com.example.tvcontrolcenter.ui.app.AppSlotCard
+import com.example.tvcontrolcenter.ui.background.PreviewWallpaper
+import com.example.tvcontrolcenter.ui.background.blurPreviewSample
 import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
@@ -102,6 +116,8 @@ import com.example.tvcontrolcenter.ui.theme.AppPalette
 import com.example.tvcontrolcenter.ui.theme.AppType
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import com.example.tvcontrolcenter.ui.theme.ProvideUiScale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 /**
@@ -212,7 +228,7 @@ private fun EditBody(
                 } else false
             },
     ) {
-        AppScreenBackground(Modifier.fillMaxSize())
+        AppScreenBackground(settings.wallpaper, Modifier.fillMaxSize())
         Row(
             Modifier
                 .fillMaxSize()
@@ -716,6 +732,18 @@ private fun EditBody(
                                         it.copy(blurMethod = methods[Math.floorMod(at + d, methods.size)].first)
                                     }
                                 }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_blur_preview),
+                                    value = onOff(settings.blurPreview),
+                                ) { vm.updateSettings { it.copy(blurPreview = !it.blurPreview) } }
+                            }
+                            if (settings.blurPreview) {
+                                Spacer(Modifier.height(10.dp))
+                                BlurPreview(
+                                    level = settings.effectiveBlur,
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                                )
+                                AppNote(stringResource(R.string.blur_preview_note))
                             }
                             Spacer(Modifier.height(AppDimens.groupGap))
                             AppSettingGroup(title = stringResource(R.string.group_capture)) {
@@ -787,6 +815,74 @@ private fun EditBody(
     }
 }
 
+@Composable
+private fun BlurPreview(level: Int, modifier: Modifier = Modifier) {
+    val sample by produceState<PreviewWallpaper?>(null, level) {
+        value = withContext(Dispatchers.Default) { blurPreviewSample(640, 180, level) }
+    }
+    val shape = RoundedCornerShape(AppDimens.cardRadius)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .aspectRatio(3.6f)
+            .clip(shape)
+            .background(AppPalette.surface)
+            .border(1.dp, AppPalette.outline, shape),
+    ) {
+        val current = sample
+        if (current != null) {
+            Canvas(Modifier.fillMaxSize()) {
+                val dst = IntSize(
+                    size.width.roundToInt().coerceAtLeast(1),
+                    size.height.roundToInt().coerceAtLeast(1),
+                )
+                drawImage(current.sharp, dstSize = dst, filterQuality = FilterQuality.Low)
+                current.blurred?.let { blurred ->
+                    clipRect(left = size.width / 2f) {
+                        drawImage(blurred, dstSize = dst, filterQuality = FilterQuality.Low)
+                    }
+                }
+                drawLine(
+                    color = Color.White.copy(alpha = 0.32f),
+                    start = Offset(size.width / 2f, 0f),
+                    end = Offset(size.width / 2f, size.height),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
+            Row(Modifier.fillMaxSize()) {
+                BlurPreviewTag(
+                    text = stringResource(R.string.blur_preview_sharp),
+                    modifier = Modifier.weight(1f),
+                )
+                BlurPreviewTag(
+                    text = stringResource(
+                        if (level > 0) R.string.blur_preview_blurred else R.string.blur_off,
+                    ),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BlurPreviewTag(text: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier.fillMaxHeight().padding(10.dp),
+        contentAlignment = Alignment.TopStart,
+    ) {
+        BasicText(
+            text,
+            Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.Black.copy(alpha = 0.55f))
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            style = AppType.badge.copy(color = Color.White),
+            maxLines = 1,
+        )
+    }
+}
+
 private fun wallpaperLabel(style: Wallpaper): Int = when (style) {
     Wallpaper.BOXES -> R.string.wall_boxes
     Wallpaper.AURORA -> R.string.wall_aurora
@@ -795,6 +891,7 @@ private fun wallpaperLabel(style: Wallpaper): Int = when (style) {
     Wallpaper.WAVES -> R.string.wall_waves
     Wallpaper.NEBULA -> R.string.wall_nebula
     Wallpaper.GRID -> R.string.wall_grid
+    Wallpaper.ACRYLIC -> R.string.wall_acrylic
     Wallpaper.PLAIN -> R.string.wall_plain
 }
 

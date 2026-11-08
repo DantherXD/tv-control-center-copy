@@ -32,6 +32,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.Capability
 import com.example.tvcontrolcenter.system.openCapabilitySettings
@@ -65,6 +66,7 @@ fun DemoScreen(
     onNavigate: (AppDestination) -> Unit,
 ) {
     val context = LocalContext.current
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     val openRequester = remember { FocusRequester() }
     val setup = rememberSetupState()
     val ready = listOf(setup.accessibility, setup.overlay, setup.media).count { it }
@@ -75,7 +77,11 @@ fun DemoScreen(
     }
 
     Box(Modifier.fillMaxSize()) {
-        AppScreenBackground(Modifier.fillMaxSize())
+        AppScreenBackground(
+            wallpaper = state.settings.wallpaper,
+            modifier = Modifier.fillMaxSize(),
+            animated = !panelVisible,
+        )
 
         // Fits the screen but ignores the user's panel size: the home page is not the panel.
         ProvideUiScale(1f) {

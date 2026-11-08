@@ -74,6 +74,10 @@
     <string name="blur_strong">Strong</string>
     <string name="blur_max">Max</string>
     <string name="edit_blur_method">Blur method</string>
+    <string name="edit_blur_preview">Live blur preview</string>
+    <string name="blur_preview_sharp">Sharp</string>
+    <string name="blur_preview_blurred">Blurred</string>
+    <string name="blur_preview_note">A sample at the current strength. The real panel blurs the app behind it.</string>
     <string name="method_auto">Auto</string>
     <string name="method_screenshot">Screenshot</string>
     <string name="method_window">Whole screen</string>
@@ -89,6 +93,7 @@
     <string name="wall_waves">Waves</string>
     <string name="wall_nebula">Nebula</string>
     <string name="wall_grid">Grid</string>
+    <string name="wall_acrylic">Acrylic gradient</string>
     <string name="wall_plain">Charcoal</string>
     <string name="edit_frost">Glass style</string>
     <string name="frost_smoke">Smoke</string>

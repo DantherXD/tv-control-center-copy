@@ -7,13 +7,25 @@ import android.graphics.Paint
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.Typeface
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntSize
 import com.example.tvcontrolcenter.domain.model.BlurLevels
 import com.example.tvcontrolcenter.domain.model.Wallpaper
@@ -32,10 +44,23 @@ private const val PREVIEW_WIDTH = 480f
  * Background of the app's own pages, in the style picked in the editor.
  *
  * Every style is painted with plain gradients and shapes into one bitmap, so a frame costs a
- * single image draw and nothing moves. Nothing here needs a picture file or the network.
+ * single image draw. Acrylic pans that bitmap a little each frame; nothing else moves. Nothing
+ * here needs a picture file or the network.
+ *
+ * [animated] is false while the panel covers Home, so an off-screen acrylic wallpaper does not
+ * keep invalidating its draw.
  */
 @Composable
-fun AppWallpaper(style: Wallpaper, modifier: Modifier = Modifier) {
+fun AppWallpaper(style: Wallpaper, modifier: Modifier = Modifier, animated: Boolean = true) {
+    if (style == Wallpaper.ACRYLIC && animated) {
+        AnimatedAcrylicWallpaper(modifier)
+    } else {
+        StaticWallpaper(style, modifier)
+    }
+}
+
+@Composable
+private fun StaticWallpaper(style: Wallpaper, modifier: Modifier) {
     Box(
         modifier.drawWithCache {
             val (w, h) = targetSize(size.width, size.height, MAX_WIDTH)
@@ -52,6 +77,55 @@ fun AppWallpaper(style: Wallpaper, modifier: Modifier = Modifier) {
 }
 
 /**
+ * Acrylic is one soft painted image, blown up a little and panned very slowly. The bitmap is
+ * built once; a frame is one scaled image draw. The pan never exposes an edge because the image
+ * is larger than the page on both axes.
+ */
+@Composable
+private fun AnimatedAcrylicWallpaper(modifier: Modifier) {
+    val transition = rememberInfiniteTransition(label = "acrylic")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 26_000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "acrylicPhase",
+    )
+    Box(modifier.fillMaxSize().clipToBounds()) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                // The image is painted once. Moving and scaling the layer changes no pixels, so
+                // a frame only updates the GPU transform.
+                .graphicsLayer {
+                    val grow = 0.16f
+                    scaleX = 1f + grow
+                    scaleY = 1f + grow
+                    transformOrigin = TransformOrigin(0f, 0f)
+                    translationX = -size.width * grow * phase
+                    translationY = -size.height * grow * (0.3f + 0.4f * phase)
+                }
+                .drawWithCache {
+                    val (w, h) = targetSize(size.width, size.height, MAX_WIDTH)
+                    val image = paintWallpaper(Wallpaper.ACRYLIC, w, h).asImageBitmap()
+                    onDrawBehind {
+                        drawImage(
+                            image,
+                            dstSize = IntSize(
+                                size.width.roundToInt().coerceAtLeast(1),
+                                size.height.roundToInt().coerceAtLeast(1),
+                            ),
+                            filterQuality = FilterQuality.Low,
+                        )
+                    }
+                },
+        )
+    }
+}
+
+/**
  * The wallpaper for the live preview: the screen as it is, and the blurred copy the glass
  * samples. The panel normally keeps the screen sharp around the controls and blurs only inside
  * the glass, so the preview needs both to look like the real thing.
@@ -63,12 +137,26 @@ internal fun previewWallpaper(style: Wallpaper, width: Int, height: Int, level: 
     val (w, h) = targetSize(width.toFloat(), height.toFloat(), PREVIEW_WIDTH)
     val painted = paintWallpaper(style, w, h)
     // Not recycled: [sharp] wraps these pixels.
-    val sharp = painted.asImageBitmap()
-    if (level <= 0) return PreviewWallpaper(sharp, null)
+    return PreviewWallpaper(painted.asImageBitmap(), blurredCopy(painted, w, h, level))
+}
+
+/**
+ * The Blur page's sample: fine lines, rings and text make the difference between sharp and
+ * blurred obvious at every strength, which a smooth wallpaper would hide.
+ */
+internal fun blurPreviewSample(width: Int, height: Int, level: Int): PreviewWallpaper {
+    val (w, h) = targetSize(width.toFloat(), height.toFloat(), PREVIEW_WIDTH)
+    val painted = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    paintBlurSample(Canvas(painted), w.toFloat(), h.toFloat())
+    return PreviewWallpaper(painted.asImageBitmap(), blurredCopy(painted, w, h, level))
+}
+
+private fun blurredCopy(painted: Bitmap, w: Int, h: Int, level: Int): ImageBitmap? {
+    if (level <= 0) return null
     val pixels = IntArray(w * h)
     painted.getPixels(pixels, 0, w, 0, 0, w, h)
     boxBlur(pixels, w, h, BlurLevels.boxRadius(level))
-    return PreviewWallpaper(sharp, Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888).asImageBitmap())
+    return Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888).asImageBitmap()
 }
 
 private fun targetSize(width: Float, height: Float, max: Float): Pair<Int, Int> {
@@ -92,6 +180,7 @@ internal fun paintWallpaper(style: Wallpaper, width: Int, height: Int): Bitmap {
         Wallpaper.WAVES -> paintWaves(canvas, w, h)
         Wallpaper.NEBULA -> paintNebula(canvas, w, h)
         Wallpaper.GRID -> paintGrid(canvas, w, h)
+        Wallpaper.ACRYLIC -> paintAcrylic(canvas, w, h)
         Wallpaper.PLAIN -> paintPlain(canvas, w, h)
     }
     return bitmap
@@ -272,6 +361,106 @@ private fun paintGrid(canvas: Canvas, w: Float, h: Float) {
         canvas.drawRoundRect(RectF(left, top, left + side, top + side), cell * 0.12f, cell * 0.12f, fill)
     }
     canvas.vignette(0x26000000)
+}
+
+// -- Acrylic: a soft sheet of colour under a slow diagonal sheen. --
+
+private fun paintAcrylic(canvas: Canvas, w: Float, h: Float) {
+    canvas.verticalGradient(intArrayOf(0xFF080D16.toInt(), 0xFF111A2B.toInt(), 0xFF0A1220.toInt()), w, h)
+    canvas.blob(w * 0.10f, h * 0.20f, h * 1.00f, 0xFF2F6FED.toInt(), 170, w, h)
+    canvas.blob(w * 0.86f, h * 0.22f, h * 0.92f, 0xFF20C7C0.toInt(), 150, w, h)
+    canvas.blob(w * 0.66f, h * 0.95f, h * 1.05f, 0xFF8B5CF6.toInt(), 160, w, h)
+    canvas.blob(w * 0.30f, h * 0.80f, h * 0.75f, 0xFFF472B6.toInt(), 75, w, h)
+    val sheen = Paint().apply {
+        shader = LinearGradient(
+            -w * 0.20f,
+            0f,
+            w * 1.15f,
+            h,
+            intArrayOf(0x00FFFFFF, 0x1FFFFFFF, 0x00FFFFFF),
+            floatArrayOf(0f, 0.5f, 1f),
+            Shader.TileMode.CLAMP,
+        )
+    }
+    canvas.drawRect(0f, 0f, w, h, sheen)
+    val streak = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0x12FFFFFF
+        strokeWidth = h * 0.10f
+    }
+    canvas.drawLine(w * 0.04f, h * 1.08f, w * 0.92f, -h * 0.08f, streak)
+    canvas.vignette(0x33000000)
+}
+
+// -- Blur sample: hard edges and small type, so every blur step is easy to see. --
+
+private fun paintBlurSample(canvas: Canvas, w: Float, h: Float) {
+    canvas.verticalGradient(intArrayOf(0xFF0B1526.toInt(), 0xFF1B2944.toInt(), 0xFF101B31.toInt()), w, h)
+    canvas.blob(w * 0.15f, h * 0.20f, h * 0.85f, 0xFF22D3EE.toInt(), 140, w, h)
+    canvas.blob(w * 0.80f, h * 0.35f, h * 0.90f, 0xFF8B5CF6.toInt(), 150, w, h)
+    canvas.blob(w * 0.55f, h * 1.05f, h * 0.85f, 0xFFF472B6.toInt(), 105, w, h)
+
+    // Hard blocks on the left, rings on the right: sharp and soft edges side by side.
+    val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+    val block = h * 0.22f
+    fill.color = 0xE6FFFFFF.toInt()
+    canvas.drawRoundRect(
+        RectF(w * 0.04f, h * 0.18f, w * 0.20f, h * 0.18f + block),
+        h * 0.035f,
+        h * 0.035f,
+        fill,
+    )
+    fill.color = 0xCCFFD166.toInt()
+    canvas.drawRoundRect(
+        RectF(w * 0.22f, h * 0.18f, w * 0.27f, h * 0.18f + block),
+        h * 0.025f,
+        h * 0.025f,
+        fill,
+    )
+    fill.color = 0xCC5EEAD4.toInt()
+    canvas.drawRoundRect(
+        RectF(w * 0.29f, h * 0.18f, w * 0.34f, h * 0.18f + block),
+        h * 0.025f,
+        h * 0.025f,
+        fill,
+    )
+    val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = 0xCCFFFFFF.toInt()
+        strokeWidth = h * 0.014f
+    }
+    canvas.drawCircle(w * 0.79f, h * 0.45f, h * 0.17f, ring)
+    canvas.drawCircle(w * 0.79f, h * 0.45f, h * 0.10f, ring)
+
+    // Fine vertical rules and dots disappear first as the blur grows.
+    val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0x88FFFFFF.toInt()
+        strokeWidth = (h * 0.004f).coerceAtLeast(1f)
+    }
+    var x = w * 0.38f
+    while (x < w * 0.66f) {
+        canvas.drawLine(x, h * 0.16f, x, h * 0.58f, line)
+        x += w * 0.012f
+    }
+    val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xD9FFFFFF.toInt() }
+    var dx = w * 0.38f
+    while (dx < w * 0.96f) {
+        canvas.drawCircle(dx, h * 0.72f, h * 0.012f, dot)
+        dx += w * 0.022f
+    }
+
+    val title = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFFFFFFF.toInt()
+        textSize = h * 0.22f
+        typeface = Typeface.DEFAULT_BOLD
+    }
+    canvas.drawText("Aa 24", w * 0.04f, h * 0.86f, title)
+    val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xE6FFFFFF.toInt()
+        textSize = h * 0.13f
+        typeface = Typeface.DEFAULT_BOLD
+    }
+    canvas.drawText("BLUR", w * 0.62f, h * 0.86f, label)
+    canvas.vignette(0x1F000000)
 }
 
 // -- Plain: one dark tone, the quietest choice. --

@@ -73,6 +73,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.tvcontrolcenter.R
+import com.example.tvcontrolcenter.domain.model.Wallpaper
+import com.example.tvcontrolcenter.ui.background.AppWallpaper
 import com.example.tvcontrolcenter.ui.theme.AppDimens
 import com.example.tvcontrolcenter.ui.theme.AppMotion
 import com.example.tvcontrolcenter.ui.theme.AppPalette
@@ -99,10 +101,30 @@ enum class AppDestination(val label: Int, val icon: ImageVector) {
     val isHome: Boolean get() = this == Home
 }
 
-/** A flat, full-screen backdrop. Solid colour avoids banding on low-end TV panels. */
+/**
+ * The app's background: the chosen wallpaper under a left-heavy scrim. The scrim is strongest
+ * behind the rail and the settings column, so white text keeps its contrast on every style.
+ */
 @Composable
-fun AppScreenBackground(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize().background(AppPalette.background))
+fun AppScreenBackground(
+    wallpaper: Wallpaper,
+    modifier: Modifier = Modifier,
+    animated: Boolean = true,
+) {
+    Box(modifier.fillMaxSize()) {
+        AppWallpaper(wallpaper, Modifier.fillMaxSize(), animated)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        0f to Color.Black.copy(alpha = 0.70f),
+                        0.55f to Color.Black.copy(alpha = 0.55f),
+                        1f to Color.Black.copy(alpha = 0.40f),
+                    ),
+                ),
+        )
+    }
 }
 
 @Composable
