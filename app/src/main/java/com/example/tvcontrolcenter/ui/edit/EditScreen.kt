@@ -629,23 +629,27 @@ private fun EditBody(
                             // The slot the next app press fills; 0 is the first.
                             var slot by remember { mutableStateOf(0) }
                             AppSettingGroup(title = stringResource(R.string.group_slots)) {
-                                Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                ) {
-                                    AppSlots.forEachIndexed { index, _ ->
-                                        val name = appLabelOf(settings.appSlots.getOrNull(index))
-                                            ?: stringResource(R.string.edit_app_empty)
-                                        AppSlotCard(
-                                            index = index + 1,
-                                            label = name,
-                                            selected = slot == index,
-                                            onClick = { slot = index },
-                                            modifier = Modifier.weight(1f),
-                                            requester = if (index == 0) pageFirst else null,
-                                        )
+                                AppSlots.chunked(2).forEachIndexed { rowIndex, row ->
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
+                                        row.forEachIndexed { offset, _ ->
+                                            val index = rowIndex * 2 + offset
+                                            val name = appLabelOf(settings.appSlots.getOrNull(index))
+                                                ?: stringResource(R.string.edit_app_empty)
+                                            AppSlotCard(
+                                                index = index + 1,
+                                                label = name,
+                                                selected = slot == index,
+                                                onClick = { slot = index },
+                                                modifier = Modifier.weight(1f),
+                                                requester = if (index == 0) pageFirst else null,
+                                            )
+                                        }
+                                        repeat(2 - row.size) { Spacer(Modifier.weight(1f)) }
                                     }
                                 }
                                 AppActionRow(
