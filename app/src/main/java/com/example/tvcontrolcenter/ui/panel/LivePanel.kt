@@ -1,6 +1,14 @@
 package com.example.tvcontrolcenter.ui.panel
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -12,11 +20,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
@@ -24,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.example.tvcontrolcenter.domain.model.BlurMethod
 import com.example.tvcontrolcenter.domain.model.Placed
 import com.example.tvcontrolcenter.domain.model.TileId
+import com.example.tvcontrolcenter.domain.model.Wallpaper
 import com.example.tvcontrolcenter.ui.background.PreviewWallpaper
 import com.example.tvcontrolcenter.ui.background.previewWallpaper
 import com.example.tvcontrolcenter.ui.glass.Backdrop
@@ -36,16 +48,19 @@ import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /**
- * A small picture of the panel, over a blurred screen, for the home page and the editor.
+ * A small picture of the panel, over a blurred screen, for the editor preview.
  *
  * It is the same [PanelContent] the real panel draws, with the same glass: the wallpaper stands
  * in for the screen, its blurred copy for the screenshot, and the scrim, the sheet and the
  * per-tile crops follow the same rules as the host. Because all of it is rebuilt whenever the
  * wallpaper, the blur strength, the method or the size changes, every setting shows up here at
- * once — including what "Whole screen" changes.
+ * once — including what "Whole screen" changes. Acrylic wallpaper drifts here as well.
  */
 @Composable
 internal fun LivePanel(
@@ -76,8 +91,8 @@ internal fun LivePanel(
         if (level <= 0 || blurred == null) null else Backdrop(blurred, previewSize.width, previewSize.height)
     }
     // Same rule as the panel: a sheet only when the glass has no blurred screen to show, or
-    // when the card was asked for. The editor overrides it so its blur-free preview still
-    // reflects the saved card setting instead of always drawing the no-blur fallback.
+    // when the card was asked for. The editor overrides it so its preview still reflects the
+    // saved card setting instead of always drawing the no-blur fallback.
     val sheet = showSheet ?: (mapped == null || state.settings.card)
     // Whole screen blurs everything behind the panel. Every other method keeps the screen sharp
     // and blurs only inside the glass, which is what the panel really looks like.
@@ -87,58 +102,103 @@ internal fun LivePanel(
         wallpaper?.sharp
     }
     val density = LocalDensity.current
+    val scrim = if (level > 0) 0.22f else 0.32f
+    val acrylicPhase = if (state.settings.wallpaper == Wallpaper.ACRYLIC) {
+        val transition = rememberInfiniteTransition(label = "acrylicPreview")
+        transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 2f * PI.toFloat(),
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 42_000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "acrylicPhase",
+        )
+    } else {
+        null
+    }
+    // Read the animation inside graphicsLayer, not here: a frame then updates the layer transform
+    // without recomposing the panel or repainting the wallpaper.
+    val motion = if (acrylicPhase != null) {
+        Modifier.graphicsLayer {
+            val phase = acrylicPhase.value
+            val grow = 0.20f
+            scaleX = 1f + grow
+            scaleY = 1f + grow
+            transformOrigin = TransformOrigin(0.5f, 0.5f)
+            translationX = sin(phase) * size.width * 0.06f
+            translationY = cos(phase) * size.height * 0.05f
+        }
+    } else {
+        Modifier
+    }
     Box(
         modifier
             .clip(RoundedCornerShape(PanelDimens.sheetRadius))
-            .onSizeChanged { previewSize = it }
-            .drawBehind {
-                val image = screen ?: return@drawBehind
-                drawImage(
-                    image,
-                    dstSize = IntSize(size.width.roundToInt().coerceAtLeast(1), size.height.roundToInt().coerceAtLeast(1)),
-                    filterQuality = FilterQuality.Medium,
-                )
-                // The panel dims the screen behind it; without the same scrim the preview reads
-                // brighter and flatter than the real thing.
-                drawRect(Color.Black.copy(alpha = if (level > 0) 0.22f else 0.32f))
-            }
-            .padding(PanelDimens.sheetPadding),
+            .onSizeChanged { previewSize = it },
     ) {
-        CompositionLocalProvider(
-            // The preview must draw the real glass. The editor page around it is lite, and that
-            // local would otherwise reach these controls, whose lite path skips the backdrop.
-            LocalLiteGlass provides false,
-            LocalFrostStyle provides state.settings.frost,
-            LocalInvertFocus provides state.settings.invertFocus,
-            LocalOverBlur provides (mapped != null),
-            LocalEdgeWidth provides state.settings.edgeWidth.dp,
-            LocalIconStyle provides state.settings.iconStyle,
-            LocalIconPack provides state.settings.iconPack,
-            LocalPhosphorWeight provides state.settings.phosphorWeight,
-            LocalBluetoothIcon provides state.settings.bluetoothIcon,
-            LocalMenuIcon provides state.settings.menuIcon,
-        ) {
-            ProvideTextScale(state.settings.textScale) {
-                PanelContent(
-                    grid = grid,
-                    pinned = pinned,
-                    state = state,
-                    requesters = requesters,
-                    interactive = interactive,
-                    trapEdges = false,
-                    selected = selected,
-                    appear = { _ -> { 1f } },
-                    onFocused = {},
-                    onActivate = onActivate,
-                    actions = TileActions(),
-                    // Whole screen: the blurred picture is the background and the controls are
-                    // plain glass on it. Otherwise each control shows its own piece of it.
-                    backdrop = if (wholeScreen || level <= 0) null else mapped,
-                    origin = with(density) {
-                        Offset(PanelDimens.sheetPadding.toPx(), PanelDimens.sheetPadding.toPx())
+        Box(Modifier.matchParentSize().clipToBounds()) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .then(motion)
+                    .drawWithCache {
+                        val image = screen
+                        onDrawBehind {
+                            image?.let {
+                                drawImage(
+                                    it,
+                                    dstSize = IntSize(
+                                        size.width.roundToInt().coerceAtLeast(1),
+                                        size.height.roundToInt().coerceAtLeast(1),
+                                    ),
+                                    filterQuality = FilterQuality.Medium,
+                                )
+                            }
+                            // The panel dims the screen behind it; without the same scrim the
+                            // preview reads brighter and flatter than the real thing.
+                            drawRect(Color.Black.copy(alpha = scrim))
+                        }
                     },
-                    sheet = sheet,
-                )
+            )
+        }
+        Box(Modifier.fillMaxWidth().padding(PanelDimens.sheetPadding)) {
+            CompositionLocalProvider(
+                // The preview must draw the real glass. The editor page around it is lite, and that
+                // local would otherwise reach these controls, whose lite path skips the backdrop.
+                LocalLiteGlass provides false,
+                LocalFrostStyle provides state.settings.frost,
+                LocalInvertFocus provides state.settings.invertFocus,
+                LocalOverBlur provides (mapped != null),
+                LocalEdgeWidth provides state.settings.edgeWidth.dp,
+                LocalIconStyle provides state.settings.iconStyle,
+                LocalIconPack provides state.settings.iconPack,
+                LocalPhosphorWeight provides state.settings.phosphorWeight,
+                LocalBluetoothIcon provides state.settings.bluetoothIcon,
+                LocalMenuIcon provides state.settings.menuIcon,
+            ) {
+                ProvideTextScale(state.settings.textScale) {
+                    PanelContent(
+                        grid = grid,
+                        pinned = pinned,
+                        state = state,
+                        requesters = requesters,
+                        interactive = interactive,
+                        trapEdges = false,
+                        selected = selected,
+                        appear = { _ -> { 1f } },
+                        onFocused = {},
+                        onActivate = onActivate,
+                        actions = TileActions(),
+                        // Whole screen: the blurred picture is the background and the controls are
+                        // plain glass on it. Otherwise each control shows its own piece of it.
+                        backdrop = if (wholeScreen || level <= 0) null else mapped,
+                        origin = with(density) {
+                            Offset(PanelDimens.sheetPadding.toPx(), PanelDimens.sheetPadding.toPx())
+                        },
+                        sheet = sheet,
+                    )
+                }
             }
         }
     }

@@ -3,7 +3,7 @@
 An Android TV app that recreates the look and behaviour of the tvOS Control Center panel with an original
 "Liquid Glass" material: Kotlin, Jetpack Compose for TV, MVVM + StateFlow, Hilt, single activity, D-pad only.
 No Apple logos, SF Symbols or fonts. Icons are Material icons, or optional Phosphor icons (MIT, `PHOSPHOR_LICENSE.txt`), the font is Inter (SIL OFL, see `FONT_LICENSE_Inter.txt`),
-and the wallpaper (colour blocks by default, with an animated acrylic gradient available) is drawn in code.
+and the editor-preview wallpapers (Waves, Nebula and a drifting Acrylic gradient 2) are drawn in code.
 
 > **Status.** This source was written without an Android SDK in the authoring environment, so it has **not been compiled
 > or run**. Expect a few small compile fixes on first build, and no performance numbers exist yet. Sizes, spacing and
@@ -73,7 +73,7 @@ buttons on the left set its size, move it earlier or later, or hide it. "Add con
 * **Blur strength** Off, Light, Medium, Strong, Max.
 * **Blur method** Auto, Screenshot (blur only inside the glass) or Whole screen (the whole picture behind the panel is blurred from a screenshot, with no box around the controls; the system window blur is the fallback).
   A line under it says whether screenshot blur is ready.
-* **Live blur preview** shows a sharp and blurred half of a test image on the Blur page, so each strength can be compared without opening the panel. Turn it off to skip the extra blur work; the setting is remembered.
+* **Live blur preview** applies the saved blur strength to the preview on the right, so each strength can be judged against the real glass. Turn it off for a sharp preview; the setting is remembered.
 * **Glass style** Smoke (dark), Milky (light), Clear, Lens (the blur behind the controls is dimmed, so the edge and sheen read
   instead of the bright screen), then Ocean, Amethyst, Ember, Forest, Rose and Midnight.
 * **Panel size** scales the panel (80 % to 175 %) on top of the automatic screen fit. "Reset layout" restores the default.
@@ -95,9 +95,9 @@ Glass is now plain drawing, so it costs almost nothing per frame:
   On Android 12+ with cross-window blur it also asks the system to blur the whole screen behind it (blur method **Whole screen**, or Auto when no screenshot is possible).
 * **Performance.** Focus and open progress are read in draw/graphicsLayer lambdas, so moving focus recomposes nothing. Open/close
   animates per grid row (not per tile) on stiff springs and settles in about a quarter of a second. The panel animates nothing while idle.
-* **Wallpaper.** Nine painted styles for the app's own pages (Boxes, Aurora, Sunset, Forest, Waves, Nebula, Grid, Acrylic gradient, Charcoal),
-  drawn once per screen size and scaled up by the GPU. Acrylic gradient pans that one cached painting slowly; every other style is still.
-  A left-heavy scrim keeps white text readable on all of them. The panel over other apps keeps blurring the real screen and ignores the wallpaper.
+* **Wallpaper.** Three painted backdrops behind the panel in the editor preview: Waves, Nebula and Acrylic gradient 2, drawn once at preview
+  size. Acrylic gradient 2 layers soft colour ribbons under a broad sheen and drifts that cached painting on an off-centre orbit; Waves and
+  Nebula are still. The app pages keep a flat background, and the panel over other apps keeps blurring the real screen and ignores the wallpaper.
 
 ## Permissions and what degrades
 

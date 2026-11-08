@@ -86,7 +86,7 @@ Error output looks like `e: file:///home/runner/work/.../MusicPage.kt:85:50 Unre
   `LocalEdgeWidth`, `LocalFrostStyle`.
 - `ui/glass/Backdrop.kt`: blurred-screen holder plus its `LumaMap` brightness grid, which is what
   the ink contrast reads.
-- `ui/background/AppWallpaper.kt`: the eight painted wallpapers for the app's own pages.
+- `ui/background/AppWallpaper.kt`: the three painted preview backdrops (Waves, Nebula, Acrylic gradient 2).
 - `ui/panel/ControlCenterViewModel.kt`: UI state, tile activation, long press, caffeine,
   Wi-Fi/Bluetooth/input helpers, music page request.
 - `ui/panel/ControlCenterPanel.kt`: host; open/close animation, backdrop + scrim, `page`,
@@ -173,7 +173,7 @@ Rose, Midnight). Blur method AUTO (screenshot, window blur fallback), SCREENSHOT
 glass), WINDOW (whole screen). Patient capture (1.2 s, 3 tries) for video. Whole-screen mode draws the
 blurred screenshot full screen with no box. Fallback when nothing can blur: frosted sheet/card.
 Customisable: blur strength, frost style, edge width, invert focus, card on/off, text scale, panel
-size, position, header gap, icon style and pack, music style, wallpapers (eight, app pages only),
+size, position, header gap, icon style and pack, music style, preview wallpapers (three, editor only),
 profile photo/colour, automatic icon colour, icon pack and its six weights, the Bluetooth icon
 (Bluetooth mark or headphones), the Menu button icon (bars or the older switches) and the
 active-control highlight. The glass edge is set from none to

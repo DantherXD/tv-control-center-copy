@@ -116,7 +116,7 @@ class PreferencesLayoutRepository @Inject constructor(
             blurMethod = BlurMethod.entries.firstOrNull { it.name == prefs.getString(KEY_BLUR_METHOD, null) } ?: BlurMethod.AUTO,
             blurPreview = prefs.getBoolean(KEY_BLUR_PREVIEW, true),
             frost = FrostStyle.entries.firstOrNull { it.name == prefs.getString(KEY_FROST, null) } ?: FrostStyle.SMOKE,
-            wallpaper = Wallpaper.entries.firstOrNull { it.name == prefs.getString(KEY_WALLPAPER, null) } ?: Wallpaper.BOXES,
+            wallpaper = Wallpaper.entries.firstOrNull { it.name == prefs.getString(KEY_WALLPAPER, null) } ?: Wallpaper.WAVES,
             topOffset = prefs.getInt(KEY_TOP, 48),
             headerGap = prefs.getInt(KEY_GAP, 8),
             invertFocus = prefs.getBoolean(KEY_INVERT, true),

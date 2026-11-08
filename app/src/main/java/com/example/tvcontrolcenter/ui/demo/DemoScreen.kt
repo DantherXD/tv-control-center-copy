@@ -1,6 +1,7 @@
 package com.example.tvcontrolcenter.ui.demo
 
 import android.provider.Settings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,7 +33,6 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.Capability
 import com.example.tvcontrolcenter.system.openCapabilitySettings
@@ -40,7 +40,6 @@ import com.example.tvcontrolcenter.system.overlay.OverlayService
 import com.example.tvcontrolcenter.system.trigger.ControlCenterAccessibilityService
 import com.example.tvcontrolcenter.ui.app.AppDestination
 import com.example.tvcontrolcenter.ui.app.AppNavigationRail
-import com.example.tvcontrolcenter.ui.app.AppScreenBackground
 import com.example.tvcontrolcenter.ui.app.AppSettingGroup
 import com.example.tvcontrolcenter.ui.app.AppStatusRow
 import com.example.tvcontrolcenter.ui.app.AppWideButton
@@ -66,7 +65,6 @@ fun DemoScreen(
     onNavigate: (AppDestination) -> Unit,
 ) {
     val context = LocalContext.current
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
     val openRequester = remember { FocusRequester() }
     val setup = rememberSetupState()
     val ready = listOf(setup.accessibility, setup.overlay, setup.media).count { it }
@@ -76,13 +74,7 @@ fun DemoScreen(
         stringResource(R.string.home_setup_summary, ready, 3)
     }
 
-    Box(Modifier.fillMaxSize()) {
-        AppScreenBackground(
-            wallpaper = state.settings.wallpaper,
-            modifier = Modifier.fillMaxSize(),
-            animated = !panelVisible,
-        )
-
+    Box(Modifier.fillMaxSize().background(AppPalette.background)) {
         // Fits the screen but ignores the user's panel size: the home page is not the panel.
         ProvideUiScale(1f) {
             Row(

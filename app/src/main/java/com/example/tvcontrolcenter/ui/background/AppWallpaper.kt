@@ -1,134 +1,28 @@
 package com.example.tvcontrolcenter.ui.background
 
 import android.graphics.Bitmap
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RadialGradient
-import android.graphics.RectF
 import android.graphics.Shader
-import android.graphics.Typeface
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.IntSize
 import com.example.tvcontrolcenter.domain.model.BlurLevels
 import com.example.tvcontrolcenter.domain.model.Wallpaper
 import com.example.tvcontrolcenter.system.backdrop.boxBlur
-import kotlin.math.ceil
-import kotlin.math.roundToInt
 import kotlin.random.Random
-
-/** Painted once into a bitmap this wide; bigger screens scale it up. Cheap after the first frame. */
-private const val MAX_WIDTH = 1280f
 
 /** The preview is small, and the blur runs on a small copy just like the real screenshot blur. */
 private const val PREVIEW_WIDTH = 480f
 
 /**
- * Background of the app's own pages, in the style picked in the editor.
- *
- * Every style is painted with plain gradients and shapes into one bitmap, so a frame costs a
- * single image draw. Acrylic pans that bitmap a little each frame; nothing else moves. Nothing
- * here needs a picture file or the network.
- *
- * [animated] is false while the panel covers Home, so an off-screen acrylic wallpaper does not
- * keep invalidating its draw.
- */
-@Composable
-fun AppWallpaper(style: Wallpaper, modifier: Modifier = Modifier, animated: Boolean = true) {
-    if (style == Wallpaper.ACRYLIC && animated) {
-        AnimatedAcrylicWallpaper(modifier)
-    } else {
-        StaticWallpaper(style, modifier)
-    }
-}
-
-@Composable
-private fun StaticWallpaper(style: Wallpaper, modifier: Modifier) {
-    Box(
-        modifier.drawWithCache {
-            val (w, h) = targetSize(size.width, size.height, MAX_WIDTH)
-            val image = paintWallpaper(style, w, h).asImageBitmap()
-            onDrawBehind {
-                drawImage(
-                    image,
-                    dstSize = IntSize(size.width.roundToInt().coerceAtLeast(1), size.height.roundToInt().coerceAtLeast(1)),
-                    filterQuality = FilterQuality.Low,
-                )
-            }
-        },
-    )
-}
-
-/**
- * Acrylic is one soft painted image, blown up a little and panned very slowly. The bitmap is
- * built once; a frame is one scaled image draw. The pan never exposes an edge because the image
- * is larger than the page on both axes.
- */
-@Composable
-private fun AnimatedAcrylicWallpaper(modifier: Modifier) {
-    val transition = rememberInfiniteTransition(label = "acrylic")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 26_000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "acrylicPhase",
-    )
-    Box(modifier.fillMaxSize().clipToBounds()) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                // The image is painted once. Moving and scaling the layer changes no pixels, so
-                // a frame only updates the GPU transform.
-                .graphicsLayer {
-                    val grow = 0.16f
-                    scaleX = 1f + grow
-                    scaleY = 1f + grow
-                    transformOrigin = TransformOrigin(0f, 0f)
-                    translationX = -size.width * grow * phase
-                    translationY = -size.height * grow * (0.3f + 0.4f * phase)
-                }
-                .drawWithCache {
-                    val (w, h) = targetSize(size.width, size.height, MAX_WIDTH)
-                    val image = paintWallpaper(Wallpaper.ACRYLIC, w, h).asImageBitmap()
-                    onDrawBehind {
-                        drawImage(
-                            image,
-                            dstSize = IntSize(
-                                size.width.roundToInt().coerceAtLeast(1),
-                                size.height.roundToInt().coerceAtLeast(1),
-                            ),
-                            filterQuality = FilterQuality.Low,
-                        )
-                    }
-                },
-        )
-    }
-}
-
-/**
- * The wallpaper for the live preview: the screen as it is, and the blurred copy the glass
- * samples. The panel normally keeps the screen sharp around the controls and blurs only inside
- * the glass, so the preview needs both to look like the real thing.
+ * The wallpaper behind the panel in the editor preview. Each style is painted with plain gradients
+ * and shapes into one bitmap, so a frame costs a single image draw. Acrylic is painted once too;
+ * the preview moves that image instead of repainting it. Nothing here needs a picture file or the
+ * network.
  */
 internal class PreviewWallpaper(val sharp: ImageBitmap, val blurred: ImageBitmap?)
 
@@ -137,17 +31,6 @@ internal fun previewWallpaper(style: Wallpaper, width: Int, height: Int, level: 
     val (w, h) = targetSize(width.toFloat(), height.toFloat(), PREVIEW_WIDTH)
     val painted = paintWallpaper(style, w, h)
     // Not recycled: [sharp] wraps these pixels.
-    return PreviewWallpaper(painted.asImageBitmap(), blurredCopy(painted, w, h, level))
-}
-
-/**
- * The Blur page's sample: fine lines, rings and text make the difference between sharp and
- * blurred obvious at every strength, which a smooth wallpaper would hide.
- */
-internal fun blurPreviewSample(width: Int, height: Int, level: Int): PreviewWallpaper {
-    val (w, h) = targetSize(width.toFloat(), height.toFloat(), PREVIEW_WIDTH)
-    val painted = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-    paintBlurSample(Canvas(painted), w.toFloat(), h.toFloat())
     return PreviewWallpaper(painted.asImageBitmap(), blurredCopy(painted, w, h, level))
 }
 
@@ -173,15 +56,9 @@ internal fun paintWallpaper(style: Wallpaper, width: Int, height: Int): Bitmap {
     val w = width.toFloat()
     val h = height.toFloat()
     when (style) {
-        Wallpaper.BOXES -> paintBoxes(canvas, w, h)
-        Wallpaper.AURORA -> paintAurora(canvas, w, h)
-        Wallpaper.SUNSET -> paintSunset(canvas, w, h)
-        Wallpaper.FOREST -> paintForest(canvas, w, h)
         Wallpaper.WAVES -> paintWaves(canvas, w, h)
         Wallpaper.NEBULA -> paintNebula(canvas, w, h)
-        Wallpaper.GRID -> paintGrid(canvas, w, h)
         Wallpaper.ACRYLIC -> paintAcrylic(canvas, w, h)
-        Wallpaper.PLAIN -> paintPlain(canvas, w, h)
     }
     return bitmap
 }
@@ -206,94 +83,6 @@ private fun Canvas.blob(cx: Float, cy: Float, radius: Float, color: Int, alpha: 
 /** Darkens the corners so white text stays readable on top. */
 private fun Canvas.vignette(color: Int) {
     drawColor(color)
-}
-
-// -- Boxes: the original look. Flat saturated squares, in a fixed order so it never changes. --
-
-private val BoxPalette = intArrayOf(
-    0xFF33B5E5.toInt(), 0xFFAA66CC.toInt(), 0xFF99CC00.toInt(), 0xFFFFBB33.toInt(),
-    0xFFFF4444.toInt(), 0xFF0099CC.toInt(), 0xFF9933CC.toInt(), 0xFF669900.toInt(),
-    0xFFFF8800.toInt(), 0xFFE91E63.toInt(), 0xFF009688.toInt(), 0xFF3F51B5.toInt(),
-    0xFFFFEB3B.toInt(), 0xFF00BCD4.toInt(),
-)
-
-private class Block(val x: Float, val y: Float, val side: Float, val color: Int, val corner: Float)
-
-private fun paintBoxes(canvas: Canvas, w: Float, h: Float) {
-    canvas.drawColor(0xFF10141A.toInt())
-    val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    for (b in layoutBlocks(w, h)) {
-        fill.color = b.color
-        canvas.drawRoundRect(RectF(b.x, b.y, b.x + b.side, b.y + b.side), b.corner, b.corner, fill)
-    }
-    canvas.drawColor(0x4D000000)
-}
-
-/** Fills the screen with squares of 1, 2 or 3 cells, in a fixed random order. */
-private fun layoutBlocks(width: Float, height: Float): List<Block> {
-    val cell = height / 8f
-    val cols = ceil(width / cell).toInt() + 1
-    val rows = 9
-    val gap = cell * 0.05f
-    val taken = Array(rows) { BooleanArray(cols) }
-    val rnd = Random(4)
-    val corner = cell * 0.07f
-
-    fun fits(r: Int, c: Int, span: Int): Boolean {
-        if (r + span > rows || c + span > cols) return false
-        for (rr in r until r + span) for (cc in c until c + span) if (taken[rr][cc]) return false
-        return true
-    }
-
-    val blocks = ArrayList<Block>()
-    for (r in 0 until rows) for (c in 0 until cols) {
-        if (taken[r][c]) continue
-        var span = when (rnd.nextInt(10)) { 0 -> 3; 1, 2, 3 -> 2; else -> 1 }
-        while (span > 1 && !fits(r, c, span)) span--
-        for (rr in r until r + span) for (cc in c until c + span) taken[rr][cc] = true
-        blocks += Block(
-            x = c * cell + gap,
-            y = r * cell + gap,
-            side = span * cell - 2 * gap,
-            color = BoxPalette[rnd.nextInt(BoxPalette.size)],
-            corner = corner,
-        )
-    }
-    return blocks
-}
-
-// -- Aurora: deep night sky with teal and violet curtains. --
-
-private fun paintAurora(canvas: Canvas, w: Float, h: Float) {
-    canvas.verticalGradient(intArrayOf(0xFF05080F.toInt(), 0xFF0B1424.toInt(), 0xFF101B33.toInt()), w, h)
-    canvas.blob(w * 0.12f, h * 0.18f, h * 0.85f, 0xFF14B8A6.toInt(), 150, w, h)
-    canvas.blob(w * 0.72f, h * 0.10f, h * 0.95f, 0xFF6366F1.toInt(), 155, w, h)
-    canvas.blob(w * 0.55f, h * 1.05f, h * 0.85f, 0xFFA855F7.toInt(), 130, w, h)
-    canvas.blob(w * 0.95f, h * 0.70f, h * 0.60f, 0xFF0EA5E9.toInt(), 90, w, h)
-    canvas.vignette(0x3D000000)
-}
-
-// -- Sunset: warm horizon under a purple evening. --
-
-private fun paintSunset(canvas: Canvas, w: Float, h: Float) {
-    canvas.verticalGradient(
-        intArrayOf(0xFF1A1026.toInt(), 0xFF4C1C43.toInt(), 0xFF9E3B4A.toInt(), 0xFFE4703C.toInt()),
-        w,
-        h,
-    )
-    canvas.blob(w * 0.28f, h * 1.02f, h * 0.75f, 0xFFFFD166.toInt(), 200, w, h)
-    canvas.blob(w * 0.85f, h * 0.30f, h * 0.65f, 0xFFF472B6.toInt(), 110, w, h)
-    canvas.vignette(0x33000000)
-}
-
-// -- Forest: dark green canopy with cool light between the trees. --
-
-private fun paintForest(canvas: Canvas, w: Float, h: Float) {
-    canvas.verticalGradient(intArrayOf(0xFF05130D.toInt(), 0xFF0B2419.toInt(), 0xFF123525.toInt()), w, h)
-    canvas.blob(w * 0.20f, h * 0.25f, h * 0.80f, 0xFF10B981.toInt(), 150, w, h)
-    canvas.blob(w * 0.80f, h * 0.20f, h * 0.70f, 0xFF34D399.toInt(), 110, w, h)
-    canvas.blob(w * 0.60f, h * 1.05f, h * 0.75f, 0xFF0E7490.toInt(), 130, w, h)
-    canvas.vignette(0x3D000000)
 }
 
 // -- Waves: rings rolling out of the bottom-right corner. --
@@ -332,139 +121,55 @@ private fun paintNebula(canvas: Canvas, w: Float, h: Float) {
     canvas.vignette(0x2E000000)
 }
 
-// -- Grid: quiet technical backdrop with a few accent squares. --
-
-private fun paintGrid(canvas: Canvas, w: Float, h: Float) {
-    canvas.verticalGradient(intArrayOf(0xFF0A0D13.toInt(), 0xFF121821.toInt()), w, h)
-    val cell = h / 8f
-    val line = Paint().apply {
-        color = (0x16 shl 24) or 0xFFFFFF
-        strokeWidth = (h * 0.0022f).coerceAtLeast(1f)
-    }
-    var x = 0f
-    while (x <= w) {
-        canvas.drawLine(x, 0f, x, h, line)
-        x += cell
-    }
-    var y = 0f
-    while (y <= h) {
-        canvas.drawLine(0f, y, w, y, line)
-        y += cell
-    }
-    val accents = intArrayOf(0xFF3B82F6.toInt(), 0xFFEC4899.toInt(), 0xFF22D3EE.toInt())
-    val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    accents.forEachIndexed { i, color ->
-        fill.color = (0x2E shl 24) or (color and 0x00FFFFFF)
-        val side = cell * (1f + i)
-        val left = w * 0.08f + i * w * 0.26f
-        val top = h * 0.16f + i * h * 0.24f
-        canvas.drawRoundRect(RectF(left, top, left + side, top + side), cell * 0.12f, cell * 0.12f, fill)
-    }
-    canvas.vignette(0x26000000)
-}
-
-// -- Acrylic: a soft sheet of colour under a slow diagonal sheen. --
+// -- Acrylic gradient 2: poured colour ribbons under a broad, soft sheen. --
 
 private fun paintAcrylic(canvas: Canvas, w: Float, h: Float) {
-    canvas.verticalGradient(intArrayOf(0xFF080D16.toInt(), 0xFF111A2B.toInt(), 0xFF0A1220.toInt()), w, h)
-    canvas.blob(w * 0.10f, h * 0.20f, h * 1.00f, 0xFF2F6FED.toInt(), 170, w, h)
-    canvas.blob(w * 0.86f, h * 0.22f, h * 0.92f, 0xFF20C7C0.toInt(), 150, w, h)
-    canvas.blob(w * 0.66f, h * 0.95f, h * 1.05f, 0xFF8B5CF6.toInt(), 160, w, h)
-    canvas.blob(w * 0.30f, h * 0.80f, h * 0.75f, 0xFFF472B6.toInt(), 75, w, h)
+    canvas.verticalGradient(intArrayOf(0xFF070B16.toInt(), 0xFF0B1628.toInt(), 0xFF070A13.toInt()), w, h)
+
+    // Broad overlapping fields, deliberately asymmetric so the drift reads as a slow pour.
+    canvas.blob(w * -0.02f, h * 0.10f, h * 1.05f, 0xFF2F6BFF.toInt(), 190, w, h)
+    canvas.blob(w * 0.92f, h * 0.16f, h * 0.92f, 0xFF0ED3C4.toInt(), 150, w, h)
+    canvas.blob(w * 0.74f, h * 0.98f, h * 1.08f, 0xFF7C4DFF.toInt(), 180, w, h)
+    canvas.blob(w * 0.32f, h * 0.92f, h * 0.82f, 0xFFF43F7E.toInt(), 78, w, h)
+    canvas.blob(w * 0.56f, h * 0.48f, h * 0.62f, 0xFF20C7B0.toInt(), 60, w, h)
+
+    // Two translucent ribbons, softened at the edges like poured resin.
+    val ribbon = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        maskFilter = BlurMaskFilter(h * 0.08f, BlurMaskFilter.Blur.NORMAL)
+    }
+    ribbon.color = 0x66A5F3FC
+    ribbon.strokeWidth = h * 0.15f
+    canvas.drawPath(
+        Path().apply {
+            moveTo(-w * 0.12f, h * 0.74f)
+            cubicTo(w * 0.20f, h * 0.35f, w * 0.58f, h * 1.02f, w * 1.10f, h * 0.40f)
+        },
+        ribbon,
+    )
+    ribbon.color = 0x40FFFFFF
+    ribbon.strokeWidth = h * 0.055f
+    canvas.drawPath(
+        Path().apply {
+            moveTo(-w * 0.08f, h * 0.30f)
+            cubicTo(w * 0.30f, h * 0.10f, w * 0.62f, h * 0.55f, w * 1.08f, h * 0.18f)
+        },
+        ribbon,
+    )
+
+    // A broad diagonal sheen; the preview's drift moves it with the painting.
     val sheen = Paint().apply {
         shader = LinearGradient(
-            -w * 0.20f,
+            -w * 0.30f,
             0f,
-            w * 1.15f,
+            w * 1.20f,
             h,
-            intArrayOf(0x00FFFFFF, 0x1FFFFFFF, 0x00FFFFFF),
-            floatArrayOf(0f, 0.5f, 1f),
+            intArrayOf(0x00FFFFFF, 0x18FFFFFF, 0x00FFFFFF),
+            floatArrayOf(0f, 0.48f, 1f),
             Shader.TileMode.CLAMP,
         )
     }
     canvas.drawRect(0f, 0f, w, h, sheen)
-    val streak = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x12FFFFFF
-        strokeWidth = h * 0.10f
-    }
-    canvas.drawLine(w * 0.04f, h * 1.08f, w * 0.92f, -h * 0.08f, streak)
-    canvas.vignette(0x33000000)
-}
-
-// -- Blur sample: hard edges and small type, so every blur step is easy to see. --
-
-private fun paintBlurSample(canvas: Canvas, w: Float, h: Float) {
-    canvas.verticalGradient(intArrayOf(0xFF0B1526.toInt(), 0xFF1B2944.toInt(), 0xFF101B31.toInt()), w, h)
-    canvas.blob(w * 0.15f, h * 0.20f, h * 0.85f, 0xFF22D3EE.toInt(), 140, w, h)
-    canvas.blob(w * 0.80f, h * 0.35f, h * 0.90f, 0xFF8B5CF6.toInt(), 150, w, h)
-    canvas.blob(w * 0.55f, h * 1.05f, h * 0.85f, 0xFFF472B6.toInt(), 105, w, h)
-
-    // Hard blocks on the left, rings on the right: sharp and soft edges side by side.
-    val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    val block = h * 0.22f
-    fill.color = 0xE6FFFFFF.toInt()
-    canvas.drawRoundRect(
-        RectF(w * 0.04f, h * 0.18f, w * 0.20f, h * 0.18f + block),
-        h * 0.035f,
-        h * 0.035f,
-        fill,
-    )
-    fill.color = 0xCCFFD166.toInt()
-    canvas.drawRoundRect(
-        RectF(w * 0.22f, h * 0.18f, w * 0.27f, h * 0.18f + block),
-        h * 0.025f,
-        h * 0.025f,
-        fill,
-    )
-    fill.color = 0xCC5EEAD4.toInt()
-    canvas.drawRoundRect(
-        RectF(w * 0.29f, h * 0.18f, w * 0.34f, h * 0.18f + block),
-        h * 0.025f,
-        h * 0.025f,
-        fill,
-    )
-    val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        color = 0xCCFFFFFF.toInt()
-        strokeWidth = h * 0.014f
-    }
-    canvas.drawCircle(w * 0.79f, h * 0.45f, h * 0.17f, ring)
-    canvas.drawCircle(w * 0.79f, h * 0.45f, h * 0.10f, ring)
-
-    // Fine vertical rules and dots disappear first as the blur grows.
-    val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x88FFFFFF.toInt()
-        strokeWidth = (h * 0.004f).coerceAtLeast(1f)
-    }
-    var x = w * 0.38f
-    while (x < w * 0.66f) {
-        canvas.drawLine(x, h * 0.16f, x, h * 0.58f, line)
-        x += w * 0.012f
-    }
-    val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xD9FFFFFF.toInt() }
-    var dx = w * 0.38f
-    while (dx < w * 0.96f) {
-        canvas.drawCircle(dx, h * 0.72f, h * 0.012f, dot)
-        dx += w * 0.022f
-    }
-
-    val title = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFFFFFFF.toInt()
-        textSize = h * 0.22f
-        typeface = Typeface.DEFAULT_BOLD
-    }
-    canvas.drawText("Aa 24", w * 0.04f, h * 0.86f, title)
-    val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xE6FFFFFF.toInt()
-        textSize = h * 0.13f
-        typeface = Typeface.DEFAULT_BOLD
-    }
-    canvas.drawText("BLUR", w * 0.62f, h * 0.86f, label)
-    canvas.vignette(0x1F000000)
-}
-
-// -- Plain: one dark tone, the quietest choice. --
-
-private fun paintPlain(canvas: Canvas, w: Float, h: Float) {
-    canvas.verticalGradient(intArrayOf(0xFF0D1117.toInt(), 0xFF151B23.toInt()), w, h)
+    canvas.vignette(0x26000000)
 }
