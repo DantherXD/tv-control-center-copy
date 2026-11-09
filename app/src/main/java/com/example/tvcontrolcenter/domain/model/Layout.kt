@@ -275,6 +275,11 @@ data class PanelSettings(
     val card: Boolean = false,
     /** Size of the text in the panel, on top of the panel size (see [TextScaleSteps]). */
     val textScale: Float = 1f,
+    /**
+     * Text size inside the notifications window, on top of [textScale] (see
+     * [NotificationTextSteps]). Two lines of a notification in the panel's own size read large.
+     */
+    val notificationTextScale: Float = 0.8f,
     /** Thickness of the glass edge line in dp (see [EdgeWidthSteps]); 0 draws none. */
     val edgeWidth: Float = 1.5f,
     /** Size of the round top-bar buttons in dp (see [TopSizeSteps]). */
@@ -333,6 +338,8 @@ val TopSizeSteps: List<Int> = listOf(32, 36, 40, 44, 48)
 val VolumeStepSteps: List<Int> = listOf(1, 2, 3, 5, 10)
 
 val TextScaleSteps: List<Float> = listOf(0.8f, 0.9f, 1f, 1.15f, 1.3f)
+
+val NotificationTextSteps: List<Float> = listOf(0.6f, 0.7f, 0.8f, 0.9f, 1f)
 
 val HeaderGapSteps: List<Int> = listOf(0, 4, 8, 12, 18, 24)
 

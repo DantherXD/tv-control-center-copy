@@ -32,6 +32,7 @@ import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
+import com.example.tvcontrolcenter.ui.theme.LocalNoticeScale
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
 import kotlinx.coroutines.Dispatchers
@@ -117,6 +118,7 @@ internal fun LivePanel(
             LocalPhosphorWeight provides state.settings.phosphorWeight,
             LocalBluetoothIcon provides state.settings.bluetoothIcon,
             LocalMenuIcon provides state.settings.menuIcon,
+            LocalNoticeScale provides state.settings.notificationTextScale,
         ) {
             ProvideTextScale(state.settings.textScale) {
                 PanelContent(

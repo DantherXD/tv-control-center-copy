@@ -160,6 +160,7 @@
     <string name="edit_bluetooth_icon_note">The Bluetooth mark is the standard icon; Headphones is the audio-device one this control used to wear.</string>
     <string name="bt_icon_standard">Bluetooth mark</string>
     <string name="bt_icon_headphones">Headphones</string>
+    <string name="edit_notice_size">Notification text size</string>
     <string name="sub_notif_none">No notifications</string>
     <string name="sub_notif_access">Turn on notification access</string>
     <string name="sub_notif_clear_all">Clear all</string>

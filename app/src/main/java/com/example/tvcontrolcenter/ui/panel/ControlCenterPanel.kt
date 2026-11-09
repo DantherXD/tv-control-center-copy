@@ -50,6 +50,7 @@ import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
 import com.example.tvcontrolcenter.ui.glass.LocalSoundCues
+import com.example.tvcontrolcenter.ui.theme.LocalNoticeScale
 import com.example.tvcontrolcenter.ui.theme.Motion
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
@@ -429,6 +430,7 @@ private fun HostBody(
                 LocalBluetoothIcon provides state.settings.bluetoothIcon,
                 LocalMenuIcon provides state.settings.menuIcon,
                 LocalSoundCues provides state.settings.soundCues,
+                LocalNoticeScale provides state.settings.notificationTextScale,
             ) {
                 ProvideTextScale(state.settings.textScale) {
                 PanelContent(

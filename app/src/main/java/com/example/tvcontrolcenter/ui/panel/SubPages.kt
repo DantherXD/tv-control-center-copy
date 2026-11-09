@@ -58,6 +58,8 @@ import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalTileInk
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
+import com.example.tvcontrolcenter.ui.theme.LocalNoticeScale
+import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 
 /** What the Wi-Fi, Bluetooth and Input pages can ask of the system. */
@@ -479,20 +481,24 @@ private fun SheetNoticeRow(
             ),
     ) {
         CompositionLocalProvider(LocalTileInk provides if (dark) GlassTokens.inkDark else Color.White) {
-            Column(
-                Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 6.dp),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+            // The list has its own text size: two lines at the panel's normal size read large, and
+            // the row keeps its height, so only the text follows this and not the window.
+            ProvideTextScale(LocalNoticeScale.current) {
+                Column(
+                    Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 6.dp),
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    Detail(appLabel, Modifier.widthIn(max = 108.dp))
-                    Label(title, Modifier.weight(1f), maxLines = 1)
-                }
-                if (!text.isNullOrBlank()) {
-                    Detail(text, Modifier.fillMaxWidth().padding(top = 2.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Detail(appLabel, Modifier.widthIn(max = 108.dp))
+                        Label(title, Modifier.weight(1f), maxLines = 1)
+                    }
+                    if (!text.isNullOrBlank()) {
+                        Detail(text, Modifier.fillMaxWidth().padding(top = 2.dp))
+                    }
                 }
             }
         }

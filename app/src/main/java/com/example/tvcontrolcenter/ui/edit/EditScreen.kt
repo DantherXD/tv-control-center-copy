@@ -58,6 +58,7 @@ import com.example.tvcontrolcenter.domain.model.IconPack
 import com.example.tvcontrolcenter.domain.model.IconStyle
 import com.example.tvcontrolcenter.domain.model.MenuIcon
 import com.example.tvcontrolcenter.domain.model.MusicStyle
+import com.example.tvcontrolcenter.domain.model.NotificationTextSteps
 import com.example.tvcontrolcenter.domain.model.PhosphorWeight
 import com.example.tvcontrolcenter.domain.model.TextScaleSteps
 import com.example.tvcontrolcenter.domain.model.TileId
@@ -377,6 +378,19 @@ private fun EditBody(
                                     value = "${(settings.textScale * 100).roundToInt()}%",
                                 ) { d ->
                                     vm.updateSettings { it.copy(textScale = TextScaleSteps.step(it.textScale, d)) }
+                                }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_notice_size),
+                                    value = "${(settings.notificationTextScale * 100).roundToInt()}%",
+                                ) { d ->
+                                    vm.updateSettings {
+                                        it.copy(
+                                            notificationTextScale = NotificationTextSteps.step(
+                                                it.notificationTextScale,
+                                                d,
+                                            ),
+                                        )
+                                    }
                                 }
                             }
                             Spacer(Modifier.height(AppDimens.groupGap))

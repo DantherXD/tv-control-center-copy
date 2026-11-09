@@ -2,6 +2,7 @@ package com.example.tvcontrolcenter.ui.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -36,6 +37,12 @@ fun ProvideUiScale(userScale: Float, neededHeight: Dp = 0.dp, content: @Composab
         content = content,
     )
 }
+
+/**
+ * Text scale for the notifications list only (see [ProvideTextScale]). Provided by the panel and
+ * the editor's preview, so the list can read smaller than the controls around it.
+ */
+val LocalNoticeScale = compositionLocalOf { 0.8f }
 
 /**
  * Makes text [scale] times bigger or smaller inside [content] without moving any dp sizes.
