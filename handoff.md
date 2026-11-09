@@ -202,7 +202,10 @@ through `onNotificationsPageRequested`, which asks for `Capability.NOTIFICATION_
 same grant Now Playing needs, so no new permission, service or manifest entry. `PanelNotificationsSource` (`system/notif/`)
 is filled by `MediaListenerService`'s `onNotificationPosted` / `onNotificationRemoved` / `onListenerConnected`, keeps the
 `StatusBarNotification` by key, and cleans the list the shade would show badly: our own notifications, media
-(`CATEGORY_TRANSPORT`, which Now Playing covers) and group summaries that have children. A press calls `open(key)`, which
+(`CATEGORY_TRANSPORT`, which Now Playing covers), group summaries that have children, ongoing notices from a
+foreground service or the system (`isServiceNotice`: `FLAG_ONGOING_EVENT` plus `FLAG_FOREGROUND_SERVICE` or
+`FLAG_SYSTEM` — Dolby, the Wi-Fi monitor, the serial-console warning) and anything that can neither be cleared nor
+opened. A press calls `open(key)`, which
 fires the notification's own `contentIntent` **while the panel's window is still up** — on Android 12+ a background app
 cannot launch another app's activity — and the event loop dismisses the panel straight after; `clearAll()` calls
 `cancelNotification` on each clearable one through the connected service. Rows are `SubRow.Notice` at

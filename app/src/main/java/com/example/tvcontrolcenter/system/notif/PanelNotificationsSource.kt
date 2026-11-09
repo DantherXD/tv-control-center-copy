@@ -100,12 +100,28 @@ class PanelNotificationsSource @Inject constructor(
             .filter { it.packageName != context.packageName }
             // Now Playing already has a page; its notification would be a second copy of it.
             .filterNot { it.notification.category == Notification.CATEGORY_TRANSPORT }
+            // "DolbyAudioService", "Wifi monitor service", "Serial console enabled": background
+            // services telling us they are running. There is nothing to do with any of them.
+            .filterNot { it.isServiceNotice() }
+            // Nothing to open and nothing to clear: a row that could only ever do nothing.
+            .filter { it.isClearable || it.notification.contentIntent != null }
             .filterNot { sbn ->
                 sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0 &&
                     (sbn.notification.group?.let { it in groups } == true)
             }
             .sortedByDescending { it.postTime }
             .map { it.toRow() }
+    }
+
+    /**
+     * An ongoing notice from a foreground service or from the system. These describe a service that
+     * is running rather than something that happened, so the list leaves them out.
+     */
+    private fun StatusBarNotification.isServiceNotice(): Boolean {
+        val flags = notification.flags
+        if (flags and Notification.FLAG_ONGOING_EVENT == 0) return false
+        return (flags and Notification.FLAG_FOREGROUND_SERVICE != 0) ||
+            (flags and Notification.FLAG_SYSTEM != 0)
     }
 
     private fun StatusBarNotification.toRow(): AppNotification {

@@ -445,6 +445,8 @@ private fun SheetNoticeRow(
     val r = requester ?: remember { FocusRequester() }
     // Same press rule as the other rows: only an OK that started on this row counts.
     val pressed = remember { booleanArrayOf(false) }
+    // A notification titled with the app's own name would otherwise say it twice on one line.
+    val showApp = appLabel != title
     Box(
         Modifier
             .fillMaxWidth()
@@ -467,7 +469,7 @@ private fun SheetNoticeRow(
             }
             .focusable(focusable)
             .semantics(mergeDescendants = true) {
-                contentDescription = listOfNotNull(appLabel, title, text).joinToString(", ")
+                contentDescription = listOfNotNull(appLabel.takeIf { showApp }, title, text).joinToString(", ")
                 role = Role.Button
                 onClick(label = title) { activate(); true }
             }
@@ -493,7 +495,7 @@ private fun SheetNoticeRow(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Detail(appLabel, Modifier.widthIn(max = 108.dp))
+                        if (showApp) Detail(appLabel, Modifier.widthIn(max = 108.dp))
                         Label(title, Modifier.weight(1f), maxLines = 1)
                     }
                     if (!text.isNullOrBlank()) {
