@@ -5,6 +5,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import com.example.tvcontrolcenter.domain.model.ActionResult
+import com.example.tvcontrolcenter.domain.model.AppNotification
 import com.example.tvcontrolcenter.domain.model.Capability
 import com.example.tvcontrolcenter.domain.model.NetworkKind
 import com.example.tvcontrolcenter.domain.model.NowPlaying
@@ -16,6 +17,7 @@ import com.example.tvcontrolcenter.domain.model.Wallpaper
 import com.example.tvcontrolcenter.fakes.FakeActions
 import com.example.tvcontrolcenter.fakes.FakeFocusMemory
 import com.example.tvcontrolcenter.fakes.FakeLayoutRepository
+import com.example.tvcontrolcenter.fakes.FakeNotifications
 import com.example.tvcontrolcenter.fakes.FakeNowPlaying
 import com.example.tvcontrolcenter.fakes.FakeSleepTimer
 import com.example.tvcontrolcenter.fakes.FakeStatusSource
@@ -42,11 +44,13 @@ class ControlCenterViewModelTest {
     private val status = FakeStatusSource()
     private val actions = FakeActions()
     private val nowPlaying = FakeNowPlaying()
+    private val notifications = FakeNotifications()
     private val timer = FakeSleepTimer()
     private val memory = FakeFocusMemory()
     private val layouts = FakeLayoutRepository()
 
-    private fun viewModel() = ControlCenterViewModel(status, actions, nowPlaying, timer, memory, layouts)
+    private fun viewModel() =
+        ControlCenterViewModel(status, actions, nowPlaying, notifications, timer, memory, layouts)
 
     @Before fun setUp() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
 
@@ -85,6 +89,42 @@ class ControlCenterViewModelTest {
         assertTrue(vm.onMusicPageRequested())
         vm.onPlayPause()
         assertEquals(listOf("toggle"), nowPlaying.calls)
+    }
+
+    @Test
+    fun `notifications page without listener access asks for it and stays closed`() = runTest {
+        notifications.access = false
+        val vm = viewModel()
+        vm.events.test {
+            assertFalse(vm.onNotificationsPageRequested())
+            assertEquals(PanelEvent.NeedsCapability(Capability.NOTIFICATION_LISTENER), awaitItem())
+        }
+    }
+
+    @Test
+    fun `notifications page opens and reads the shade with access`() = runTest {
+        val vm = viewModel()
+        assertTrue(vm.onNotificationsPageRequested())
+        assertEquals(listOf("refresh"), notifications.calls)
+    }
+
+    @Test
+    fun `opening a notification dismisses the panel`() = runTest {
+        val vm = viewModel()
+        vm.events.test {
+            vm.onNotificationOpened("n1")
+            assertEquals(PanelEvent.Dismiss, awaitItem())
+        }
+        assertEquals(listOf("open:n1"), notifications.calls)
+    }
+
+    @Test
+    fun `the shade and its grant reach the state`() = runTest {
+        notifications.state.value = listOf(AppNotification("n1", "pkg", "App", "Title"))
+        val vm = viewModel()
+        collecting(vm)
+        assertEquals(1, vm.uiState.value.notifications.size)
+        assertTrue(vm.uiState.value.notificationAccess)
     }
 
     @Test

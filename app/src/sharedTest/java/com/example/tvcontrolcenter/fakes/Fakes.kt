@@ -1,6 +1,7 @@
 package com.example.tvcontrolcenter.fakes
 
 import com.example.tvcontrolcenter.domain.model.ActionResult
+import com.example.tvcontrolcenter.domain.model.AppNotification
 import com.example.tvcontrolcenter.domain.model.NowPlaying
 import com.example.tvcontrolcenter.domain.model.PanelLayout
 import com.example.tvcontrolcenter.domain.model.PanelSettings
@@ -8,6 +9,7 @@ import com.example.tvcontrolcenter.domain.model.SystemStatus
 import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.repository.FocusMemory
 import com.example.tvcontrolcenter.domain.repository.LayoutRepository
+import com.example.tvcontrolcenter.domain.repository.NotificationSource
 import com.example.tvcontrolcenter.domain.repository.NowPlayingSource
 import com.example.tvcontrolcenter.domain.repository.SleepTimerRepository
 import com.example.tvcontrolcenter.domain.repository.SystemActions
@@ -65,6 +67,17 @@ class FakeNowPlaying(var access: Boolean = true) : NowPlayingSource {
     override fun togglePlayPause() { calls += "toggle" }
     override fun skipNext() { calls += "next" }
     override fun skipPrevious() { calls += "previous" }
+}
+
+class FakeNotifications(var access: Boolean = true) : NotificationSource {
+    val state = MutableStateFlow<List<AppNotification>>(emptyList())
+    override val notifications: StateFlow<List<AppNotification>> = state
+    val calls = mutableListOf<String>()
+    override fun hasAccess() = access
+    override fun refresh() { calls += "refresh" }
+    override fun open(key: String): Boolean { calls += "open:$key"; return true }
+    override fun dismiss(key: String) { calls += "dismiss:$key" }
+    override fun clearAll() { calls += "clear" }
 }
 
 class FakeSleepTimer : SleepTimerRepository {

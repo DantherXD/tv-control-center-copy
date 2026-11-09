@@ -197,6 +197,18 @@ style's glass (white stays until it drops under 3:1). The clock uses the same ru
 sub-window rows and the editor buttons are still plain white ink. Setting: `PanelSettings.autoInk`
 ("Automatic icon colour", on by default, off restores the old all-white look).
 
+**Notifications.** `PanelPage.NOTIFICATIONS` (in `isSub`, so it gets the sub-window machinery) opens from the bell tile
+through `onNotificationsPageRequested`, which asks for `Capability.NOTIFICATION_LISTENER` when the grant is missing — the
+same grant Now Playing needs, so no new permission, service or manifest entry. `PanelNotificationsSource` (`system/notif/`)
+is filled by `MediaListenerService`'s `onNotificationPosted` / `onNotificationRemoved` / `onListenerConnected`, keeps the
+`StatusBarNotification` by key, and cleans the list the shade would show badly: our own notifications, media
+(`CATEGORY_TRANSPORT`, which Now Playing covers) and group summaries that have children. A press calls `open(key)`, which
+fires the notification's own `contentIntent` **while the panel's window is still up** — on Android 12+ a background app
+cannot launch another app's activity — and the event loop dismisses the panel straight after; `clearAll()` calls
+`cancelNotification` on each clearable one through the connected service. Rows are `SubRow.Notice` at
+`PanelDimens.notificationRow` (56 dp), and the window may grow to `notificationsMaxHeight` (400 dp) rather than
+`subPageMaxHeight`.
+
 **Other.** Sleep Timer tile cycles the presets; Caffeine keeps the screen on (hidden by default);
 Screenshot tile captures through the accessibility service; overlay + accessibility trigger paths for
 opening the panel; demo/home page with a live preview.

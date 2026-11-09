@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.tvcontrolcenter.domain.model.ActionResult
 import com.example.tvcontrolcenter.domain.model.Capability
 import com.example.tvcontrolcenter.domain.model.NetworkKind
+import com.example.tvcontrolcenter.domain.model.AppNotification
 import com.example.tvcontrolcenter.domain.model.NowPlaying
 import com.example.tvcontrolcenter.domain.model.PanelEvent
 import com.example.tvcontrolcenter.domain.model.PanelLayout
@@ -17,6 +18,7 @@ import com.example.tvcontrolcenter.domain.model.TileState
 import com.example.tvcontrolcenter.domain.model.appSlot
 import com.example.tvcontrolcenter.domain.repository.FocusMemory
 import com.example.tvcontrolcenter.domain.repository.LayoutRepository
+import com.example.tvcontrolcenter.domain.repository.NotificationSource
 import com.example.tvcontrolcenter.domain.repository.NowPlayingSource
 import com.example.tvcontrolcenter.domain.repository.SleepTimerRepository
 import com.example.tvcontrolcenter.domain.repository.SystemActions
@@ -38,6 +40,10 @@ data class ControlCenterUiState(
     val tiles: Map<TileId, TileState> = emptyMap(),
     val status: SystemStatus = SystemStatus(),
     val nowPlaying: NowPlaying? = null,
+    /** What is in the shade right now, newest first. */
+    val notifications: List<AppNotification> = emptyList(),
+    /** Whether the notification listener is granted; without it the list cannot be read. */
+    val notificationAccess: Boolean = false,
     val volumePercent: Int = 0,
     val muted: Boolean = false,
     val timerMinutes: Int? = null,
@@ -55,6 +61,7 @@ class ControlCenterViewModel @Inject constructor(
     statusSource: SystemStatusSource,
     private val actions: SystemActions,
     private val nowPlayingSource: NowPlayingSource,
+    private val notificationSource: NotificationSource,
     private val sleepTimer: SleepTimerRepository,
     private val focusMemory: FocusMemory,
     private val layoutRepository: LayoutRepository,
@@ -103,17 +110,21 @@ class ControlCenterViewModel @Inject constructor(
         layoutRepository.layout,
         layoutRepository.settings,
         caffeine,
-    ) { base, layout, settings, awake ->
+        notificationSource.notifications,
+    ) { base, layout, settings, awake, notifications ->
         base.copy(
             tiles = base.tiles + (TileId.CAFFEINE to TileState(TileId.CAFFEINE, active = awake)),
             layout = layout,
             settings = settings,
+            notifications = notifications,
+            notificationAccess = notificationSource.hasAccess(),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ControlCenterUiState())
 
     /** Called each time the panel appears. */
     fun onOpened() {
         nowPlayingSource.refresh()
+        notificationSource.refresh()
         caffeine.value = actions.caffeineOn()
     }
 
@@ -202,6 +213,36 @@ class ControlCenterViewModel @Inject constructor(
         if (nowPlayingSource.hasAccess()) return true
         _events.tryEmit(PanelEvent.NeedsCapability(Capability.NOTIFICATION_LISTENER))
         return false
+    }
+
+    /**
+     * The Notifications control was pressed. True when the panel may open its list; without the
+     * listener grant it asks for it instead and the list stays closed.
+     */
+    fun onNotificationsPageRequested(): Boolean {
+        if (!notificationSource.hasAccess()) {
+            _events.tryEmit(PanelEvent.NeedsCapability(Capability.NOTIFICATION_LISTENER))
+            return false
+        }
+        // Read the shade as the list opens, so it starts from what is really there.
+        notificationSource.refresh()
+        return true
+    }
+
+    /**
+     * A notification was pressed: fire its own intent while the panel's window is still up, so the
+     * target app may come forward, then close the panel over it.
+     */
+    fun onNotificationOpened(key: String) {
+        if (notificationSource.open(key)) _events.tryEmit(PanelEvent.Dismiss)
+        else _events.tryEmit(PanelEvent.Unavailable(TileId.NOTIFICATIONS))
+    }
+
+    fun onClearNotifications() = notificationSource.clearAll()
+
+    /** The list's access row: the same grant the tile asks for. */
+    fun onOpenNotificationAccess() {
+        _events.tryEmit(PanelEvent.NeedsCapability(Capability.NOTIFICATION_LISTENER))
     }
 
     /**

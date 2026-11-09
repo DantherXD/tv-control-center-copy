@@ -8,6 +8,7 @@ import com.example.tvcontrolcenter.data.PreferencesLayoutRepository
 import com.example.tvcontrolcenter.data.SleepTimerRepositoryImpl
 import com.example.tvcontrolcenter.domain.repository.FocusMemory
 import com.example.tvcontrolcenter.domain.repository.LayoutRepository
+import com.example.tvcontrolcenter.domain.repository.NotificationSource
 import com.example.tvcontrolcenter.domain.repository.NowPlayingSource
 import com.example.tvcontrolcenter.domain.repository.SleepTimerRepository
 import com.example.tvcontrolcenter.domain.repository.SystemActions
@@ -15,6 +16,7 @@ import com.example.tvcontrolcenter.domain.repository.SystemStatusSource
 import com.example.tvcontrolcenter.system.actions.AndroidSystemActions
 import com.example.tvcontrolcenter.system.actions.AndroidSystemStatusSource
 import com.example.tvcontrolcenter.system.media.MediaSessionNowPlayingSource
+import com.example.tvcontrolcenter.system.notif.PanelNotificationsSource
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
 import dagger.Binds
 import dagger.Module
@@ -36,6 +38,7 @@ abstract class BindingsModule {
     @Binds abstract fun actions(impl: AndroidSystemActions): SystemActions
     @Binds abstract fun status(impl: AndroidSystemStatusSource): SystemStatusSource
     @Binds abstract fun nowPlaying(impl: MediaSessionNowPlayingSource): NowPlayingSource
+    @Binds abstract fun notifications(impl: PanelNotificationsSource): NotificationSource
     @Binds abstract fun focusMemory(impl: PreferencesFocusMemory): FocusMemory
     @Binds abstract fun layouts(impl: PreferencesLayoutRepository): LayoutRepository
 }

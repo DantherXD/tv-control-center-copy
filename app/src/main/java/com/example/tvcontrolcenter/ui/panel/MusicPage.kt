@@ -97,10 +97,10 @@ import androidx.compose.runtime.CompositionLocalProvider
  * bar: its button then opens this page instead of acting as a grid control.
  */
 internal enum class PanelPage {
-    GRID, MUSIC, WIFI, BLUETOOTH, INPUT;
+    GRID, MUSIC, WIFI, BLUETOOTH, INPUT, NOTIFICATIONS;
 
-    /** Wi-Fi, Bluetooth and Input open from a tile and take the grid's place. */
-    val isSub: Boolean get() = this == WIFI || this == BLUETOOTH || this == INPUT
+    /** Wi-Fi, Bluetooth, Input and Notifications open from a tile and take the grid's place. */
+    val isSub: Boolean get() = this != GRID && this != MUSIC
 }
 
 /** Focus handles for the three buttons on the music page. */

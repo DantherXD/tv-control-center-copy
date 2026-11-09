@@ -1,6 +1,7 @@
 package com.example.tvcontrolcenter.domain.repository
 
 import com.example.tvcontrolcenter.domain.model.ActionResult
+import com.example.tvcontrolcenter.domain.model.AppNotification
 import com.example.tvcontrolcenter.domain.model.LauncherApp
 import com.example.tvcontrolcenter.domain.model.NowPlaying
 import com.example.tvcontrolcenter.domain.model.PanelLayout
@@ -75,6 +76,20 @@ interface NowPlayingSource {
     fun togglePlayPause()
     fun skipNext()
     fun skipPrevious()
+}
+
+/**
+ * The notifications currently in the shade. Android only shows them to a notification listener,
+ * so [hasAccess] is that grant — the same one Now Playing needs.
+ */
+interface NotificationSource {
+    val notifications: StateFlow<List<AppNotification>>
+    fun hasAccess(): Boolean
+    fun refresh()
+    /** Fires the notification's own content intent. False when it has none or would not open. */
+    fun open(key: String): Boolean
+    fun dismiss(key: String)
+    fun clearAll()
 }
 
 interface SleepTimerRepository {

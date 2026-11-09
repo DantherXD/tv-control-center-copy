@@ -14,6 +14,7 @@ import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.fakes.FakeActions
 import com.example.tvcontrolcenter.fakes.FakeFocusMemory
 import com.example.tvcontrolcenter.fakes.FakeLayoutRepository
+import com.example.tvcontrolcenter.fakes.FakeNotifications
 import com.example.tvcontrolcenter.fakes.FakeNowPlaying
 import com.example.tvcontrolcenter.fakes.FakeSleepTimer
 import com.example.tvcontrolcenter.fakes.FakeStatusSource
@@ -34,7 +35,8 @@ class PanelFocusNavigationTest {
 
     private fun launch(visible: Boolean = true) {
         val vm = ControlCenterViewModel(
-            FakeStatusSource(), actions, FakeNowPlaying(), FakeSleepTimer(), memory, layouts,
+            FakeStatusSource(), actions, FakeNowPlaying(), FakeNotifications(), FakeSleepTimer(),
+            memory, layouts,
         )
         rule.setContent {
             ControlCenterTheme {

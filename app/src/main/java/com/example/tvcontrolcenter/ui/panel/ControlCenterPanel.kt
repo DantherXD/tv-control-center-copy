@@ -281,6 +281,9 @@ private fun HostBody(
             pairedBluetooth = viewModel::pairedBluetooth,
             inputs = viewModel::tvInputs,
             switchInput = viewModel::onSwitchInput,
+            openNotification = viewModel::onNotificationOpened,
+            clearNotifications = viewModel::onClearNotifications,
+            openNotificationAccess = viewModel::onOpenNotificationAccess,
         )
     }
     // A card on its way home hands focus back at once, so it lands on its control in one move
@@ -326,6 +329,10 @@ private fun HostBody(
     val onActivate: (TileId) -> Unit = { id ->
         when {
             id == TileId.INPUT -> openSub(PanelPage.INPUT, TileId.INPUT)
+            // The notifications list replaces the grid, like Input does; without the listener
+            // grant the ViewModel asks for it instead and the panel closes.
+            id == TileId.NOTIFICATIONS ->
+                if (viewModel.onNotificationsPageRequested()) openSub(PanelPage.NOTIFICATIONS, id) else Unit
             id == TileId.NOW_PLAYING && musicOnTop -> {
                 if (page == PanelPage.MUSIC) {
                     // The page is already open: from here the button leads into the app playing.

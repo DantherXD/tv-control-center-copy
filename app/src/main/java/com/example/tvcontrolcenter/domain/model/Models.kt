@@ -64,6 +64,18 @@ data class NowPlaying(
     val speed: Float = 1f,
 )
 
+/** One notification in the shade, as the panel needs it. Android types stay in the source. */
+data class AppNotification(
+    val key: String,
+    val packageName: String,
+    val appLabel: String,
+    val title: String,
+    val text: String? = null,
+    val time: Long = 0L,
+    /** Ongoing notifications cannot be dismissed. */
+    val clearable: Boolean = true,
+)
+
 /** Permissions or services that unlock a feature. The UI maps each to a settings screen. */
 enum class Capability { ACCESSIBILITY_SERVICE, NOTIFICATION_POLICY, NOTIFICATION_LISTENER, OVERLAY }
 

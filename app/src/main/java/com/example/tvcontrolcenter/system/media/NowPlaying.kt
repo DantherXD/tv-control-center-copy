@@ -8,9 +8,11 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationManagerCompat
 import com.example.tvcontrolcenter.domain.model.NowPlaying
 import com.example.tvcontrolcenter.domain.repository.NowPlayingSource
+import com.example.tvcontrolcenter.system.notif.PanelNotificationsSource
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -133,12 +135,34 @@ class MediaSessionNowPlayingSource @Inject constructor(
     override fun skipPrevious() { controller?.transportControls?.skipToPrevious() }
 }
 
-/** Exists so the user can grant notification-listener access, which unlocks media sessions. */
+/**
+ * Exists so the user can grant notification-listener access, which unlocks media sessions and
+ * the notifications page. The system binds it; everything it learns is handed to the sources.
+ */
 @AndroidEntryPoint
 class MediaListenerService : NotificationListenerService() {
     @Inject lateinit var source: MediaSessionNowPlayingSource
+    @Inject lateinit var notifications: PanelNotificationsSource
 
     override fun onListenerConnected() {
         source.refresh()
+        notifications.attach(this)
+    }
+
+    override fun onListenerDisconnected() {
+        notifications.detach(this)
+    }
+
+    override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        if (sbn != null) notifications.onPosted(sbn)
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
+        if (sbn != null) notifications.onRemoved(sbn)
+    }
+
+    override fun onDestroy() {
+        notifications.detach(this)
+        super.onDestroy()
     }
 }

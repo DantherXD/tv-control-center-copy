@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -70,6 +71,9 @@ internal class SubPageActions(
     val pairedBluetooth: () -> List<String>,
     val inputs: () -> List<TvInputItem>,
     val switchInput: (String) -> Unit,
+    val openNotification: (String) -> Unit,
+    val clearNotifications: () -> Unit,
+    val openNotificationAccess: () -> Unit,
 )
 
 /** One line of a small window: a value, or something OK can press. */
@@ -86,10 +90,22 @@ private sealed interface SubRow {
     data class Action(override val label: String, val activate: () -> Unit) : SubRow {
         override val height: Dp get() = ACTION_ROW
     }
+
+    /** A notification: the app above, then the notification's own title and a line of its text. */
+    data class Notice(
+        val appLabel: String,
+        val title: String,
+        val text: String?,
+        val activate: () -> Unit,
+    ) : SubRow {
+        override val label: String get() = title
+        override val height: Dp get() = NOTICE_ROW
+    }
 }
 
 private val INFO_ROW = 30.dp
 private val ACTION_ROW = 38.dp
+private val NOTICE_ROW = PanelDimens.notificationRow
 private val TITLE_ROW = 30.dp
 private val ROW_GAP = 6.dp
 private val WINDOW_PADDING = 10.dp
@@ -100,6 +116,7 @@ private val CHROME = TITLE_ROW + ROW_GAP + WINDOW_PADDING * 2
 internal fun subTileOf(page: PanelPage): TileId = when (page) {
     PanelPage.BLUETOOTH -> TileId.BLUETOOTH
     PanelPage.INPUT -> TileId.INPUT
+    PanelPage.NOTIFICATIONS -> TileId.NOTIFICATIONS
     else -> TileId.WIFI
 }
 
@@ -132,13 +149,17 @@ internal fun SubPageCard(
     val rows = when (page) {
         PanelPage.WIFI -> WifiRows(state, actions)
         PanelPage.BLUETOOTH -> BluetoothRows(state, paired, actions)
+        PanelPage.NOTIFICATIONS -> NotificationRows(state, actions)
         else -> InputRows(inputs, actions)
     }
     val rowsHeight = rows.fold(0.dp) { sum, row -> sum + row.height } +
         ROW_GAP * (rows.size - 1).coerceAtLeast(0)
-    // Tall enough for every row at once, up to a cap; past that the rows scroll.
-    val height = (CHROME + rowsHeight).coerceIn(PanelDimens.subPageHeight, PanelDimens.subPageMaxHeight)
-    val firstRow = rows.indexOfFirst { it is SubRow.Action }
+    // Tall enough for every row at once, up to a cap; past that the rows scroll. The notifications
+    // window is allowed to grow further than the others, since there is more of them than inputs.
+    val tallest = if (page == PanelPage.NOTIFICATIONS) PanelDimens.notificationsMaxHeight
+        else PanelDimens.subPageMaxHeight
+    val height = (CHROME + rowsHeight).coerceIn(PanelDimens.subPageHeight, tallest)
+    val firstRow = rows.indexOfFirst { it is SubRow.Action || it is SubRow.Notice }
     Column(
         modifier
             .windowMotion(motion, from, PanelDimens.gridWidth, height, closing, onClosed)
@@ -168,6 +189,14 @@ internal fun SubPageCard(
                     is SubRow.Action -> SheetRow(
                         label = row.label,
                         value = null,
+                        requester = if (index == firstRow) first else null,
+                        focusable = !closing,
+                        activate = if (closing) NoActivate else row.activate,
+                    )
+                    is SubRow.Notice -> SheetNoticeRow(
+                        appLabel = row.appLabel,
+                        title = row.title,
+                        text = row.text,
                         requester = if (index == firstRow) first else null,
                         focusable = !closing,
                         activate = if (closing) NoActivate else row.activate,
@@ -299,6 +328,37 @@ private fun InputRows(inputs: List<TvInputItem>, actions: SubPageActions): List<
         inputs.map { input -> SubRow.Action(input.label) { actions.switchInput(input.id) } }
     }
 
+/**
+ * One row per notification, newest first, then Clear all once something can actually be cleared.
+ * Without the listener grant the window still opens, with the one row that leads to the grant.
+ */
+@Composable
+private fun NotificationRows(state: ControlCenterUiState, actions: SubPageActions): List<SubRow> {
+    if (!state.notificationAccess) {
+        return listOf(
+            SubRow.Action(stringResource(R.string.sub_notif_access)) { actions.openNotificationAccess() },
+        )
+    }
+    if (state.notifications.isEmpty()) {
+        return listOf(SubRow.Info(stringResource(R.string.sub_notif_none), ""))
+    }
+    return buildList {
+        state.notifications.forEach { notice ->
+            add(
+                SubRow.Notice(
+                    appLabel = notice.appLabel,
+                    title = notice.title,
+                    text = notice.text,
+                    activate = { actions.openNotification(notice.key) },
+                ),
+            )
+        }
+        if (state.notifications.any { it.clearable }) {
+            add(SubRow.Action(stringResource(R.string.sub_notif_clear_all)) { actions.clearNotifications() })
+        }
+    }
+}
+
 /** A focusable row: name on the left, value on the right. White when focused, like the other controls. */
 @Composable
 private fun SheetRow(
@@ -359,6 +419,81 @@ private fun SheetRow(
             ) {
                 Label(label, Modifier.weight(1f), maxLines = 1)
                 if (value != null) Detail(value)
+            }
+        }
+    }
+}
+
+/**
+ * A notification row: the app on the left of the title, then a line of the notification's text.
+ * Two lines inside the usual 38 dp would not fit at TV distances, so the row is taller.
+ */
+@Composable
+private fun SheetNoticeRow(
+    appLabel: String,
+    title: String,
+    text: String?,
+    requester: FocusRequester?,
+    focusable: Boolean = true,
+    activate: () -> Unit,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val invert = LocalInvertFocus.current
+    val dark = focused && invert
+    val r = requester ?: remember { FocusRequester() }
+    // Same press rule as the other rows: only an OK that started on this row counts.
+    val pressed = remember { booleanArrayOf(false) }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(NOTICE_ROW)
+            .focusRequester(r)
+            .onFocusChanged { focused = it.isFocused }
+            .onKeyEvent { e ->
+                when {
+                    e.key.isOk() && e.type == KeyEventType.KeyDown -> {
+                        if (e.nativeKeyEvent.repeatCount == 0) pressed[0] = true
+                        true
+                    }
+                    e.key.isOk() && e.type == KeyEventType.KeyUp -> {
+                        if (pressed[0]) activate()
+                        pressed[0] = false
+                        true
+                    }
+                    else -> false
+                }
+            }
+            .focusable(focusable)
+            .semantics(mergeDescendants = true) {
+                contentDescription = listOfNotNull(appLabel, title, text).joinToString(", ")
+                role = Role.Button
+                onClick(label = title) { activate(); true }
+            }
+            .clip(CircleShape)
+            .background(
+                when {
+                    !focused -> Color.Black.copy(alpha = 0.30f)
+                    invert -> Color.White
+                    else -> Color.White.copy(alpha = 0.30f)
+                },
+            ),
+    ) {
+        CompositionLocalProvider(LocalTileInk provides if (dark) GlassTokens.inkDark else Color.White) {
+            Column(
+                Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Detail(appLabel, Modifier.widthIn(max = 108.dp))
+                    Label(title, Modifier.weight(1f), maxLines = 1)
+                }
+                if (!text.isNullOrBlank()) {
+                    Detail(text, Modifier.fillMaxWidth().padding(top = 2.dp))
+                }
             }
         }
     }

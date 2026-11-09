@@ -44,6 +44,9 @@ object PanelDimens {
     val subPageHeight = 214.dp
     /** A window grows past [subPageHeight] to fit its rows, up to this; longer lists scroll. */
     val subPageMaxHeight = 320.dp
+    /** The Notifications page: two lines a row, and a little more room than the other windows. */
+    val notificationRow = 56.dp
+    val notificationsMaxHeight = 400.dp
 
     fun musicHeightFor(big: Boolean): Dp = if (big) musicCardBigHeight else musicCardHeight
     val topButton = 40.dp

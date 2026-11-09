@@ -51,6 +51,13 @@ picks between that (**Mid air**, the default), growing out of the control it was
 stretches the picture behind it into the control's shape), and no motion (**Off**). Back closes the window the same way, with the
 grid already there again, and the next Back closes the panel.
 
+**Notifications** opens its own window, a little taller than the others: one row per notification, newest first, with the app beside
+the notification's title and a line of its text. **OK** opens it in its app and closes the panel; **Clear all** dismisses everything
+that can be dismissed. The shade is read through the notification listener Now Playing already asks for, so there is no extra
+permission: without it the window shows one row that opens the access screen (on a TV without that screen, grant it with
+`adb shell cmd notification allow_listener com.example.tvcontrolcenter/.system.media.MediaListenerService`). Media notifications are
+left out, because Now Playing has its own page.
+
 **Edit Control Center:** open it from the **Menu** button in the panel, or from the demo screen. Pick a control with **OK**; the
 buttons on the left set its size, move it earlier or later, or hide it. "Add controls" lists hidden ones. Below that:
 
