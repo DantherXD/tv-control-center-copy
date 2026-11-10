@@ -193,14 +193,24 @@ class AndroidSystemActions @Inject constructor(
 
     @Suppress("DEPRECATION")
     override fun setWifiEnabled(enabled: Boolean): ActionResult {
-        // The public API works only for a device owner, a profile owner or a privileged build; from
-        // Android 10 it returns false for every other app, which is why this row did nothing.
+        // A device owner, a profile owner and system builds are the documented exemptions to the
+        // Android 10 ban; every other app just gets false.
         if (runCatching { wifi.setWifiEnabled(enabled) }.getOrDefault(false)) return ActionResult.Done
-        // The radio's state is also a global setting, and that one this app may write once
-        // WRITE_SECURE_SETTINGS is granted over adb (see README), with no root needed.
-        if (writeGlobal(WIFI_ON, enabled)) return ActionResult.Done
-        // Neither route is open: the TV has to be asked on its own screen.
-        return openWifiSettings()
+        // Writing Settings.Global's "wifi_on" does not help, so it is not tried: the Wi-Fi service
+        // reads that value at boot and writes it itself, and never watches it. The write succeeds,
+        // nothing switches, and the row springs back when it re-reads the radio.
+        //
+        // What is left is the system's own switch, pressed for you: the accessibility service opens
+        // the Wi-Fi screen, clicks the switch, and closes the screen again.
+        if (toggleFromSystemScreen(Settings.ACTION_WIFI_SETTINGS, enabled, WIFI_WORDS)) {
+            return ActionResult.Done
+        }
+        // No accessibility service: the small system panel, then the full screen.
+        return launchFirst(
+            Intent(WIFI_PANEL),
+            Intent(INTERNET_PANEL),
+            Intent(Settings.ACTION_WIFI_SETTINGS),
+        )
     }
 
     @SuppressLint("MissingPermission")
@@ -212,12 +222,20 @@ class AndroidSystemActions @Inject constructor(
         if (runCatching { if (enabled) adapter?.enable() else adapter?.disable() }.getOrNull() == true) {
             return ActionResult.Done
         }
-        // The Bluetooth manager follows the "bluetooth_on" setting, so this really switches it on
-        // a stock TV once WRITE_SECURE_SETTINGS is granted (the one radio permission adb can hand
-        // over without root).
+        // Bluetooth keeps its state in "bluetooth_on", which the Bluetooth manager does watch on
+        // the builds that honour it, so the write can switch the radio for real with only
+        // WRITE_SECURE_SETTINGS (adb can grant that). Where a build ignores the write nothing
+        // switches and the row springs back on its re-read.
         if (writeGlobal(BLUETOOTH_ON, enabled)) return ActionResult.Done
+        if (toggleFromSystemScreen(Settings.ACTION_BLUETOOTH_SETTINGS, enabled, BLUETOOTH_WORDS)) {
+            return ActionResult.Done
+        }
         return openBluetoothSettings()
     }
+
+    /** Drives the system's own switch through the accessibility service; false when it cannot. */
+    private fun toggleFromSystemScreen(action: String, on: Boolean, keywords: Array<String>): Boolean =
+        ControlCenterAccessibilityService.instance?.switchRadio(action, on, keywords) ?: false
 
     /**
      * Writes one of the radio settings. Possible only with WRITE_SECURE_SETTINGS, which
@@ -344,13 +362,16 @@ class AndroidSystemActions @Inject constructor(
         /** Slightly longer than the panel's close spring, so it is gone before the action runs. */
         const val PANEL_CLOSE_DELAY_MILLIS = 600L
 
-        /**
-         * The Settings.Global keys, spelled out because the SDK keeps those constants hidden.
-         * The Wi-Fi one is documented as the Wi-Fi service's own business, so a locked-down TV may
-         * ignore it; the Bluetooth one is watched by the Bluetooth manager and takes effect.
-         */
-        const val WIFI_ON = "wifi_on"
+        /** The Settings.Global key, spelled out because the SDK keeps the constant hidden. */
         const val BLUETOOTH_ON = "bluetooth_on"
+
+        /** Names the radio in a settings screen, so the right switch is the one clicked. */
+        val WIFI_WORDS = arrayOf("wi-fi", "wifi", "wlan")
+        val BLUETOOTH_WORDS = arrayOf("bluetooth")
+
+        /** Settings.Panel actions, spelled out for the same reason. */
+        const val WIFI_PANEL = "android.settings.panel.action.WIFI"
+        const val INTERNET_PANEL = "android.settings.panel.action.INTERNET_CONNECTIVITY"
     }
 }
 

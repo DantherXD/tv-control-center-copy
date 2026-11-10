@@ -133,12 +133,15 @@ the action is reachable with TalkBack.
 
 Wi-Fi and Bluetooth open on a switch row: the press shows at once, and `RADIO_SETTLE_MILLIS` (1.2 s)
 later the system is read again, because a TV that refuses `setWifiEnabled` / `setBluetoothEnabled`
-opens its own screen instead and the row must not keep claiming it worked. The switch itself tries three
-things in order: `WifiManager.setWifiEnabled` / `BluetoothAdapter.enable` (only a device owner, profile owner or
-privileged build is allowed from Android 10 on), then `Settings.Global` `wifi_on` / `bluetooth_on` through
-`AndroidSystemActions.writeGlobal`, which needs `WRITE_SECURE_SETTINGS` and works once
-`adb shell pm grant com.example.tvcontrolcenter android.permission.WRITE_SECURE_SETTINGS` has been run, then the
-system screen. The keys are literals in the companion because the SDK hides those constants. Paired devices read
+opens its own screen instead and the row must not keep claiming it worked. The switch tries three things in order:
+`WifiManager.setWifiEnabled` / `BluetoothAdapter.enable` (only a device owner, profile owner or privileged build is
+allowed from Android 10 on), `Settings.Global` `bluetooth_on` through `AndroidSystemActions.writeGlobal`, and finally
+`ControlCenterAccessibilityService.switchRadio`, which opens the system's Wi-Fi or Bluetooth screen, clicks the switch
+through the accessibility node tree and closes the screen again. Wi-Fi deliberately skips the `wifi_on` write: the
+Wi-Fi service reads that value at boot and never watches it, so the write succeeds and nothing switches (confirmed on
+the TV as a row that flipped off and back on). `WRITE_SETTINGS` ("Modify system settings") cannot help at all: it only
+reaches the `Settings.System` table, not `Settings.Global`. A device owner would work for Wi-Fi but `dpm
+set-device-owner` is refused while any account is signed in, and undoing it needs a factory reset. Paired devices read
 `BluetoothDevice.alias` first (Android 11+): `getName` keeps the name from the first bond, which is
 how a renamed device went on showing its old name. The Bluetooth window's last row is
 **Pair accessory**.

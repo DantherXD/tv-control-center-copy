@@ -2,11 +2,15 @@ package com.example.tvcontrolcenter.system.trigger
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
+import android.content.Intent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import com.example.tvcontrolcenter.system.overlay.OverlayController
 
 /**
@@ -27,6 +31,7 @@ class ControlCenterAccessibilityService : AccessibilityService() {
     private var controller: OverlayController? = null
     private var downTime = 0L
     private var triggeredForThisPress = false
+    private val handler = Handler(Looper.getMainLooper())
 
     override fun onServiceConnected() {
         instance = this
@@ -85,9 +90,88 @@ class ControlCenterAccessibilityService : AccessibilityService() {
     fun lockScreen(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
 
+    /**
+     * Switches a radio the only way an ordinary app still may: the system's own switch, pressed
+     * for you. From Android 10 [android.net.wifi.WifiManager.setWifiEnabled] returns false for
+     * every app that is not a device owner, profile owner or system build, and
+     * `BluetoothAdapter.enable` needs a signature permission, so the panel's toggle drives the
+     * settings screen instead: open it, click the switch that is not already in the asked state,
+     * then close the screen again.
+     *
+     * [keywords] name the radio in the screen's text, so the right switch is preferred. False when
+     * the screen will not open, which leaves the caller free to show the screen instead.
+     */
+    fun switchRadio(action: String, on: Boolean, keywords: Array<String>): Boolean {
+        val started = runCatching {
+            startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.isSuccess
+        if (!started) return false
+        var tries = 0
+        val poll = object : Runnable {
+            override fun run() {
+                tries++
+                val root = runCatching { rootInActiveWindow }.getOrNull()
+                val switch = root?.let { findRadioSwitch(it, on, keywords) }
+                if (switch != null) {
+                    runCatching { switch.performAction(AccessibilityNodeInfo.ACTION_CLICK) }
+                    // Let the radio start moving before the screen is closed again.
+                    handler.postDelayed({ performGlobalAction(GLOBAL_ACTION_BACK) }, CLICK_SETTLE_MILLIS)
+                    return
+                }
+                if (tries < MAX_TRIES) handler.postDelayed(this, POLL_MILLIS)
+            }
+        }
+        handler.postDelayed(poll, FIRST_POLL_MILLIS)
+        return true
+    }
+
+    /**
+     * The switch on the screen that is not already in [on]'s state. One the [keywords] name wins;
+     * a screen with no checkable state at all is searched for a switch-like control that the
+     * keywords name, so an unusual TV build still has a chance.
+     */
+    private fun findRadioSwitch(
+        root: AccessibilityNodeInfo,
+        on: Boolean,
+        keywords: Array<String>,
+    ): AccessibilityNodeInfo? {
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        var unchecked: AccessibilityNodeInfo? = null
+        var named: AccessibilityNodeInfo? = null
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val node = queue.removeFirst()
+            if (node.isCheckable && node.isEnabled && node.isChecked != on) {
+                if (unchecked == null) unchecked = node
+                if (named == null && names(node, keywords)) named = node
+            }
+            val className = node.className?.toString().orEmpty()
+            if (named == null && SWITCH_CLASSES.any { className.contains(it) } && names(node, keywords)) {
+                named = node
+            }
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let(queue::add)
+            }
+        }
+        return named ?: unchecked
+    }
+
+    /** True when the node, or the row it sits in, mentions one of [keywords]. */
+    private fun names(node: AccessibilityNodeInfo, keywords: Array<String>): Boolean {
+        val parent = node.parent
+        val lines = listOfNotNull(
+            node.text?.toString(),
+            node.contentDescription?.toString(),
+            parent?.text?.toString(),
+            parent?.contentDescription?.toString(),
+        )
+        return lines.any { line -> keywords.any { line.contains(it, ignoreCase = true) } }
+    }
+
     override fun onInterrupt() = Unit
 
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
         controller?.hide()
         controller = null
         if (instance === this) instance = null
@@ -102,6 +186,14 @@ class ControlCenterAccessibilityService : AccessibilityService() {
         private const val SETTINGS_FILE = "control_center_layout"
         private const val KEY_ACTIVITY_LOG = "activity_log"
         const val LONG_PRESS_MILLIS = 600L
+
+        /** The settings screen needs a moment to lay its switch out. */
+        private const val FIRST_POLL_MILLIS = 700L
+        private const val POLL_MILLIS = 250L
+        private const val MAX_TRIES = 12
+        private const val CLICK_SETTLE_MILLIS = 500L
+
+        private val SWITCH_CLASSES = listOf("Switch", "ToggleButton", "CheckBox")
 
         @Volatile
         var instance: ControlCenterAccessibilityService? = null
