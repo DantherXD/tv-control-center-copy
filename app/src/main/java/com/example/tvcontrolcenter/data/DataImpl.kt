@@ -122,6 +122,7 @@ class PreferencesLayoutRepository @Inject constructor(
             card = prefs.getBoolean(KEY_CARD, false),
             textScale = prefs.getFloat(KEY_TEXT, 1f),
             notificationTextScale = prefs.getFloat(KEY_NOTICE_TEXT, 0.8f),
+            cornerNotices = prefs.getBoolean(KEY_CORNER_NOTICES, false),
             edgeWidth = prefs.getFloat(KEY_EDGE, 1.5f),
             topSize = prefs.getInt(KEY_TOP_SIZE, 44),
             topBorderless = prefs.getBoolean(KEY_TOP_FLAT, false),
@@ -192,6 +193,7 @@ class PreferencesLayoutRepository @Inject constructor(
             .putBoolean(KEY_CARD, next.card)
             .putFloat(KEY_TEXT, next.textScale)
             .putFloat(KEY_NOTICE_TEXT, next.notificationTextScale)
+            .putBoolean(KEY_CORNER_NOTICES, next.cornerNotices)
             .putFloat(KEY_EDGE, next.edgeWidth)
             .putInt(KEY_TOP_SIZE, next.topSize)
             .putBoolean(KEY_TOP_FLAT, next.topBorderless)
@@ -235,6 +237,7 @@ class PreferencesLayoutRepository @Inject constructor(
         const val KEY_BLUETOOTH_ICON = "bluetooth_icon"
         const val KEY_MENU_ICON = "menu_icon"
         const val KEY_NOTICE_TEXT = "notice_text"
+        const val KEY_CORNER_NOTICES = "corner_notices"
         const val KEY_ACTIVE_HIGHLIGHT = "active_highlight"
         const val KEY_MUSIC_STYLE = "music_style"
         const val KEY_WINDOW_MOTION = "window_motion"

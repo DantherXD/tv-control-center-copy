@@ -280,6 +280,8 @@ data class PanelSettings(
      * [NotificationTextSteps]). Two lines of a notification in the panel's own size read large.
      */
     val notificationTextScale: Float = 0.8f,
+    /** A new notification gets a card in the corner of the screen. Off unless asked for. */
+    val cornerNotices: Boolean = false,
     /** Thickness of the glass edge line in dp (see [EdgeWidthSteps]); 0 draws none. */
     val edgeWidth: Float = 1.5f,
     /** Size of the round top-bar buttons in dp (see [TopSizeSteps]). */

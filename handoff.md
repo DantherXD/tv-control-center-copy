@@ -219,7 +219,11 @@ cannot launch another app's activity — and the event loop dismisses the panel 
 `PanelDimens.notificationRow` (56 dp), and the window may grow to `notificationsMaxHeight` (400 dp) rather than
 `subPageMaxHeight`. With nothing to list it draws `EmptyNotice` rather than rows: `ic_trophy.xml` at 30 dp over
 `sub_notif_caught_up` ("You're all caught up"), centred in the window (and the window itself takes focus, so Back still
-closes it). The rows' text has its own scale, `PanelSettings.notificationTextScale` ("Notification text size",
+closes it). `PanelSettings.cornerNotices` ("Corner pop-ups", off by default) hands every new notification that passes
+`worthShowing()` to `CornerPopups` (`system/overlay/`): a five-second window in the top-right corner, added as
+`TYPE_APPLICATION_OVERLAY` once `SYSTEM_ALERT_WINDOW` is granted or as `TYPE_ACCESSIBILITY_OVERLAY` from the accessibility
+service, `FLAG_NOT_FOCUSABLE` so the remote keeps its target, and the same key arriving again with the same words is ignored.
+The rows' text has its own scale, `PanelSettings.notificationTextScale` ("Notification text size",
 0.8 by default, from `NotificationTextSteps`), handed to the list by `LocalNoticeScale` and applied with a nested
 `ProvideTextScale` inside `SheetNoticeRow`, so the font shrinks without the row or the window changing size.
 

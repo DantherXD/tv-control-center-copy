@@ -380,6 +380,10 @@ private fun EditBody(
                                     vm.updateSettings { it.copy(textScale = TextScaleSteps.step(it.textScale, d)) }
                                 }
                                 AppSettingRow(
+                                    label = stringResource(R.string.edit_corner_notices),
+                                    value = onOff(settings.cornerNotices),
+                                ) { vm.updateSettings { it.copy(cornerNotices = !it.cornerNotices) } }
+                                AppSettingRow(
                                     label = stringResource(R.string.edit_notice_size),
                                     value = "${(settings.notificationTextScale * 100).roundToInt()}%",
                                 ) { d ->

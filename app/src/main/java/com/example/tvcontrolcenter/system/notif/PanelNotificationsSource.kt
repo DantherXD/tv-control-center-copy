@@ -8,6 +8,7 @@ import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationManagerCompat
 import com.example.tvcontrolcenter.domain.model.AppNotification
 import com.example.tvcontrolcenter.domain.repository.NotificationSource
+import com.example.tvcontrolcenter.system.overlay.CornerPopups
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,7 @@ import javax.inject.Singleton
 @Singleton
 class PanelNotificationsSource @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val popups: CornerPopups,
 ) : NotificationSource {
 
     private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
@@ -68,6 +70,8 @@ class PanelNotificationsSource @Inject constructor(
     fun onPosted(sbn: StatusBarNotification) {
         posted[sbn.key] = sbn
         publish()
+        // A new one in the shade: the corner says so, while that is switched on.
+        if (sbn.worthShowing()) popups.show(sbn.toRow())
     }
 
     fun onRemoved(sbn: StatusBarNotification) {
@@ -97,15 +101,7 @@ class PanelNotificationsSource @Inject constructor(
         val groups = all.mapNotNull { it.notification.group }
             .groupingBy { it }.eachCount().filterValues { it > 1 }.keys
         _notifications.value = all
-            // Our own notifications are not the user's business.
-            .filter { it.packageName != context.packageName }
-            // Now Playing already has a page; its notification would be a second copy of it.
-            .filterNot { it.notification.category == Notification.CATEGORY_TRANSPORT }
-            // "DolbyAudioService", "Wifi monitor service", "Serial console enabled": background
-            // services telling us they are running. There is nothing to do with any of them.
-            .filterNot { it.isServiceNotice() }
-            // Nothing to open and nothing to clear: a row that could only ever do nothing.
-            .filter { it.isClearable || it.notification.contentIntent != null }
+            .filter { it.worthShowing() }
             .filterNot { sbn ->
                 sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0 &&
                     (sbn.notification.group?.let { it in groups } == true)
@@ -113,6 +109,18 @@ class PanelNotificationsSource @Inject constructor(
             .sortedByDescending { it.postTime }
             .map { it.toRow() }
     }
+
+    /** The rules the list and the corner card both follow. */
+    private fun StatusBarNotification.worthShowing(): Boolean =
+        // Our own notifications are not the user's business.
+        packageName != context.packageName &&
+            // Now Playing already has a page; its notification would be a second copy of it.
+            notification.category != Notification.CATEGORY_TRANSPORT &&
+            // "DolbyAudioService", "Wifi monitor service", "Serial console enabled": background
+            // services telling us they are running. There is nothing to do with any of them.
+            !isServiceNotice() &&
+            // Nothing to open and nothing to clear: a row that could only ever do nothing.
+            (isClearable || notification.contentIntent != null)
 
     /**
      * An ongoing notice from a foreground service or from the system. These describe a service that

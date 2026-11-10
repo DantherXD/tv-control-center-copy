@@ -61,7 +61,9 @@ left out, because Now Playing has its own page, and so are the ongoing notices b
 ("DolbyAudioService", "Wifi monitor service", the serial-console warning) — a notification is shown only when it can be opened or
 cleared. Its text has a size of its own (**Notification text size** in the editor, 80 % by default), since two lines of a
 notification at the panel's normal size read large. With nothing to show, a trophy and **You're all caught up** sit in the middle of
-the window.
+the window. With **Corner pop-ups** on in the editor (off by default), a new notification also gets a small card in the top-right
+corner for five seconds; it draws while "display over other apps" is granted, or through the accessibility service, and it
+never takes focus, so the remote keeps driving the app underneath.
 
 **Edit Control Center:** open it from the **Menu** button in the panel, or from the demo screen. Pick a control with **OK**; the
 buttons on the left set its size, move it earlier or later, or hide it. "Add controls" lists hidden ones. Below that:
