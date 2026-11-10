@@ -49,6 +49,7 @@ import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
+import com.example.tvcontrolcenter.system.overlay.CornerPopups
 import com.example.tvcontrolcenter.ui.glass.LocalSoundCues
 import com.example.tvcontrolcenter.ui.theme.LocalNoticeScale
 import com.example.tvcontrolcenter.ui.theme.Motion
@@ -175,7 +176,11 @@ private fun HostBody(
     LaunchedEffect(visible) {
         if (visible) {
             hasOpened[0] = true
-            page = PanelPage.GRID
+            // A trigger pressed while a corner card is up lands on the notifications window itself,
+            // and the card goes, since the panel now covers that corner.
+            val onNotices = CornerPopups.visibleNow() && viewModel.onNotificationsPageRequested()
+            CornerPopups.hideCard()
+            page = if (onNotices) PanelPage.NOTIFICATIONS else PanelPage.GRID
             closingSub = false
             closingMusic = false
             viewModel.onOpened()
@@ -222,6 +227,8 @@ private fun HostBody(
     LaunchedEffect(Unit) {
         viewModel.uiState.first { it.tiles.isNotEmpty() }
         withFrameNanos { }
+        // The grid is not always what opens: a window that is already open keeps its first row.
+        if (page != PanelPage.GRID) return@LaunchedEffect
         val target = firstGridTile()
         if (target != null) runCatching { requesters.getValue(target).requestFocus() }
     }

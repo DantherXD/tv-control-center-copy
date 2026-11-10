@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.Gravity
 import android.view.WindowManager
@@ -47,6 +48,15 @@ class CornerPopups @Inject constructor(
 
     private val dismiss = Runnable { remove() }
 
+    init {
+        current = this
+    }
+
+    /** Takes the card down now: the panel is opening over that corner anyway. */
+    fun hide() {
+        handler.post { remove() }
+    }
+
     /** Called for every new notification; the setting decides whether anything is drawn. */
     fun show(notice: AppNotification) {
         if (!layouts.settings.value.cornerNotices) return
@@ -62,6 +72,7 @@ class CornerPopups @Inject constructor(
         lastKey = notice.key
         lastWords = words
         showing.value = notice
+        markVisible(SHOW_MILLIS)
         handler.removeCallbacks(dismiss)
         handler.postDelayed(dismiss, SHOW_MILLIS)
     }
@@ -135,9 +146,37 @@ class CornerPopups @Inject constructor(
         host = null
         manager = null
         showing.value = null
+        clearVisible()
     }
 
-    private companion object {
+    companion object {
+        /** Until when a card is on screen, so a panel opened at that moment can land on its list. */
+        @Volatile
+        private var visibleUntil = 0L
+
+        /** The instance in use, so the panel can take a card down without being handed one. */
+        @Volatile
+        private var current: CornerPopups? = null
+
+        /** The card of the instance in use, if one is up. Called when the panel opens over it. */
+        fun hideCard() {
+            current?.hide()
+        }
+
+        /**
+         * True while a card is on screen, or was a moment ago: the trigger pressed while one is
+         * showing opens the panel straight on the notifications window instead of the grid.
+         */
+        fun visibleNow(): Boolean = SystemClock.elapsedRealtime() < visibleUntil
+
+        private fun markVisible(millis: Long) {
+            visibleUntil = SystemClock.elapsedRealtime() + millis
+        }
+
+        private fun clearVisible() {
+            visibleUntil = 0L
+        }
+
         const val SHOW_MILLIS = 5_000L
         /** Share of the screen width that keeps the card off the edge. */
         const val CORNER_INSET = 0.025f
