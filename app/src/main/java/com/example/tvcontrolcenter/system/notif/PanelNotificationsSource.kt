@@ -2,6 +2,7 @@ package com.example.tvcontrolcenter.system.notif
 
 import android.app.Notification
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationManagerCompat
@@ -120,9 +121,15 @@ class PanelNotificationsSource @Inject constructor(
     private fun StatusBarNotification.isServiceNotice(): Boolean {
         val flags = notification.flags
         if (flags and Notification.FLAG_ONGOING_EVENT == 0) return false
-        return (flags and Notification.FLAG_FOREGROUND_SERVICE != 0) ||
-            (flags and Notification.FLAG_SYSTEM != 0)
+        if (flags and Notification.FLAG_FOREGROUND_SERVICE != 0) return true
+        return isSystemApp()
     }
+
+    /** A notice from a system app: "Serial console enabled", "... is running", and the like. */
+    private fun StatusBarNotification.isSystemApp(): Boolean = runCatching {
+        context.packageManager.getApplicationInfo(packageName, 0).flags and
+            ApplicationInfo.FLAG_SYSTEM != 0
+    }.getOrDefault(false)
 
     private fun StatusBarNotification.toRow(): AppNotification {
         val extras = notification.extras
