@@ -1,10 +1,12 @@
 package com.example.tvcontrolcenter.system.actions
 
+import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.app.NotificationManager
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
@@ -191,16 +193,45 @@ class AndroidSystemActions @Inject constructor(
 
     @Suppress("DEPRECATION")
     override fun setWifiEnabled(enabled: Boolean): ActionResult {
-        val ok = runCatching { wifi.setWifiEnabled(enabled) }.getOrDefault(false)
-        return if (ok) ActionResult.Done else openWifiSettings()
+        // The public API works only for a device owner, a profile owner or a privileged build; from
+        // Android 10 it returns false for every other app, which is why this row did nothing.
+        if (runCatching { wifi.setWifiEnabled(enabled) }.getOrDefault(false)) return ActionResult.Done
+        // The radio's state is also a global setting, and that one this app may write once
+        // WRITE_SECURE_SETTINGS is granted over adb (see README), with no root needed.
+        if (writeGlobal(WIFI_ON, enabled)) return ActionResult.Done
+        // Neither route is open: the TV has to be asked on its own screen.
+        return openWifiSettings()
     }
 
     @SuppressLint("MissingPermission")
     @Suppress("DEPRECATION")
     override fun setBluetoothEnabled(enabled: Boolean): ActionResult {
+        // enable() and disable() need BLUETOOTH_PRIVILEGED, which an ordinary app cannot hold, so
+        // they hand back false on a stock TV.
         val adapter = bluetoothAdapter
-        val ok = runCatching { if (enabled) adapter?.enable() else adapter?.disable() }.getOrNull() == true
-        return if (ok) ActionResult.Done else openBluetoothSettings()
+        if (runCatching { if (enabled) adapter?.enable() else adapter?.disable() }.getOrNull() == true) {
+            return ActionResult.Done
+        }
+        // The Bluetooth manager follows the "bluetooth_on" setting, so this really switches it on
+        // a stock TV once WRITE_SECURE_SETTINGS is granted (the one radio permission adb can hand
+        // over without root).
+        if (writeGlobal(BLUETOOTH_ON, enabled)) return ActionResult.Done
+        return openBluetoothSettings()
+    }
+
+    /**
+     * Writes one of the radio settings. Possible only with WRITE_SECURE_SETTINGS, which
+     * `adb shell pm grant com.example.tvcontrolcenter android.permission.WRITE_SECURE_SETTINGS`
+     * gives on a TV without root; the grant survives reboots and app updates. False when it is
+     * missing, so the caller can still fall back to the system's own screen.
+     */
+    private fun writeGlobal(key: String, on: Boolean): Boolean {
+        val granted = context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (!granted) return false
+        return runCatching {
+            Settings.Global.putInt(context.contentResolver, key, if (on) 1 else 0)
+        }.isSuccess
     }
 
     /**
@@ -312,6 +343,14 @@ class AndroidSystemActions @Inject constructor(
     private companion object {
         /** Slightly longer than the panel's close spring, so it is gone before the action runs. */
         const val PANEL_CLOSE_DELAY_MILLIS = 600L
+
+        /**
+         * The Settings.Global keys, spelled out because the SDK keeps those constants hidden.
+         * The Wi-Fi one is documented as the Wi-Fi service's own business, so a locked-down TV may
+         * ignore it; the Bluetooth one is watched by the Bluetooth manager and takes effect.
+         */
+        const val WIFI_ON = "wifi_on"
+        const val BLUETOOTH_ON = "bluetooth_on"
     }
 }
 

@@ -10,6 +10,16 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!--
+        Granted once over adb, not from the UI:
+          adb shell pm grant com.example.tvcontrolcenter android.permission.WRITE_SECURE_SETTINGS
+        It is what lets the Wi-Fi and Bluetooth rows in their windows switch the radio, since a
+        normal app cannot do that through the public API from Android 10 on. Without it the rows
+        open the system's own screen instead.
+    -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />

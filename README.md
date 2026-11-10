@@ -43,7 +43,8 @@ The clock follows the TV's 12/24 hour setting. **Menu** opens the editor; **Prof
 The **Apps** tab pins an app to one of four slots, so it opens in one press from the grid, and can log which screen a control
 really opens (`adb logcat -s TCC`).
 
-**Hold OK** on Wi-Fi or Bluetooth for a small window whose first row switches that radio on and off (**OK** on it shows the change at once),
+**Hold OK** on Wi-Fi or Bluetooth for a small window whose first row switches that radio on and off (**OK** on it shows the change at once; it needs the one-time `WRITE_SECURE_SETTINGS` grant below, because
+Android 10 stopped letting an ordinary app switch a radio),
 then the network or audio device in use and a row that opens the system settings — **Pair accessory** on Bluetooth, with every paired
 device listed above it; **press OK** on Input for the list of inputs, one row each. The hold is exposed to TalkBack too, so the action is reachable from a screen
 reader. A window opens in place, growing from slightly
@@ -119,6 +120,7 @@ Glass is now plain drawing, so it costs almost nothing per frame:
 |---|---|---|
 | Accessibility service (user enables) | Open from any app, power menu, screen off | Panel only opens inside this app; Power Off asks to enable it, Lock falls back to it when the TV has no picture-off screen |
 | `SYSTEM_ALERT_WINDOW` | Overlay window via `OverlayService` | Settings screen opens so you can grant it |
+| `WRITE_SECURE_SETTINGS`, granted once over adb: `adb shell pm grant com.example.tvcontrolcenter android.permission.WRITE_SECURE_SETTINGS` | Switching Wi-Fi and Bluetooth from the first row of their windows | Those rows open the system's own screen; the grant needs no root and survives reboots |
 | Notification listener (user enables) | Now Playing via `MediaSessionManager` | Now Playing tile hidden; no crash |
 | Notification policy access | Do Not Disturb toggle | Settings screen opens so you can grant it |
 | `ACCESS_NETWORK_STATE`, `MODIFY_AUDIO_SETTINGS` | Network and volume | n/a (normal permissions) |
