@@ -223,6 +223,9 @@ closes it). `PanelSettings.cornerNotices` ("Corner pop-ups", off by default) han
 `worthShowing()` to `CornerPopups` (`system/overlay/`): a five-second window in the top-right corner, added as
 `TYPE_APPLICATION_OVERLAY` once `SYSTEM_ALERT_WINDOW` is granted or as `TYPE_ACCESSIBILITY_OVERLAY` from the accessibility
 service, `FLAG_NOT_FOCUSABLE` so the remote keeps its target, and the same key arriving again with the same words is ignored.
+`CornerPopups.visibleNow()` is read in `HostBody`'s open effect, so a panel opened while a card is up starts on
+`PanelPage.NOTIFICATIONS` rather than the grid and takes the card down first (`hideCard()`, via the instance the companion
+keeps); if the listener grant is missing, `onNotificationsPageRequested()` says so and the grid opens as usual.
 The rows' text has its own scale, `PanelSettings.notificationTextScale` ("Notification text size",
 0.8 by default, from `NotificationTextSteps`), handed to the list by `LocalNoticeScale` and applied with a nested
 `ProvideTextScale` inside `SheetNoticeRow`, so the font shrinks without the row or the window changing size.

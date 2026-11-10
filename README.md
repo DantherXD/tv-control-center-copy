@@ -63,7 +63,8 @@ cleared. Its text has a size of its own (**Notification text size** in the edito
 notification at the panel's normal size read large. With nothing to show, a trophy and **You're all caught up** sit in the middle of
 the window. With **Corner pop-ups** on in the editor (off by default), a new notification also gets a small card in the top-right
 corner for five seconds; it draws while "display over other apps" is granted, or through the accessibility service, and it
-never takes focus, so the remote keeps driving the app underneath.
+never takes focus, so the remote keeps driving the app underneath. Opening the panel while a card is up skips the grid and lands
+on the notifications window instead.
 
 **Edit Control Center:** open it from the **Menu** button in the panel, or from the demo screen. Pick a control with **OK**; the
 buttons on the left set its size, move it earlier or later, or hide it. "Add controls" lists hidden ones. Below that:
