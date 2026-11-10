@@ -16,8 +16,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Write, so a failing build can publish its own log to the ci-log branch (see the last step).
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -77,6 +78,29 @@ jobs:
             build.log
             app/build/reports/tests/
           if-no-files-found: ignore
+
+      # Reading an Actions log needs a signed-in GitHub account, which a coding agent in a sandbox
+      # does not have. This puts the failing lines in the repository instead, on its own `ci-log`
+      # branch, so `git fetch origin ci-log` is all it takes to see what broke. Force-pushed on
+      # every failure, so the branch always holds the newest one and main is never touched.
+      - name: Publish the failure log to the ci-log branch
+        if: failure()
+        run: |
+          touch build.log
+          {
+            echo "run $GITHUB_RUN_ID, commit $GITHUB_SHA, $(date -u +%FT%TZ)"
+            echo
+            grep -E '^(e: |error: |.*\[Hilt\]|.*\[ksp\])' build.log | sed 's#file://##' | head -80
+            echo
+            echo '--- last 60 lines of build.log ---'
+            tail -60 build.log
+          } > ci-failure.log
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -B ci-log
+          git add -f ci-failure.log
+          git commit -m "Build $GITHUB_SHA failed [skip ci]" || exit 0
+          git push -f origin ci-log
 
   ui-tests:
     name: Compose UI tests (Android TV emulator)
