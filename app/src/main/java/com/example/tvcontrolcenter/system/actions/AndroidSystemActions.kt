@@ -180,6 +180,9 @@ class AndroidSystemActions @Inject constructor(
     @Suppress("DEPRECATION")
     override fun wifiEnabled(): Boolean = runCatching { wifi.isWifiEnabled }.getOrDefault(false)
 
+    override fun bluetoothEnabled(): Boolean =
+        runCatching { bluetoothAdapter?.isEnabled == true }.getOrDefault(false)
+
     /** Needs the location permission on Android 8.1+, otherwise the name is hidden and this gives null. */
     @Suppress("DEPRECATION")
     override fun wifiNetworkName(): String? = runCatching {
@@ -200,10 +203,24 @@ class AndroidSystemActions @Inject constructor(
         return if (ok) ActionResult.Done else openBluetoothSettings()
     }
 
-    /** Needs the Bluetooth connect permission on Android 12+; empty without it. */
+    /**
+     * Needs the Bluetooth connect permission on Android 12+; empty without it. A rename is stored as
+     * the device's alias, so that is read first: [android.bluetooth.BluetoothDevice.getName] keeps
+     * the name the device had when it was first bonded, which is how a renamed device went on
+     * showing its old name here.
+     */
     @SuppressLint("MissingPermission")
     override fun pairedBluetoothDevices(): List<String> = runCatching {
-        bluetoothAdapter?.bondedDevices.orEmpty().mapNotNull { it.name }.take(5)
+        bluetoothAdapter?.bondedDevices.orEmpty()
+            .mapNotNull { device ->
+                val alias = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    runCatching { device.alias }.getOrNull()
+                } else {
+                    null
+                }
+                (alias?.takeIf { it.isNotBlank() } ?: device.name)?.takeIf { it.isNotBlank() }
+            }
+            .take(5)
     }.getOrDefault(emptyList())
 
     override fun tvInputs(): List<TvInputItem> = runCatching {

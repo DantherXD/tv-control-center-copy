@@ -274,6 +274,7 @@ private fun HostBody(
     val subActions = remember(viewModel) {
         SubPageActions(
             wifiEnabled = viewModel::wifiEnabled,
+            bluetoothEnabled = viewModel::bluetoothEnabled,
             wifiName = viewModel::wifiName,
             setWifi = viewModel::onSetWifi,
             openWifiSettings = viewModel::onOpenWifiSettings,

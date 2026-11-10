@@ -43,8 +43,9 @@ The clock follows the TV's 12/24 hour setting. **Menu** opens the editor; **Prof
 The **Apps** tab pins an app to one of four slots, so it opens in one press from the grid, and can log which screen a control
 really opens (`adb logcat -s TCC`).
 
-**Hold OK** on Wi-Fi or Bluetooth for a small window with its status, the network or audio device in use and a row that opens the
-system settings; **press OK** on Input for the list of inputs, one row each. The hold is exposed to TalkBack too, so the action is reachable from a screen
+**Hold OK** on Wi-Fi or Bluetooth for a small window whose first row switches that radio on and off (**OK** on it shows the change at once),
+then the network or audio device in use and a row that opens the system settings — **Pair accessory** on Bluetooth, with every paired
+device listed above it; **press OK** on Input for the list of inputs, one row each. The hold is exposed to TalkBack too, so the action is reachable from a screen
 reader. A window opens in place, growing from slightly
 smaller, and it is as tall as its rows so nothing hides below the fold (long lists scroll). **Window animation** in the editor
 picks between that (**Mid air**, the default), growing out of the control it was opened from (**Out of the control**, which

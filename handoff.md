@@ -131,6 +131,13 @@ presses while closing. Focus is handed back to the opening control as the close 
 unmounts. Back during the shrink closes the panel, so Back-Back still dismisses. While a control has a window behind it, `GlassTile` exposes the hold as a semantics `onLongClick`, so
 the action is reachable with TalkBack.
 
+Wi-Fi and Bluetooth open on a switch row: the press shows at once, and `RADIO_SETTLE_MILLIS` (1.2 s)
+later the system is read again, because a TV that refuses `setWifiEnabled` / `setBluetoothEnabled`
+opens its own screen instead and the row must not keep claiming it worked. Paired devices read
+`BluetoothDevice.alias` first (Android 11+): `getName` keeps the name from the first bond, which is
+how a renamed device went on showing its old name. The Bluetooth window's last row is
+**Pair accessory**.
+
 **Music page.** Opened from the Now Playing top-bar button when `menuIsHome` is on, and from the
 remote's **Menu key**, which swaps the grid and the music page both ways (Menu on a sub window goes
 back to the grid). Opens with `popIn()` (fade + 0.9→1 scale, settles from -14 dp, 0.78 / 380).

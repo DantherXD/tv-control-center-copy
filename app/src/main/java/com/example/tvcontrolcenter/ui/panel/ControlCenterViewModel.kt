@@ -256,6 +256,7 @@ class ControlCenterViewModel @Inject constructor(
     }
 
     fun wifiEnabled() = actions.wifiEnabled()
+    fun bluetoothEnabled() = actions.bluetoothEnabled()
     fun wifiName() = actions.wifiNetworkName()
     fun pairedBluetooth() = actions.pairedBluetoothDevices()
     fun tvInputs() = actions.tvInputs()

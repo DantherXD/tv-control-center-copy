@@ -196,9 +196,8 @@
     <string name="frost_forest">Forest</string>
     <string name="frost_rose">Rose</string>
     <string name="frost_midnight">Midnight</string>
-    <string name="sub_status">Status</string>
     <string name="sub_open_wifi">Open Wi-Fi settings</string>
-    <string name="sub_open_remotes">Remotes &amp; accessories</string>
+    <string name="sub_pair_accessory">Pair accessory</string>
     <string name="edit_patient">Blur over video and motion</string>
     <string name="edit_patient_note">Waits longer and retries the screenshot, so the blur works while a video plays. Opening the panel may take a moment longer.</string>
     <string name="nav_home">Home</string>

@@ -61,6 +61,7 @@ import com.example.tvcontrolcenter.ui.theme.GlassTokens
 import com.example.tvcontrolcenter.ui.theme.LocalNoticeScale
 import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
+import kotlinx.coroutines.delay
 
 /** What the Wi-Fi, Bluetooth and Input pages can ask of the system. */
 internal class SubPageActions(
@@ -89,7 +90,12 @@ private sealed interface SubRow {
         override val height: Dp get() = INFO_ROW
     }
 
-    data class Action(override val label: String, val activate: () -> Unit) : SubRow {
+    /** Something OK can press; [value] is drawn on the right, for the rows that switch a radio. */
+    data class Action(
+        override val label: String,
+        val value: String? = null,
+        val activate: () -> Unit,
+    ) : SubRow {
         override val height: Dp get() = ACTION_ROW
     }
 
@@ -148,9 +154,33 @@ internal fun SubPageCard(
     // Read once per window: both lists come from the system, and the height depends on them.
     val paired = remember(page) { if (page == PanelPage.BLUETOOTH) actions.pairedBluetooth() else emptyList() }
     val inputs = remember(page) { if (page == PanelPage.INPUT) actions.inputs() else emptyList() }
+    // Wi-Fi and Bluetooth are switched from their own window. A press has to show at once, and the
+    // system is asked again a moment later, since a TV that refuses the change shows its own screen
+    // instead and the row must not keep claiming it worked.
+    var wifiOn by remember(page) { mutableStateOf(actions.wifiEnabled()) }
+    var bluetoothOn by remember(page) { mutableStateOf(state.status.bluetoothEnabled) }
+    var settles by remember(page) { mutableStateOf(0) }
+    LaunchedEffect(page, state.status.network, state.status.bluetoothEnabled) {
+        wifiOn = actions.wifiEnabled()
+        bluetoothOn = state.status.bluetoothEnabled
+    }
+    LaunchedEffect(settles) {
+        if (settles == 0) return@LaunchedEffect
+        delay(RADIO_SETTLE_MILLIS)
+        wifiOn = actions.wifiEnabled()
+        bluetoothOn = actions.bluetoothEnabled()
+    }
     val rows = when (page) {
-        PanelPage.WIFI -> WifiRows(state, actions)
-        PanelPage.BLUETOOTH -> BluetoothRows(state, paired, actions)
+        PanelPage.WIFI -> WifiRows(state, wifiOn, actions) { next ->
+            wifiOn = next
+            actions.setWifi(next)
+            settles++
+        }
+        PanelPage.BLUETOOTH -> BluetoothRows(state, paired, bluetoothOn, actions) { next ->
+            bluetoothOn = next
+            actions.setBluetooth(next)
+            settles++
+        }
         PanelPage.NOTIFICATIONS -> NotificationRows(state, actions)
         else -> InputRows(inputs, actions)
     }
@@ -190,7 +220,7 @@ internal fun SubPageCard(
                     // While the window is on its way home, a press does nothing: it is leaving.
                     is SubRow.Action -> SheetRow(
                         label = row.label,
-                        value = null,
+                        value = row.value,
                         requester = if (index == firstRow) first else null,
                         focusable = !closing,
                         activate = if (closing) NoActivate else row.activate,
@@ -283,6 +313,9 @@ private fun Modifier.windowMotion(
 /** How much smaller a mid-air window is at its first frame. */
 private const val MID_AIR_SCALE = 0.94f
 
+/** How long a radio switch shows its press before asking the system what really happened. */
+private const val RADIO_SETTLE_MILLIS = 1_200L
+
 /** Where the window starts: the opened control's top-left corner and the scale that fits it. */
 private class Start(val x: Float, val y: Float, val scaleX: Float, val scaleY: Float)
 
@@ -290,15 +323,19 @@ private class Start(val x: Float, val y: Float, val scaleX: Float, val scaleY: F
 private fun onOffText(on: Boolean) = stringResource(if (on) R.string.state_on else R.string.state_off)
 
 @Composable
-private fun WifiRows(state: ControlCenterUiState, actions: SubPageActions): List<SubRow> {
+private fun WifiRows(
+    state: ControlCenterUiState,
+    on: Boolean,
+    actions: SubPageActions,
+    toggle: (Boolean) -> Unit,
+): List<SubRow> {
     val network = when (state.status.network) {
         NetworkKind.WIFI -> actions.wifiName() ?: stringResource(R.string.sub_connected)
         NetworkKind.ETHERNET -> "Ethernet"
         NetworkKind.NONE -> stringResource(R.string.sub_not_connected)
     }
-    val on = actions.wifiEnabled() || state.status.network == NetworkKind.WIFI
     return listOf(
-        SubRow.Info(stringResource(R.string.sub_status), onOffText(on)),
+        SubRow.Action(stringResource(R.string.tile_wifi), onOffText(on)) { toggle(!on) },
         SubRow.Info(stringResource(R.string.sub_network), network),
         SubRow.Action(stringResource(R.string.sub_open_wifi)) { actions.openWifiSettings() },
     )
@@ -308,9 +345,11 @@ private fun WifiRows(state: ControlCenterUiState, actions: SubPageActions): List
 private fun BluetoothRows(
     state: ControlCenterUiState,
     paired: List<String>,
+    on: Boolean,
     actions: SubPageActions,
+    toggle: (Boolean) -> Unit,
 ): List<SubRow> = buildList {
-    add(SubRow.Info(stringResource(R.string.sub_status), onOffText(state.status.bluetoothEnabled)))
+    add(SubRow.Action(stringResource(R.string.tile_bluetooth), onOffText(on)) { toggle(!on) })
     add(
         SubRow.Info(
             stringResource(R.string.sub_bt_audio),
@@ -318,7 +357,7 @@ private fun BluetoothRows(
         ),
     )
     paired.forEach { add(SubRow.Info(stringResource(R.string.sub_paired), it)) }
-    add(SubRow.Action(stringResource(R.string.sub_open_remotes)) { actions.openBluetoothSettings() })
+    add(SubRow.Action(stringResource(R.string.sub_pair_accessory)) { actions.openBluetoothSettings() })
 }
 
 /** Every input is its own row, so they all show at once. */
