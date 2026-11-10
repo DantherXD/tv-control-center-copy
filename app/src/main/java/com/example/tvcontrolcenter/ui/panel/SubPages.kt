@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -34,7 +36,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -42,7 +43,6 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
@@ -50,6 +50,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Icon
 import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.NetworkKind
 import com.example.tvcontrolcenter.domain.model.Placed
@@ -561,7 +562,14 @@ private fun EmptyNotice(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        TileIcon(ImageVector.vectorResource(R.drawable.ic_trophy), 30.dp, Color.White)
+        // Drawn straight from the filled Material icon: the trophy is filled by design, so the
+        // icon style and the Phosphor pack must not turn it into its outline.
+        Icon(
+            Icons.Filled.EmojiEvents,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(30.dp),
+        )
         Label(stringResource(R.string.sub_notif_caught_up), Modifier.padding(top = 10.dp))
     }
 }
