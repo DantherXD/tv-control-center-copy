@@ -68,6 +68,7 @@ import kotlinx.coroutines.delay
 /** What the Wi-Fi, Bluetooth and Input pages can ask of the system. */
 internal class SubPageActions(
     val wifiEnabled: () -> Boolean,
+    val bluetoothEnabled: () -> Boolean,
     val wifiName: () -> String?,
     val setWifi: (Boolean) -> Unit,
     val openWifiSettings: () -> Unit,
