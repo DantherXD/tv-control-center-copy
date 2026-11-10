@@ -1,5 +1,5 @@
 name: Android CI
-
+ 
 on:
   # main and feature branches build the release APK and publish it as an artifact.
   push:
