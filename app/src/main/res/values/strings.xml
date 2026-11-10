@@ -161,7 +161,7 @@
     <string name="bt_icon_standard">Bluetooth mark</string>
     <string name="bt_icon_headphones">Headphones</string>
     <string name="edit_notice_size">Notification text size</string>
-    <string name="sub_notif_none">No notifications</string>
+    <string name="sub_notif_caught_up">You\'re all caught up</string>
     <string name="sub_notif_access">Turn on notification access</string>
     <string name="sub_notif_clear_all">Clear all</string>
     <string name="edit_menu_icon">Menu icon</string>

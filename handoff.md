@@ -217,7 +217,9 @@ fires the notification's own `contentIntent` **while the panel's window is still
 cannot launch another app's activity — and the event loop dismisses the panel straight after; `clearAll()` calls
 `cancelNotification` on each clearable one through the connected service. Rows are `SubRow.Notice` at
 `PanelDimens.notificationRow` (56 dp), and the window may grow to `notificationsMaxHeight` (400 dp) rather than
-`subPageMaxHeight`. The rows' text has its own scale, `PanelSettings.notificationTextScale` ("Notification text size",
+`subPageMaxHeight`. With nothing to list it draws `EmptyNotice` rather than rows: `ic_trophy.xml` at 30 dp over
+`sub_notif_caught_up` ("You're all caught up"), centred in the window (and the window itself takes focus, so Back still
+closes it). The rows' text has its own scale, `PanelSettings.notificationTextScale` ("Notification text size",
 0.8 by default, from `NotificationTextSteps`), handed to the list by `LocalNoticeScale` and applied with a nested
 `ProvideTextScale` inside `SheetNoticeRow`, so the font shrinks without the row or the window changing size.
 

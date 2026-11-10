@@ -34,6 +34,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -41,6 +42,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
@@ -184,6 +186,9 @@ internal fun SubPageCard(
         PanelPage.NOTIFICATIONS -> NotificationRows(state, actions)
         else -> InputRows(inputs, actions)
     }
+    // A window with nothing to list says so in its middle instead of with a row.
+    val emptyNotice = page == PanelPage.NOTIFICATIONS && state.notificationAccess &&
+        state.notifications.isEmpty()
     val rowsHeight = rows.fold(0.dp) { sum, row -> sum + row.height } +
         ROW_GAP * (rows.size - 1).coerceAtLeast(0)
     // Tall enough for every row at once, up to a cap; past that the rows scroll. The notifications
@@ -210,7 +215,9 @@ internal fun SubPageCard(
             TileIcon(lookOf(tile).icon, 20.dp, Color.White)
             Label(stringResource(lookOf(tile).label), maxLines = 1)
         }
-        Column(
+        if (emptyNotice) {
+            EmptyNotice(Modifier.weight(1f))
+        } else Column(
             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(ROW_GAP),
         ) {
@@ -380,9 +387,8 @@ private fun NotificationRows(state: ControlCenterUiState, actions: SubPageAction
             SubRow.Action(stringResource(R.string.sub_notif_access)) { actions.openNotificationAccess() },
         )
     }
-    if (state.notifications.isEmpty()) {
-        return listOf(SubRow.Info(stringResource(R.string.sub_notif_none), ""))
-    }
+    // Nothing to list: the window shows its own empty state in the middle (see SubPageCard).
+    if (state.notifications.isEmpty()) return emptyList()
     return buildList {
         state.notifications.forEach { notice ->
             add(
@@ -543,6 +549,19 @@ private fun SheetNoticeRow(
                 }
             }
         }
+    }
+}
+
+/** Nothing to show: a trophy and a word about it, in the middle of the window. */
+@Composable
+private fun EmptyNotice(modifier: Modifier = Modifier) {
+    Column(
+        modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        TileIcon(ImageVector.vectorResource(R.drawable.ic_trophy), 30.dp, Color.White)
+        Label(stringResource(R.string.sub_notif_caught_up), Modifier.padding(top = 10.dp))
     }
 }
 
