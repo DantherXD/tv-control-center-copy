@@ -74,6 +74,8 @@
     <string name="blur_strong">Strong</string>
     <string name="blur_max">Max</string>
     <string name="edit_blur_method">Blur method</string>
+    <string name="edit_liquid_glass">Liquid glass</string>
+    <string name="liquid_glass_note">Real refraction and lens on Android 12+, with chromatic aberration on Android 13+. Off keeps the pre-blurred glass on every device.</string>
     <string name="method_auto">Auto</string>
     <string name="method_screenshot">Screenshot</string>
     <string name="method_window">Whole screen</string>

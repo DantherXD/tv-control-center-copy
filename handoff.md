@@ -85,7 +85,9 @@ Error output looks like `e: file:///home/runner/work/.../MusicPage.kt:85:50 Unre
   composition locals `LocalInvertFocus`, `LocalLiteGlass`, `LocalOverBlur`, `LocalTileInk`,
   `LocalEdgeWidth`, `LocalFrostStyle`.
 - `ui/glass/Backdrop.kt`: blurred-screen holder plus its `LumaMap` brightness grid, which is what
-  the ink contrast reads.
+  the ink contrast reads; `sharp` is the screenshot the real lens samples.
+- `ui/glass/LiquidBackdrop.kt`: per-control `rememberCanvasBackdrop` crop of `sharp`, translated by
+  the control's origin. The `Backdrop` library's canvas path is coordinates-independent.
 - `ui/background/AppWallpaper.kt`: the eight painted wallpapers for the app's own pages.
 - `ui/panel/ControlCenterViewModel.kt`: UI state, tile activation, long press, caffeine,
   Wi-Fi/Bluetooth/input helpers, music page request.
@@ -185,13 +187,16 @@ window hands focus back to the control that opened it.
 
 **Glass and blur.** Ten `FrostStyle`s (Smoke, Milky, Clear, Lens, Ocean, Amethyst, Ember, Forest,
 Rose, Midnight). Real liquid glass via `io.github.kyant0:backdrop` 1.0.0: `BackdropCapture` keeps a sharp
-960 px screenshot, `ControlCenterPanel` records it as a layer, and `frostedTile` samples it per control
-with vibrancy, blur and a RuntimeShader lens (refraction, depth, chromatic aberration) on Android 12+
-(lens on Android 13+). Blur method AUTO (screenshot, window blur fallback), SCREENSHOT (glass only),
-WINDOW (whole screen). Patient capture (1.2 s, 3 tries) for video. Whole-screen mode draws the blurred
-screenshot full screen with no box. Fallback on older Android or when nothing can blur: the 480 px
-pre-blurred copy, frosted sheet/card.
-Customisable: blur strength, frost style, edge width, invert focus, card on/off, text scale, panel
+960 px screenshot, `ui/glass/LiquidBackdrop.kt` turns it into a per-control `rememberCanvasBackdrop` crop,
+and `frostedTile` applies vibrancy, blur and a RuntimeShader lens (refraction, depth, chromatic aberration)
+on Android 12+ (lens on Android 13+). No full-screen recording layer is needed, so the editor preview shows
+the same glass as the panel. `PanelSettings.liquidGlass` ("Liquid glass" in the editor's Blur page, on by
+default) turns the real path off and keeps the pre-blurred fallback on every device. Blur method AUTO
+(screenshot, window blur fallback), SCREENSHOT (glass only), WINDOW (whole screen). Patient capture (1.2 s,
+3 tries) for video. Whole-screen mode draws the blurred screenshot full screen with no box. Fallback on
+older Android, with liquid glass off, or when nothing can blur: the 480 px pre-blurred copy, frosted
+sheet/card.
+Customisable: blur strength, liquid glass, frost style, edge width, invert focus, card on/off, text scale, panel
 size, position, header gap, icon style and pack, music style, wallpapers (eight, app pages only),
 profile photo/colour, automatic icon colour, icon pack and its six weights, the Bluetooth icon
 (Bluetooth mark or headphones), the Menu button icon (bars or the older switches) and the

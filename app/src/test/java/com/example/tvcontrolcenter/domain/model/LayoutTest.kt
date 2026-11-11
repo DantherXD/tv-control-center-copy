@@ -288,4 +288,8 @@ class BlurLevelsTest {
         assertEquals(0, PanelSettings(blurBehind = false).effectiveBlur)
         assertEquals(0, PanelSettings(blurLevel = 0).effectiveBlur)
     }
+
+    @Test fun `liquid glass is on by default`() {
+        assertEquals(true, PanelSettings().liquidGlass)
+    }
 }

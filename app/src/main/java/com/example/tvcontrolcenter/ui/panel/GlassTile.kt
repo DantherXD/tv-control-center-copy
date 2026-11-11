@@ -47,6 +47,7 @@ import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
 import com.example.tvcontrolcenter.ui.glass.LocalSoundCues
 import com.example.tvcontrolcenter.ui.glass.LocalTileInk
 import com.example.tvcontrolcenter.ui.glass.frostedTile
+import com.example.tvcontrolcenter.ui.glass.rememberLiquidBackdrop
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
 import com.example.tvcontrolcenter.ui.theme.Motion
 
@@ -98,6 +99,7 @@ fun GlassTile(
     val lite = LocalLiteGlass.current
     val overBlur = LocalOverBlur.current
     val edge = LocalEdgeWidth.current
+    val glassBlur = LocalGlassBlur.current
     val soundCues = LocalSoundCues.current
     val longFired = remember { booleanArrayOf(false) }
     // A screen can open while OK is still held (long press); that release must not press anything.
@@ -108,6 +110,11 @@ fun GlassTile(
         label = "tileFocus",
     )
     val view = LocalView.current
+    // The sharp screenshot is cropped for this control only when the shader is enabled. Off, the
+    // pre-blurred fallback keeps working everywhere, including Android 11 and below.
+    val liquidBackdrop = if (glassBlur.value > 0f && !lite && !flat && !solid) {
+        rememberLiquidBackdrop(backdrop, backdropOrigin)
+    } else null
     // Content colour changes at once on focus; the white fill fades in over it in the draw phase.
     val inkColor = when {
         // A white control takes dark content whatever the glass behind it is doing.
@@ -192,8 +199,8 @@ fun GlassTile(
                 lite = lite,
                 edge = edge,
                 flat = flat,
-                liquidBackdrop = backdrop?.layer,
-                blurRadius = LocalGlassBlur.current,
+                liquidBackdrop = liquidBackdrop,
+                blurRadius = glassBlur,
             ),
     ) {
         CompositionLocalProvider(LocalTileInk provides inkColor) { content() }

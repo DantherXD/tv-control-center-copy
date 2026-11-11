@@ -114,6 +114,7 @@ class PreferencesLayoutRepository @Inject constructor(
             blurBehind = prefs.getBoolean(KEY_BLUR, true),
             blurLevel = BlurLevels.clamp(prefs.getInt(KEY_BLUR_LEVEL, 3)),
             blurMethod = BlurMethod.entries.firstOrNull { it.name == prefs.getString(KEY_BLUR_METHOD, null) } ?: BlurMethod.AUTO,
+            liquidGlass = prefs.getBoolean(KEY_LIQUID_GLASS, true),
             frost = FrostStyle.entries.firstOrNull { it.name == prefs.getString(KEY_FROST, null) } ?: FrostStyle.SMOKE,
             wallpaper = Wallpaper.entries.firstOrNull { it.name == prefs.getString(KEY_WALLPAPER, null) } ?: Wallpaper.BOXES,
             topOffset = prefs.getInt(KEY_TOP, 48),
@@ -185,6 +186,7 @@ class PreferencesLayoutRepository @Inject constructor(
             .putBoolean(KEY_BLUR, next.blurBehind)
             .putInt(KEY_BLUR_LEVEL, next.blurLevel)
             .putString(KEY_BLUR_METHOD, next.blurMethod.name)
+            .putBoolean(KEY_LIQUID_GLASS, next.liquidGlass)
             .putString(KEY_FROST, next.frost.name)
             .putString(KEY_WALLPAPER, next.wallpaper.name)
             .putInt(KEY_TOP, next.topOffset)
@@ -220,6 +222,7 @@ class PreferencesLayoutRepository @Inject constructor(
     private companion object {
         const val KEY_BLUR_LEVEL = "blur_level"
         const val KEY_BLUR_METHOD = "blur_method"
+        const val KEY_LIQUID_GLASS = "liquid_glass"
         const val KEY_FROST = "frost"
         const val KEY_WALLPAPER = "wallpaper"
         const val KEY_TOP = "top_offset"

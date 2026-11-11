@@ -1,7 +1,6 @@
 package com.example.tvcontrolcenter.ui.glass
 
 import androidx.compose.ui.graphics.ImageBitmap
-import com.kyant.backdrop.Backdrop as KyantBackdrop
 
 /**
  * A blurred copy of what is on screen, used as the "glass" inside each control.
@@ -19,8 +18,6 @@ data class Backdrop(
     val luma: LumaMap? = null,
     /** Sharp screenshot for the real glass. Falls back to [image] when no extra copy exists. */
     val sharp: ImageBitmap? = null,
-    /** The screenshot recorded as a layer the Backdrop library can refract. */
-    val layer: KyantBackdrop? = null,
 ) {
 
     /**

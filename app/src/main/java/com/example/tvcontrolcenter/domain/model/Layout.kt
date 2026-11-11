@@ -259,6 +259,8 @@ data class PanelSettings(
     val blurBehind: Boolean = true,
     val blurLevel: Int = 3,
     val blurMethod: BlurMethod = BlurMethod.AUTO,
+    /** Real refraction/lens over the sharp screenshot; off keeps the pre-blurred glass. */
+    val liquidGlass: Boolean = true,
     val frost: FrostStyle = FrostStyle.SMOKE,
     /** Background of the app's own pages (home page and editor). */
     val wallpaper: Wallpaper = Wallpaper.BOXES,

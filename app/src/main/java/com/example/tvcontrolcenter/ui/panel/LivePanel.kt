@@ -36,20 +36,18 @@ import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
 import com.example.tvcontrolcenter.ui.theme.LocalNoticeScale
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 /**
- * A small picture of the panel, over a blurred screen, for the home page and the editor.
+ * A small picture of the panel, over the wallpaper, for the home page and the editor.
  *
  * It is the same [PanelContent] the real panel draws, with the same glass: the sharp wallpaper
- * is recorded as a backdrop layer, its blurred copy supplies the fallback and the brightness
- * map, and the scrim, the sheet and the controls follow the same rules as the host. Because
- * all of it is rebuilt whenever the wallpaper, the blur strength, the method or the size
- * changes, every setting shows up here at once — including what "Whole screen" changes.
+ * feeds the per-control liquid-glass shader, its blurred copy supplies the fallback and the
+ * brightness map, and the scrim, the sheet and the controls follow the same rules as the host.
+ * Because all of it is rebuilt whenever the wallpaper, the blur strength, the method or the
+ * size changes, every setting shows up here at once — including what "Whole screen" changes.
  */
 @Composable
 internal fun LivePanel(
@@ -73,17 +71,19 @@ internal fun LivePanel(
         else withContext(Dispatchers.Default) { previewWallpaper(state.settings.wallpaper, w, h, level) }
     }
     val wholeScreen = state.settings.blurMethod == BlurMethod.WINDOW
-    // The sharp wallpaper is recorded here. Each control samples its own piece through the
-    // Backdrop shader; the blurred copy only feeds the fallback and the ink contrast.
-    val glassLayer = rememberLayerBackdrop()
-    val mapped = remember(wallpaper, previewSize, level, glassLayer) {
+    // The sharp copy goes to the shader; the blurred copy is the fallback and the ink map.
+    val mapped = remember(wallpaper, previewSize, level) {
         val blurred = wallpaper?.blurred
         if (level <= 0 || blurred == null) null
-        else Backdrop(blurred, previewSize.width, previewSize.height, layer = glassLayer)
+        else Backdrop(
+            image = blurred,
+            width = previewSize.width,
+            height = previewSize.height,
+            sharp = wallpaper?.sharp,
+        )
     }
     // Same rule as the panel: a sheet only when the glass has no blurred screen to show, or
-    // when the card was asked for. The editor overrides it so its blur-free preview still
-    // reflects the saved card setting instead of always drawing the no-blur fallback.
+    // when the card was asked for.
     val sheet = showSheet ?: (mapped == null || state.settings.card)
     // Whole screen blurs everything behind the panel. Every other method keeps the screen sharp
     // and blurs only inside the glass, which is what the panel really looks like.
@@ -96,74 +96,57 @@ internal fun LivePanel(
     Box(
         modifier
             .clip(RoundedCornerShape(PanelDimens.sheetRadius))
-            .onSizeChanged { previewSize = it },
+            .onSizeChanged { previewSize = it }
+            .drawBehind {
+                val image = screen ?: return@drawBehind
+                drawImage(
+                    image,
+                    dstSize = IntSize(size.width.roundToInt().coerceAtLeast(1), size.height.roundToInt().coerceAtLeast(1)),
+                    filterQuality = FilterQuality.Medium,
+                )
+                // The panel dims the screen behind it; without the same scrim the preview reads
+                // brighter and flatter than the real thing.
+                drawRect(Color.Black.copy(alpha = if (level > 0) 0.22f else 0.32f))
+            }
+            .padding(PanelDimens.sheetPadding),
     ) {
-        // Only the picture is recorded. The scrim is drawn above it so the lens samples the
-        // undimmed wallpaper, exactly as it does over the real app.
-        Box(
-            Modifier
-                .matchParentSize()
-                .layerBackdrop(glassLayer)
-                .drawBehind {
-                    val image = screen ?: return@drawBehind
-                    drawImage(
-                        image,
-                        dstSize = IntSize(
-                            size.width.roundToInt().coerceAtLeast(1),
-                            size.height.roundToInt().coerceAtLeast(1),
-                        ),
-                        filterQuality = FilterQuality.Medium,
-                    )
-                },
-        )
-        Box(
-            Modifier
-                .matchParentSize()
-                .drawBehind {
-                    // The panel dims the screen behind it; without the same scrim the preview
-                    // reads brighter and flatter than the real thing.
-                    drawRect(Color.Black.copy(alpha = if (level > 0) 0.22f else 0.32f))
-                },
-        )
-        Box(Modifier.padding(PanelDimens.sheetPadding)) {
-            CompositionLocalProvider(
-                // The preview must draw the real glass. The editor page around it is lite, and that
-                // local would otherwise reach these controls, whose lite path skips the backdrop.
-                LocalLiteGlass provides false,
-                LocalFrostStyle provides state.settings.frost,
-                LocalInvertFocus provides state.settings.invertFocus,
-                LocalOverBlur provides (mapped != null),
-                LocalGlassBlur provides (level * 3).dp,
-                LocalEdgeWidth provides state.settings.edgeWidth.dp,
-                LocalIconStyle provides state.settings.iconStyle,
-                LocalIconPack provides state.settings.iconPack,
-                LocalPhosphorWeight provides state.settings.phosphorWeight,
-                LocalBluetoothIcon provides state.settings.bluetoothIcon,
-                LocalMenuIcon provides state.settings.menuIcon,
-                LocalNoticeScale provides state.settings.notificationTextScale,
-            ) {
-                ProvideTextScale(state.settings.textScale) {
-                    PanelContent(
-                        grid = grid,
-                        pinned = pinned,
-                        state = state,
-                        requesters = requesters,
-                        interactive = interactive,
-                        trapEdges = false,
-                        selected = selected,
-                        appear = { _ -> { 1f } },
-                        onFocused = {},
-                        onActivate = onActivate,
-                        actions = TileActions(),
-                        // Whole screen: the blurred picture is the background and the controls
-                        // are plain glass on it. Otherwise each control shows its own piece.
-                        backdrop = if (wholeScreen || level <= 0) null else mapped,
-                        origin = with(density) {
-                            Offset(PanelDimens.sheetPadding.toPx(), PanelDimens.sheetPadding.toPx())
-                        },
-                        sheet = sheet,
-                    )
-                }
+        CompositionLocalProvider(
+            // The preview must draw the real glass. The editor page around it is lite, and that
+            // local would otherwise reach these controls, whose lite path skips the backdrop.
+            LocalLiteGlass provides false,
+            LocalFrostStyle provides state.settings.frost,
+            LocalInvertFocus provides state.settings.invertFocus,
+            LocalOverBlur provides (mapped != null),
+            LocalGlassBlur provides (if (state.settings.liquidGlass) (level * 3).dp else 0.dp),
+            LocalEdgeWidth provides state.settings.edgeWidth.dp,
+            LocalIconStyle provides state.settings.iconStyle,
+            LocalIconPack provides state.settings.iconPack,
+            LocalPhosphorWeight provides state.settings.phosphorWeight,
+            LocalBluetoothIcon provides state.settings.bluetoothIcon,
+            LocalMenuIcon provides state.settings.menuIcon,
+            LocalNoticeScale provides state.settings.notificationTextScale,
+        ) {
+            ProvideTextScale(state.settings.textScale) {
+                PanelContent(
+                    grid = grid,
+                    pinned = pinned,
+                    state = state,
+                    requesters = requesters,
+                    interactive = interactive,
+                    trapEdges = false,
+                    selected = selected,
+                    appear = { _ -> { 1f } },
+                    onFocused = {},
+                    onActivate = onActivate,
+                    actions = TileActions(),
+                    // Whole screen: the blurred picture is the background and the controls are
+                    // plain glass on it. Otherwise each control shows its own piece of it.
+                    backdrop = if (wholeScreen || level <= 0) null else mapped,
+                    origin = with(density) {
+                        Offset(PanelDimens.sheetPadding.toPx(), PanelDimens.sheetPadding.toPx())
+                    },
+                    sheet = sheet,
+                )
             }
         }
     }

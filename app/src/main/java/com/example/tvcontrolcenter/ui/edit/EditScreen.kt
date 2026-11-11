@@ -165,12 +165,9 @@ private fun EditBody(
     val listScroll = rememberScrollState()
     var selected by remember { mutableStateOf<TileId?>(null) }
     var returnTo by remember { mutableStateOf<TileId?>(null) }
-    // The preview skips wallpaper blur: the box blur is CPU work the editor should not pay for
-    // on every setting change. The real panel still applies the saved blur level.
-    val previewState = remember(state) {
-        if (state.settings.effectiveBlur == 0) state
-        else state.copy(settings = state.settings.copy(blurBehind = false, blurLevel = 0))
-    }
+    // The preview shows the saved blur. The wallpaper is built off the main thread and keyed by
+    // the settings that affect it, so toggling a row does not redo the blur on every frame.
+    val previewState = state
 
     // Every page opens at the top with focus on its first option, not on the rail that was just
     // pressed. Layout is control-led; the other pages use pageFirst on their first setting.
@@ -734,6 +731,11 @@ private fun EditBody(
                                         it.copy(blurMethod = methods[Math.floorMod(at + d, methods.size)].first)
                                     }
                                 }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_liquid_glass),
+                                    value = onOff(settings.liquidGlass),
+                                ) { vm.updateSettings { it.copy(liquidGlass = !it.liquidGlass) } }
+                                AppNote(stringResource(R.string.liquid_glass_note))
                             }
                             Spacer(Modifier.height(AppDimens.groupGap))
                             AppSettingGroup(title = stringResource(R.string.group_capture)) {

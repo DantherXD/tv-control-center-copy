@@ -81,6 +81,7 @@ import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
 import com.example.tvcontrolcenter.ui.glass.LocalGlassBlur
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
+import com.example.tvcontrolcenter.ui.glass.rememberLiquidBackdrop
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
 import com.example.tvcontrolcenter.ui.glass.LocalTileInk
@@ -116,6 +117,8 @@ internal class MusicFocus {
 internal fun cardGlass(backdrop: Backdrop?, origin: Offset, sheet: Boolean): Modifier {
     val style = LocalFrostStyle.current
     val radius = PanelDimens.sheetRadius
+    val glassBlur = LocalGlassBlur.current
+    val liquidBackdrop = if (glassBlur.value > 0f) rememberLiquidBackdrop(backdrop, origin) else null
     return if (sheet && backdrop == null) {
         Modifier.frostedSheet(radius, style, lite = LocalLiteGlass.current)
     } else {
@@ -129,8 +132,8 @@ internal fun cardGlass(backdrop: Backdrop?, origin: Offset, sheet: Boolean): Mod
             overBlur = LocalOverBlur.current || backdrop != null,
             lite = LocalLiteGlass.current,
             edge = LocalEdgeWidth.current,
-            liquidBackdrop = backdrop?.layer,
-            blurRadius = LocalGlassBlur.current,
+            liquidBackdrop = liquidBackdrop,
+            blurRadius = glassBlur,
         )
     }
 }
