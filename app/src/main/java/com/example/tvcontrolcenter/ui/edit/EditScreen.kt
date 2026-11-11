@@ -449,6 +449,10 @@ private fun EditBody(
                                 ) { d ->
                                     vm.updateSettings { it.copy(edgeWidth = EdgeWidthSteps.step(it.edgeWidth, d)) }
                                 }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_tile_grain),
+                                    value = onOff(settings.tileGrain),
+                                ) { vm.updateSettings { it.copy(tileGrain = !it.tileGrain) } }
                                 val iconNames = listOf(
                                     IconStyle.FILLED to R.string.icons_filled,
                                     IconStyle.OUTLINED to R.string.icons_outlined,
@@ -734,6 +738,11 @@ private fun EditBody(
                                         it.copy(blurMethod = methods[Math.floorMod(at + d, methods.size)].first)
                                     }
                                 }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_live_glass),
+                                    value = onOff(settings.liveGlass),
+                                ) { vm.updateSettings { it.copy(liveGlass = !it.liveGlass) } }
+                                AppNote(stringResource(R.string.live_glass_note))
                             }
                             Spacer(Modifier.height(AppDimens.groupGap))
                             AppSettingGroup(title = stringResource(R.string.group_liquid_glass)) {

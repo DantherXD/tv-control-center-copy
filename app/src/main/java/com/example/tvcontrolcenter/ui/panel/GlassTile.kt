@@ -42,6 +42,7 @@ import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalLiquidGlass
+import com.example.tvcontrolcenter.ui.glass.LocalTileGrain
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
 import com.example.tvcontrolcenter.ui.glass.LocalSoundCues
@@ -100,6 +101,7 @@ fun GlassTile(
     val overBlur = LocalOverBlur.current
     val edge = LocalEdgeWidth.current
     val liquidGlass = LocalLiquidGlass.current
+    val tileGrain = LocalTileGrain.current
     val soundCues = LocalSoundCues.current
     val longFired = remember { booleanArrayOf(false) }
     // A screen can open while OK is still held (long press); that release must not press anything.
@@ -198,6 +200,7 @@ fun GlassTile(
                 solid = solid,
                 lite = lite,
                 edge = edge,
+                grain = tileGrain,
                 flat = flat,
                 liquidBackdrop = liquidBackdrop,
                 liquidGlass = liquidGlass,

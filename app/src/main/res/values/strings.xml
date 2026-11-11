@@ -74,6 +74,9 @@
     <string name="blur_strong">Strong</string>
     <string name="blur_max">Max</string>
     <string name="edit_blur_method">Blur method</string>
+    <string name="edit_live_glass">Live glass</string>
+    <string name="live_glass_note">Uses the TV\'s own live window blur when the panel is over another app, so moving video stays live. Needs Android 12+ cross-window blur; otherwise the screenshot is used. The lens is skipped in this mode.</string>
+    <string name="edit_tile_grain">Tile grain</string>
     <string name="group_liquid_glass">Liquid glass</string>
     <string name="edit_liquid_glass">Liquid glass</string>
     <string name="edit_liquid_blur">Glass blur</string>

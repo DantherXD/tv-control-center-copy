@@ -259,6 +259,11 @@ data class PanelSettings(
     val blurBehind: Boolean = true,
     val blurLevel: Int = 3,
     val blurMethod: BlurMethod = BlurMethod.AUTO,
+    /**
+     * Use the TV's own live window blur instead of a screenshot. The background stays live;
+     * the screenshot-only lens is skipped. Falls back to a screenshot when unsupported.
+     */
+    val liveGlass: Boolean = false,
     /** Real refraction/lens over the sharp screenshot; off keeps the pre-blurred glass. */
     val liquidGlass: Boolean = true,
     /** Shader blur in dp. Separate from [effectiveBlur], which controls the captured screenshot. */
@@ -295,6 +300,8 @@ data class PanelSettings(
     val cornerNotices: Boolean = false,
     /** Thickness of the glass edge line in dp (see [EdgeWidthSteps]); 0 draws none. */
     val edgeWidth: Float = 1.5f,
+    /** Faint noise texture on the control glass. Off is cleaner. */
+    val tileGrain: Boolean = true,
     /** Size of the round top-bar buttons in dp (see [TopSizeSteps]). */
     val topSize: Int = 44,
     /** Top-bar buttons have no glass until focused. */

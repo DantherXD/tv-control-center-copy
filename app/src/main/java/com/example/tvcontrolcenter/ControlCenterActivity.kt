@@ -64,12 +64,21 @@ class ControlCenterActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     val settings = ControlCenterEntryPoint.from(this@ControlCenterActivity).layoutRepository().settings.value
                     val level = settings.effectiveBlur
-                    backdrop = BackdropCapture.capture(level, settings.patientCapture)
-                    // No screenshot (older Android, service off, protected video): ask the system to blur.
-                    if (backdrop == null && settings.blurMethod != BlurMethod.SCREENSHOT) {
+                    // Live glass asks the system to blur the real window content, with no snapshot.
+                    if (settings.liveGlass) {
                         val p = window.attributes
                         windowBlur = p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))
                         if (windowBlur) window.attributes = p
+                    }
+                    if (!windowBlur) {
+                        backdrop = BackdropCapture.capture(level, settings.patientCapture)
+                        // No screenshot (older Android, service off, protected video): ask the system
+                        // to blur when this is not the live path.
+                        if (backdrop == null && !settings.liveGlass && settings.blurMethod != BlurMethod.SCREENSHOT) {
+                            val p = window.attributes
+                            windowBlur = p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))
+                            if (windowBlur) window.attributes = p
+                        }
                     }
                     if (openWhenReady) {
                         everOpened = true
@@ -84,7 +93,7 @@ class ControlCenterActivity : ComponentActivity() {
                     onCapability = { openCapabilitySettings(it) },
                     modifier = Modifier.fillMaxSize(),
                     backdrop = backdrop,
-                    scrimAlpha = if (backdrop != null) 0.22f else 0.32f,
+                    scrimAlpha = if (backdrop != null || windowBlur) 0.22f else 0.32f,
                     windowBlur = windowBlur,
                     onOpenEditor = {
                         startActivity(

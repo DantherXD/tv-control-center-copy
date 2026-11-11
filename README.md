@@ -89,6 +89,8 @@ buttons on the left set its size, move it earlier or later, or hide it. "Add con
 * **Blur strength** Off, Light, Medium, Strong, Max.
 * **Blur method** Auto, Screenshot (blur only inside the glass) or Whole screen (the whole picture behind the panel is blurred from a screenshot, with no box around the controls; the system window blur is the fallback).
   A line under it says whether screenshot blur is ready.
+* **Live glass** uses the TV's own real-time window blur instead of a screenshot, so video behind the panel keeps moving. It needs Android 12+ cross-window blur and skips the screenshot-only lens; unsupported devices fall back to the screenshot.
+* **Tile grain** adds or removes the faint noise texture on the control glass.
 * **Liquid glass** turns the real refraction on or off. On is the Backdrop shader with vibrancy, blur and a lens rim (Android 12+, lens depth and chromatic aberration on Android 13+).
   The group below it tunes every shader parameter: **Glass blur**, **Lens height**, **Lens bend**, **Vibrancy**, **Lens depth** and **Chromatic aberration**.
   Glass blur is the shader's own radius, separate from Blur strength, which controls the screenshot and fallback. Off uses the pre-blurred glass on every device, including Android 11 and below.
@@ -113,6 +115,8 @@ Glass is real optics now, with a cheap fallback:
   screenshot directly, so the effect also works in the editor preview. The 480 px blurred copy is still built for the brightness
   map and for the fallback. Protected video (DRM) cannot be captured and uses the fallback below. After updating, switch the
   accessibility service off and on once so Android grants the new screenshot permission.
+* **Live glass.** On Android 12+ with cross-window blur, the window itself is blurred by the system, so the background is genuinely live; the app draws translucent tint, rim and optional grain over it. There is no screenshot to refract, so the lens is skipped. Without system blur support this option falls back to the screenshot path.
+* **Grain.** The faint noise on the control glass can be turned off with **Tile grain**; it is on by default. The sheet keeps its own grain.
 * **Fallback.** With **Liquid glass** off, without a screenshot (Android 10 and below, service off, protected content), or below
   Android 12 where `RenderEffect` is unavailable, the panel draws a frosted sheet and darker tiles with the pre-blurred copy. On
   Android 12+ with cross-window blur it can also ask the system to blur the whole screen behind it (blur method **Whole screen**, or

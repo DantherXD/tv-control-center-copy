@@ -34,6 +34,7 @@ import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalLiquidGlass
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
+import com.example.tvcontrolcenter.ui.glass.LocalTileGrain
 import com.example.tvcontrolcenter.ui.theme.LocalNoticeScale
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
@@ -118,6 +119,7 @@ internal fun LivePanel(
             LocalFrostStyle provides state.settings.frost,
             LocalInvertFocus provides state.settings.invertFocus,
             LocalOverBlur provides (mapped != null),
+            LocalTileGrain provides state.settings.tileGrain,
             LocalLiquidGlass provides (
                 if (state.settings.liquidGlass) {
                     LiquidGlassParams(

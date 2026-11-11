@@ -184,6 +184,8 @@ fun Modifier.frostedTile(
     solid: Boolean = false,
     /** Flat fills only: no gradient, grain or glint. Used by the editor, which has many controls. */
     lite: Boolean = false,
+    /** Faint noise texture on the glass. Off leaves clean tint and rim. */
+    grain: Boolean = true,
     /** Thickness of the glass edge line. */
     edge: Dp = 0.8.dp,
     /** Borderless: no glass at rest, only the white focus or page fill. */
@@ -218,7 +220,7 @@ fun Modifier.frostedTile(
             shadow = null,
             innerShadow = null,
             onDrawSurface = {
-                drawLiquidGlass(tint, cornerRadius, focus, active, invert, solid, selected, edge)
+                drawLiquidGlass(tint, cornerRadius, focus, active, invert, solid, selected, edge, grain)
             },
         )
     }
@@ -234,6 +236,7 @@ fun Modifier.frostedTile(
         invert = invert,
         solid = solid,
         lite = lite,
+        grain = grain,
         edge = edge,
         flat = flat,
     )
@@ -251,6 +254,7 @@ private fun Modifier.frostedTileFallback(
     invert: Boolean = false,
     solid: Boolean = false,
     lite: Boolean = false,
+    grain: Boolean = true,
     edge: Dp = 0.8.dp,
     flat: Boolean = false,
 ): Modifier = drawWithCache {
@@ -315,7 +319,7 @@ private fun Modifier.frostedTileFallback(
             ),
             cornerRadius = r,
         )
-        drawRoundRect(Grain, cornerRadius = r, alpha = GlassTokens.grainAlpha)
+        if (grain) drawRoundRect(Grain, cornerRadius = r, alpha = GlassTokens.grainAlpha)
 
         // Inverted focus: the whole tile turns white.
         val white = if (solid) 1f else if (invert) f else 0f
@@ -363,6 +367,7 @@ private fun DrawScope.drawLiquidGlass(
     solid: Boolean,
     selected: Boolean,
     edge: Dp,
+    grain: Boolean,
 ) {
     val r = CornerRadius(cornerRadius.toPx())
     val f = focus()
@@ -379,7 +384,7 @@ private fun DrawScope.drawLiquidGlass(
         ),
         cornerRadius = r,
     )
-    drawRoundRect(Grain, cornerRadius = r, alpha = GlassTokens.grainAlpha)
+    if (grain) drawRoundRect(Grain, cornerRadius = r, alpha = GlassTokens.grainAlpha)
 
     val white = if (solid) 1f else if (invert) f else 0f
     if (white > 0.01f) drawRoundRect(Color.White.copy(alpha = 0.97f * white), cornerRadius = r)
@@ -507,3 +512,6 @@ val LocalTileInk = compositionLocalOf { Color.White }
 
 /** Real shader tuning; null turns the library path off and keeps the fallback. */
 val LocalLiquidGlass = compositionLocalOf<LiquidGlassParams?> { null }
+
+/** Faint grain on the control glass. */
+val LocalTileGrain = compositionLocalOf { true }

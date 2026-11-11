@@ -114,6 +114,7 @@ class PreferencesLayoutRepository @Inject constructor(
             blurBehind = prefs.getBoolean(KEY_BLUR, true),
             blurLevel = BlurLevels.clamp(prefs.getInt(KEY_BLUR_LEVEL, 3)),
             blurMethod = BlurMethod.entries.firstOrNull { it.name == prefs.getString(KEY_BLUR_METHOD, null) } ?: BlurMethod.AUTO,
+            liveGlass = prefs.getBoolean(KEY_LIVE_GLASS, false),
             liquidGlass = prefs.getBoolean(KEY_LIQUID_GLASS, true),
             liquidBlur = prefs.getInt(KEY_LIQUID_BLUR, 9).coerceIn(0, 30),
             liquidLensHeight = prefs.getInt(KEY_LIQUID_LENS_HEIGHT, 45).coerceIn(0, 100),
@@ -131,6 +132,7 @@ class PreferencesLayoutRepository @Inject constructor(
             notificationTextScale = prefs.getFloat(KEY_NOTICE_TEXT, 0.8f),
             cornerNotices = prefs.getBoolean(KEY_CORNER_NOTICES, false),
             edgeWidth = prefs.getFloat(KEY_EDGE, 1.5f),
+            tileGrain = prefs.getBoolean(KEY_TILE_GRAIN, true),
             topSize = prefs.getInt(KEY_TOP_SIZE, 44),
             topBorderless = prefs.getBoolean(KEY_TOP_FLAT, false),
             menuIsHome = prefs.getBoolean(KEY_MENU_HOME, true),
@@ -192,6 +194,7 @@ class PreferencesLayoutRepository @Inject constructor(
             .putBoolean(KEY_BLUR, next.blurBehind)
             .putInt(KEY_BLUR_LEVEL, next.blurLevel)
             .putString(KEY_BLUR_METHOD, next.blurMethod.name)
+            .putBoolean(KEY_LIVE_GLASS, next.liveGlass)
             .putBoolean(KEY_LIQUID_GLASS, next.liquidGlass)
             .putInt(KEY_LIQUID_BLUR, next.liquidBlur)
             .putInt(KEY_LIQUID_LENS_HEIGHT, next.liquidLensHeight)
@@ -209,6 +212,7 @@ class PreferencesLayoutRepository @Inject constructor(
             .putFloat(KEY_NOTICE_TEXT, next.notificationTextScale)
             .putBoolean(KEY_CORNER_NOTICES, next.cornerNotices)
             .putFloat(KEY_EDGE, next.edgeWidth)
+            .putBoolean(KEY_TILE_GRAIN, next.tileGrain)
             .putInt(KEY_TOP_SIZE, next.topSize)
             .putBoolean(KEY_TOP_FLAT, next.topBorderless)
             .putBoolean(KEY_MENU_HOME, next.menuIsHome)
@@ -234,6 +238,7 @@ class PreferencesLayoutRepository @Inject constructor(
     private companion object {
         const val KEY_BLUR_LEVEL = "blur_level"
         const val KEY_BLUR_METHOD = "blur_method"
+        const val KEY_LIVE_GLASS = "live_glass"
         const val KEY_LIQUID_GLASS = "liquid_glass"
         const val KEY_LIQUID_BLUR = "liquid_blur"
         const val KEY_LIQUID_LENS_HEIGHT = "liquid_lens_height"
@@ -249,6 +254,7 @@ class PreferencesLayoutRepository @Inject constructor(
         const val KEY_CARD = "card"
         const val KEY_TEXT = "text_scale"
         const val KEY_EDGE = "edge_width"
+        const val KEY_TILE_GRAIN = "tile_grain"
         const val KEY_TOP_SIZE = "top_size"
         const val KEY_TOP_FLAT = "top_borderless"
         const val KEY_MENU_HOME = "menu_is_home"

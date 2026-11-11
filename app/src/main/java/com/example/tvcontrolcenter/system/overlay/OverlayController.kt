@@ -117,14 +117,17 @@ class OverlayController(
                     LaunchedEffect(Unit) {
                         val settings = ControlCenterEntryPoint.from(context).layoutRepository().settings.value
                         val level = settings.effectiveBlur
-                        backdrop = BackdropCapture.capture(level, settings.patientCapture)
-                        // No picture (old Android, DRM video, slow device) -> ask the system to blur the screen.
-                        if (backdrop == null && settings.blurMethod != BlurMethod.SCREENSHOT && !windowBlurOn) {
-                            val p = windowParams
-                            val v = view
-                            if (p != null && v != null && p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))) {
-                                windowBlurOn = true
-                                runCatching { windowManager.updateViewLayout(v, p) }
+                        if (!windowBlurOn) {
+                            backdrop = BackdropCapture.capture(level, settings.patientCapture)
+                            // No picture (old Android, DRM video, slow device) -> ask the system to
+                            // blur the screen, unless Live glass already asked for it.
+                            if (backdrop == null && !settings.liveGlass && settings.blurMethod != BlurMethod.SCREENSHOT) {
+                                val p = windowParams
+                                val v = view
+                                if (p != null && v != null && p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))) {
+                                    windowBlurOn = true
+                                    runCatching { windowManager.updateViewLayout(v, p) }
+                                }
                             }
                         }
                         if (wanted) {
@@ -146,7 +149,7 @@ class OverlayController(
                             )
                         },
                         backdrop = backdrop,
-                        scrimAlpha = if (backdrop != null) SCRIM_WITH_BACKDROP else SCRIM_WITHOUT_BACKDROP,
+                        scrimAlpha = if (backdrop != null || windowBlurOn) SCRIM_WITH_BACKDROP else SCRIM_WITHOUT_BACKDROP,
                         windowBlur = windowBlurOn,
                     )
                 }
@@ -163,8 +166,9 @@ class OverlayController(
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             val s = ControlCenterEntryPoint.from(context).layoutRepository().settings.value
-            // System window blur only when there is no screenshot to blur ourselves.
-            val wantsWindow = s.blurMethod != BlurMethod.SCREENSHOT && !BackdropCapture.isSupported
+            // Live glass always asks for the system's real-time blur. The old fallback asks only
+            // when there is no screenshot to blur ourselves.
+            val wantsWindow = s.liveGlass || (s.blurMethod != BlurMethod.SCREENSHOT && !BackdropCapture.isSupported)
             if (wantsWindow && applyBlurFallback(windowManager, BlurLevels.windowRadius(s.effectiveBlur))) windowBlurOn = true
         }
         windowParams = params
