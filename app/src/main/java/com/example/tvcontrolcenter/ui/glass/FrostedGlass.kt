@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
 import com.example.tvcontrolcenter.domain.model.FrostStyle
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
@@ -48,6 +49,21 @@ private val Grain: ShaderBrush by lazy {
     val bmp = Bitmap.createBitmap(px, size, size, Bitmap.Config.ARGB_8888)
     ShaderBrush(ImageShader(bmp.asImageBitmap(), TileMode.Repeated, TileMode.Repeated))
 }
+
+/**
+ * The real shader's tuning. [blur] is its own radius, separate from the screenshot's blur
+ * strength. [lensHeight] is a fraction of the corner radius and [lensBend] is a fraction of the
+ * control's smallest side, so the lens scales with every tile size.
+ */
+@Immutable
+data class LiquidGlassParams(
+    val blur: Dp = 9.dp,
+    val lensHeight: Float = 0.45f,
+    val lensBend: Float = 0.12f,
+    val vibrancy: Boolean = true,
+    val lensDepth: Boolean = true,
+    val chromatic: Boolean = true,
+)
 
 /** How dark and how white a glass layer is. Plain numbers, so a style costs nothing to draw. */
 private class Tint(
@@ -173,11 +189,11 @@ fun Modifier.frostedTile(
     /** Borderless: no glass at rest, only the white focus or page fill. */
     flat: Boolean = false,
     liquidBackdrop: KyantBackdrop? = null,
-    blurRadius: Dp = 0.dp,
+    liquidGlass: LiquidGlassParams? = null,
 ): Modifier {
     // RenderEffect needs Android 12; the lens shader needs Android 13 and simply no-ops below
     // it. Older devices, the editor's lite path and borderless/solid tiles keep the fallback.
-    if (liquidBackdrop != null && blurRadius > 0.dp && !lite && !flat && !solid &&
+    if (liquidBackdrop != null && liquidGlass != null && !lite && !flat && !solid &&
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     ) {
         val tint = style.tileTint(overBlur = true)
@@ -186,14 +202,15 @@ fun Modifier.frostedTile(
             backdrop = liquidBackdrop,
             shape = { shape },
             effects = {
-                vibrancy()
-                blur(blurRadius.toPx(), TileMode.Clamp)
+                if (liquidGlass.vibrancy) vibrancy()
+                if (liquidGlass.blur > 0.dp) blur(liquidGlass.blur.toPx(), TileMode.Clamp)
                 val radius = cornerRadius.toPx()
                 lens(
-                    refractionHeight = radius * 0.45f,
-                    refractionAmount = (size.minDimension * 0.12f).coerceIn(0f, size.minDimension),
-                    depthEffect = true,
-                    chromaticAberration = true,
+                    refractionHeight = radius * liquidGlass.lensHeight,
+                    refractionAmount = (size.minDimension * liquidGlass.lensBend)
+                        .coerceIn(0f, size.minDimension),
+                    depthEffect = liquidGlass.lensDepth,
+                    chromaticAberration = liquidGlass.chromatic,
                 )
             },
             // The app owns the rim and tint, so the library only supplies the refracted image.
@@ -488,5 +505,5 @@ val LocalOverBlur = compositionLocalOf { false }
 /** Colour of icons and text inside a control: white, or dark while the control is white. */
 val LocalTileInk = compositionLocalOf { Color.White }
 
-/** Blur radius for the real liquid glass; zero keeps the flat fallback. */
-val LocalGlassBlur = compositionLocalOf { 0.dp }
+/** Real shader tuning; null turns the library path off and keeps the fallback. */
+val LocalLiquidGlass = compositionLocalOf<LiquidGlassParams?> { null }

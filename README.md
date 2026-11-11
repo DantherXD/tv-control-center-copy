@@ -89,8 +89,9 @@ buttons on the left set its size, move it earlier or later, or hide it. "Add con
 * **Blur strength** Off, Light, Medium, Strong, Max.
 * **Blur method** Auto, Screenshot (blur only inside the glass) or Whole screen (the whole picture behind the panel is blurred from a screenshot, with no box around the controls; the system window blur is the fallback).
   A line under it says whether screenshot blur is ready.
-* **Liquid glass** turns the real refraction on or off. On is the Backdrop shader with vibrancy, blur and a lens rim (Android 12+, lens on Android 13+).
-  Off uses the pre-blurred glass on every device, including Android 11 and below. The note under the row explains the Android version it needs.
+* **Liquid glass** turns the real refraction on or off. On is the Backdrop shader with vibrancy, blur and a lens rim (Android 12+, lens depth and chromatic aberration on Android 13+).
+  The group below it tunes every shader parameter: **Glass blur**, **Lens height**, **Lens bend**, **Vibrancy**, **Lens depth** and **Chromatic aberration**.
+  Glass blur is the shader's own radius, separate from Blur strength, which controls the screenshot and fallback. Off uses the pre-blurred glass on every device, including Android 11 and below.
 * **Glass style** Smoke (dark), Milky (light), Clear, Lens (the blur behind the controls is dimmed, so the edge and sheen read
   instead of the bright screen), then Ocean, Amethyst, Ember, Forest, Rose and Midnight.
 * **Panel size** scales the panel (80 % to 175 %) on top of the automatic screen fit. "Reset layout" restores the default.
@@ -106,11 +107,12 @@ Glass is real optics now, with a cheap fallback:
 * **Real liquid glass (Android 12+, lens Android 13+).** When a screenshot is available and **Liquid glass** is on,
   `BackdropCapture` keeps a sharp 960 px copy and each control draws its own crop of it into a small
   [`io.github.kyant0:backdrop`](https://github.com/Kyant0/AndroidLiquidGlass) canvas backdrop. The shader applies vibrancy, a
-  Gaussian blur, and a `RuntimeShader` lens with refraction, depth and chromatic aberration around the rim. The app stays sharp
-  around the glass, and the controls are not just a pre-blurred crop any more. There is no full-screen recording layer: every tile
-  samples the sharp screenshot directly, so the effect also works in the editor preview. The 480 px blurred copy is still built for
-  the brightness map and for the fallback. Protected video (DRM) cannot be captured and uses the fallback below. After updating,
-  switch the accessibility service off and on once so Android grants the new screenshot permission.
+  Gaussian blur, and a `RuntimeShader` lens with refraction, depth and chromatic aberration around the rim. Every value is a
+  setting: blur radius, lens height and bend, vibrancy, depth and chromatic aberration. The app stays sharp around the glass,
+  and the controls are not just a pre-blurred crop any more. There is no full-screen recording layer: every tile samples the sharp
+  screenshot directly, so the effect also works in the editor preview. The 480 px blurred copy is still built for the brightness
+  map and for the fallback. Protected video (DRM) cannot be captured and uses the fallback below. After updating, switch the
+  accessibility service off and on once so Android grants the new screenshot permission.
 * **Fallback.** With **Liquid glass** off, without a screenshot (Android 10 and below, service off, protected content), or below
   Android 12 where `RenderEffect` is unavailable, the panel draws a frosted sheet and darker tiles with the pre-blurred copy. On
   Android 12+ with cross-window blur it can also ask the system to blur the whole screen behind it (blur method **Whole screen**, or

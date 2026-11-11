@@ -56,6 +56,9 @@ import com.example.tvcontrolcenter.domain.model.GridPacker
 import com.example.tvcontrolcenter.domain.model.HeaderGapSteps
 import com.example.tvcontrolcenter.domain.model.IconPack
 import com.example.tvcontrolcenter.domain.model.IconStyle
+import com.example.tvcontrolcenter.domain.model.LiquidBlurSteps
+import com.example.tvcontrolcenter.domain.model.LiquidLensBendSteps
+import com.example.tvcontrolcenter.domain.model.LiquidLensHeightSteps
 import com.example.tvcontrolcenter.domain.model.MenuIcon
 import com.example.tvcontrolcenter.domain.model.MusicStyle
 import com.example.tvcontrolcenter.domain.model.NotificationTextSteps
@@ -731,10 +734,47 @@ private fun EditBody(
                                         it.copy(blurMethod = methods[Math.floorMod(at + d, methods.size)].first)
                                     }
                                 }
+                            }
+                            Spacer(Modifier.height(AppDimens.groupGap))
+                            AppSettingGroup(title = stringResource(R.string.group_liquid_glass)) {
                                 AppSettingRow(
                                     label = stringResource(R.string.edit_liquid_glass),
                                     value = onOff(settings.liquidGlass),
                                 ) { vm.updateSettings { it.copy(liquidGlass = !it.liquidGlass) } }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_liquid_blur),
+                                    value = "${settings.liquidBlur} dp",
+                                ) { d ->
+                                    vm.updateSettings { it.copy(liquidBlur = LiquidBlurSteps.step(it.liquidBlur, d)) }
+                                }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_liquid_lens_height),
+                                    value = "${settings.liquidLensHeight}%",
+                                ) { d ->
+                                    vm.updateSettings {
+                                        it.copy(liquidLensHeight = LiquidLensHeightSteps.step(it.liquidLensHeight, d))
+                                    }
+                                }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_liquid_lens_bend),
+                                    value = "${settings.liquidLensBend}%",
+                                ) { d ->
+                                    vm.updateSettings {
+                                        it.copy(liquidLensBend = LiquidLensBendSteps.step(it.liquidLensBend, d))
+                                    }
+                                }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_liquid_vibrancy),
+                                    value = onOff(settings.liquidVibrancy),
+                                ) { vm.updateSettings { it.copy(liquidVibrancy = !it.liquidVibrancy) } }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_liquid_lens_depth),
+                                    value = onOff(settings.liquidLensDepth),
+                                ) { vm.updateSettings { it.copy(liquidLensDepth = !it.liquidLensDepth) } }
+                                AppSettingRow(
+                                    label = stringResource(R.string.edit_liquid_chromatic),
+                                    value = onOff(settings.liquidChromatic),
+                                ) { vm.updateSettings { it.copy(liquidChromatic = !it.liquidChromatic) } }
                                 AppNote(stringResource(R.string.liquid_glass_note))
                             }
                             Spacer(Modifier.height(AppDimens.groupGap))

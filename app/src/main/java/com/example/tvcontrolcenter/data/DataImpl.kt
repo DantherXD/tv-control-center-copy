@@ -115,6 +115,12 @@ class PreferencesLayoutRepository @Inject constructor(
             blurLevel = BlurLevels.clamp(prefs.getInt(KEY_BLUR_LEVEL, 3)),
             blurMethod = BlurMethod.entries.firstOrNull { it.name == prefs.getString(KEY_BLUR_METHOD, null) } ?: BlurMethod.AUTO,
             liquidGlass = prefs.getBoolean(KEY_LIQUID_GLASS, true),
+            liquidBlur = prefs.getInt(KEY_LIQUID_BLUR, 9).coerceIn(0, 30),
+            liquidLensHeight = prefs.getInt(KEY_LIQUID_LENS_HEIGHT, 45).coerceIn(0, 100),
+            liquidLensBend = prefs.getInt(KEY_LIQUID_LENS_BEND, 12).coerceIn(0, 40),
+            liquidVibrancy = prefs.getBoolean(KEY_LIQUID_VIBRANCY, true),
+            liquidLensDepth = prefs.getBoolean(KEY_LIQUID_LENS_DEPTH, true),
+            liquidChromatic = prefs.getBoolean(KEY_LIQUID_CHROMATIC, true),
             frost = FrostStyle.entries.firstOrNull { it.name == prefs.getString(KEY_FROST, null) } ?: FrostStyle.SMOKE,
             wallpaper = Wallpaper.entries.firstOrNull { it.name == prefs.getString(KEY_WALLPAPER, null) } ?: Wallpaper.BOXES,
             topOffset = prefs.getInt(KEY_TOP, 48),
@@ -187,6 +193,12 @@ class PreferencesLayoutRepository @Inject constructor(
             .putInt(KEY_BLUR_LEVEL, next.blurLevel)
             .putString(KEY_BLUR_METHOD, next.blurMethod.name)
             .putBoolean(KEY_LIQUID_GLASS, next.liquidGlass)
+            .putInt(KEY_LIQUID_BLUR, next.liquidBlur)
+            .putInt(KEY_LIQUID_LENS_HEIGHT, next.liquidLensHeight)
+            .putInt(KEY_LIQUID_LENS_BEND, next.liquidLensBend)
+            .putBoolean(KEY_LIQUID_VIBRANCY, next.liquidVibrancy)
+            .putBoolean(KEY_LIQUID_LENS_DEPTH, next.liquidLensDepth)
+            .putBoolean(KEY_LIQUID_CHROMATIC, next.liquidChromatic)
             .putString(KEY_FROST, next.frost.name)
             .putString(KEY_WALLPAPER, next.wallpaper.name)
             .putInt(KEY_TOP, next.topOffset)
@@ -223,6 +235,12 @@ class PreferencesLayoutRepository @Inject constructor(
         const val KEY_BLUR_LEVEL = "blur_level"
         const val KEY_BLUR_METHOD = "blur_method"
         const val KEY_LIQUID_GLASS = "liquid_glass"
+        const val KEY_LIQUID_BLUR = "liquid_blur"
+        const val KEY_LIQUID_LENS_HEIGHT = "liquid_lens_height"
+        const val KEY_LIQUID_LENS_BEND = "liquid_lens_bend"
+        const val KEY_LIQUID_VIBRANCY = "liquid_vibrancy"
+        const val KEY_LIQUID_LENS_DEPTH = "liquid_lens_depth"
+        const val KEY_LIQUID_CHROMATIC = "liquid_chromatic"
         const val KEY_FROST = "frost"
         const val KEY_WALLPAPER = "wallpaper"
         const val KEY_TOP = "top_offset"

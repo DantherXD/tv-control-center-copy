@@ -289,7 +289,14 @@ class BlurLevelsTest {
         assertEquals(0, PanelSettings(blurLevel = 0).effectiveBlur)
     }
 
-    @Test fun `liquid glass is on by default`() {
-        assertEquals(true, PanelSettings().liquidGlass)
+    @Test fun `liquid glass and its tuning have defaults`() {
+        val settings = PanelSettings()
+        assertEquals(true, settings.liquidGlass)
+        assertEquals(9, settings.liquidBlur)
+        assertEquals(45, settings.liquidLensHeight)
+        assertEquals(12, settings.liquidLensBend)
+        assertEquals(true, settings.liquidVibrancy)
+        assertEquals(true, settings.liquidLensDepth)
+        assertEquals(true, settings.liquidChromatic)
     }
 }

@@ -261,6 +261,15 @@ data class PanelSettings(
     val blurMethod: BlurMethod = BlurMethod.AUTO,
     /** Real refraction/lens over the sharp screenshot; off keeps the pre-blurred glass. */
     val liquidGlass: Boolean = true,
+    /** Shader blur in dp. Separate from [effectiveBlur], which controls the captured screenshot. */
+    val liquidBlur: Int = 9,
+    /** Lens height as a percent of the control's corner radius (see [LiquidLensHeightSteps]). */
+    val liquidLensHeight: Int = 45,
+    /** Lens bend as a percent of the control's smallest side (see [LiquidLensBendSteps]). */
+    val liquidLensBend: Int = 12,
+    val liquidVibrancy: Boolean = true,
+    val liquidLensDepth: Boolean = true,
+    val liquidChromatic: Boolean = true,
     val frost: FrostStyle = FrostStyle.SMOKE,
     /** Background of the app's own pages (home page and editor). */
     val wallpaper: Wallpaper = Wallpaper.BOXES,
@@ -346,6 +355,12 @@ val TextScaleSteps: List<Float> = listOf(0.8f, 0.9f, 1f, 1.15f, 1.3f)
 val NotificationTextSteps: List<Float> = listOf(0.6f, 0.7f, 0.8f, 0.9f, 1f)
 
 val HeaderGapSteps: List<Int> = listOf(0, 4, 8, 12, 18, 24)
+
+val LiquidBlurSteps: List<Int> = listOf(0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 16, 20, 24, 30)
+
+val LiquidLensHeightSteps: List<Int> = listOf(0, 10, 20, 30, 40, 45, 50, 60, 70, 80, 90, 100)
+
+val LiquidLensBendSteps: List<Int> = listOf(0, 2, 4, 6, 8, 10, 12, 16, 20, 24, 30, 36, 40)
 
 /** A control placed on the grid. Coordinates are cells, not pixels. */
 data class Placed(val id: TileId, val size: TileSize, val col: Int, val row: Int) {

@@ -44,9 +44,10 @@ import com.example.tvcontrolcenter.domain.model.TileId
 import com.example.tvcontrolcenter.domain.model.TileSize
 import androidx.compose.ui.graphics.FilterQuality
 import kotlin.math.roundToInt
+import com.example.tvcontrolcenter.ui.glass.LiquidGlassParams
 import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
-import com.example.tvcontrolcenter.ui.glass.LocalGlassBlur
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
+import com.example.tvcontrolcenter.ui.glass.LocalLiquidGlass
 import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
@@ -434,7 +435,18 @@ private fun HostBody(
                 LocalFrostStyle provides state.settings.frost,
                 LocalInvertFocus provides state.settings.invertFocus,
                 LocalOverBlur provides (backdrop != null),
-                LocalGlassBlur provides (if (state.settings.liquidGlass) (state.settings.effectiveBlur * 3).dp else 0.dp),
+                LocalLiquidGlass provides (
+                    if (state.settings.liquidGlass) {
+                        LiquidGlassParams(
+                            blur = state.settings.liquidBlur.dp,
+                            lensHeight = state.settings.liquidLensHeight / 100f,
+                            lensBend = state.settings.liquidLensBend / 100f,
+                            vibrancy = state.settings.liquidVibrancy,
+                            lensDepth = state.settings.liquidLensDepth,
+                            chromatic = state.settings.liquidChromatic,
+                        )
+                    } else null
+                ),
                 LocalEdgeWidth provides state.settings.edgeWidth.dp,
                 LocalIconStyle provides state.settings.iconStyle,
                 LocalIconPack provides state.settings.iconPack,

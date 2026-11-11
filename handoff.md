@@ -191,12 +191,15 @@ Rose, Midnight). Real liquid glass via `io.github.kyant0:backdrop` 1.0.0: `Backd
 and `frostedTile` applies vibrancy, blur and a RuntimeShader lens (refraction, depth, chromatic aberration)
 on Android 12+ (lens on Android 13+). No full-screen recording layer is needed, so the editor preview shows
 the same glass as the panel. `PanelSettings.liquidGlass` ("Liquid glass" in the editor's Blur page, on by
-default) turns the real path off and keeps the pre-blurred fallback on every device. Blur method AUTO
-(screenshot, window blur fallback), SCREENSHOT (glass only), WINDOW (whole screen). Patient capture (1.2 s,
-3 tries) for video. Whole-screen mode draws the blurred screenshot full screen with no box. Fallback on
-older Android, with liquid glass off, or when nothing can blur: the 480 px pre-blurred copy, frosted
-sheet/card.
-Customisable: blur strength, liquid glass, frost style, edge width, invert focus, card on/off, text scale, panel
+default) turns the real path off and keeps the pre-blurred fallback on every device. The shader is fully
+tunable: `liquidBlur` (dp, independent of the screenshot's blur strength), `liquidLensHeight` (percent of
+corner radius), `liquidLensBend` (percent of the control's smallest side), `liquidVibrancy`,
+`liquidLensDepth` and `liquidChromatic`. `LiquidGlassParams` carries those values to `frostedTile`
+through `LocalLiquidGlass`; null means the fallback. Blur method AUTO (screenshot, window blur fallback),
+SCREENSHOT (glass only), WINDOW (whole screen). Patient capture (1.2 s, 3 tries) for video. Whole-screen
+mode draws the blurred screenshot full screen with no box. Fallback on older Android, with liquid glass
+off, or when nothing can blur: the 480 px pre-blurred copy, frosted sheet/card.
+Customisable: blur strength, liquid glass and all six shader values, frost style, edge width, invert focus, card on/off, text scale, panel
 size, position, header gap, icon style and pack, music style, wallpapers (eight, app pages only),
 profile photo/colour, automatic icon colour, icon pack and its six weights, the Bluetooth icon
 (Bluetooth mark or headphones), the Menu button icon (bars or the older switches) and the
