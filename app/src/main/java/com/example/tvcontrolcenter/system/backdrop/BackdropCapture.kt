@@ -237,7 +237,6 @@ object BackdropCapture {
             .map { it to screenBounds(it) }
             .filter { (_, bounds) -> bounds.width() > 0 && bounds.height() > 0 }
             .toList()
-        if (candidates.isEmpty()) return null
         // Keep a foreign window when its root is readable; a null root is allowed as a last
         // resort because the active panel has already been excluded.
         val foreign = candidates.filter { (window, _) ->
