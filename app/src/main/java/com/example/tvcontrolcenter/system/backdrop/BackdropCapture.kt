@@ -8,6 +8,7 @@ import android.graphics.Rect
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.Display
 import android.view.PixelCopy
 import android.view.Window
@@ -40,6 +41,8 @@ import kotlin.math.roundToInt
  * (radius from the blur level) on the small copy: a few tens of milliseconds, off the main thread.
  */
 object BackdropCapture {
+    private const val TAG = "TCC"
+
     /** Sharp enough for the real lens, small enough to stay cheap on a TV. */
     private const val SHARP_WIDTH = 960
 
@@ -76,10 +79,13 @@ object BackdropCapture {
     enum class LiveStatus { READY, NEEDS_SERVICE, NEEDS_ANDROID_14 }
 
     /** Why real live glass would or would not work right now. Shown in the editor. */
-    fun liveStatus(): LiveStatus = when {
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> LiveStatus.NEEDS_ANDROID_14
-        ControlCenterAccessibilityService.instance == null -> LiveStatus.NEEDS_SERVICE
-        else -> LiveStatus.READY
+    fun liveStatus(): LiveStatus {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return LiveStatus.NEEDS_ANDROID_14
+        val service = ControlCenterAccessibilityService.instance ?: return LiveStatus.NEEDS_SERVICE
+        // An update does not rebuild a running service's AccessibilityServiceInfo. Until the
+        // user switches it off and on, getWindows() is empty even though the service is bound.
+        val hasWindows = runCatching { service.windows.isNotEmpty() }.getOrDefault(false)
+        return if (hasWindows) LiveStatus.READY else LiveStatus.NEEDS_SERVICE
     }
 
     /** Full-size picture of the screen for saving. Null if not possible (no service, Android 10-, protected video). */
@@ -100,8 +106,16 @@ object BackdropCapture {
     suspend fun captureLiveWindow(level: Int): Backdrop? {
         if (level <= 0 || Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return null
         val service = ControlCenterAccessibilityService.instance ?: return null
-        val target = liveWindow(service) ?: return null
-        val shot = withTimeoutOrNull(1_100L) { screenshotWindow(service, target.id) } ?: return null
+        val target = liveWindow(service)
+        if (target == null) {
+            Log.w(TAG, "live glass: no app window (${service.windows.size} windows)")
+            return null
+        }
+        val shot = withTimeoutOrNull(1_100L) { screenshotWindow(service, target.id) }
+        if (shot == null) {
+            Log.w(TAG, "live glass: window ${target.id} refused the screenshot")
+            return null
+        }
         return withContext(Dispatchers.Default) { windowBackdrop(service, shot, screenBounds(target), level) }
     }
 
@@ -201,24 +215,36 @@ object BackdropCapture {
     }
 
     /**
-     * The app window the panel is covering. The panel is our own accessibility overlay, so it is
-     * skipped; the largest other application or system window is the one underneath. Android
-     * returns several small system windows too (navigation, status), so size is the useful test.
+     * The app window the panel is covering. The panel owns focus, so it is the active window and
+     * is skipped first; that also avoids relying on [AccessibilityWindowInfo.getRoot], which can
+     * be null for the app below a full-screen accessibility overlay on some TV builds. The
+     * largest remaining application/system window is the one underneath. Android returns small
+     * system windows too (navigation, status), so size is the useful test.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun liveWindow(service: AccessibilityService): AccessibilityWindowInfo? = runCatching {
         val ownPackage = service.packageName
-        service.windows
-            .asSequence()
-            .filter { it.type != AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY }
-            // A null root is not a window we can read; skipping it also keeps our own
-            // application-overlay path from sampling the panel.
-            .filter { it.root?.packageName != null && it.root?.packageName != ownPackage }
+        val all = service.windows
+        val active = all.firstOrNull { it.isActive }
+        val activeIsPanel = active != null && (
+            active.type == AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY ||
+                runCatching { active.root?.packageName }.getOrNull() == ownPackage
+            )
+        val skipId = if (active != null && activeIsPanel) active.id else -1
+        val candidates = all.asSequence()
+            .filter { it.id != skipId }
             .filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION || it.type == AccessibilityWindowInfo.TYPE_SYSTEM }
             .map { it to screenBounds(it) }
             .filter { (_, bounds) -> bounds.width() > 0 && bounds.height() > 0 }
-            .maxByOrNull { (_, bounds) -> bounds.width().toLong() * bounds.height() }
-            ?.first
+            .toList()
+        if (candidates.isEmpty()) return null
+        // Keep a foreign window when its root is readable; a null root is allowed as a last
+        // resort because the active panel has already been excluded.
+        val foreign = candidates.filter { (window, _) ->
+            runCatching { window.root?.packageName }.getOrNull()?.let { it != ownPackage } ?: true
+        }
+        val pool = if (foreign.isEmpty()) candidates else foreign
+        pool.maxByOrNull { (_, bounds) -> bounds.width().toLong() * bounds.height() }?.first
     }.getOrNull()
 
     /** `AccessibilityWindowInfo` exposes its bounds through out-parameters only. */

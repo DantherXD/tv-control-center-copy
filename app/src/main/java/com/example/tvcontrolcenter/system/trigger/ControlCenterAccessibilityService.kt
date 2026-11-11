@@ -41,6 +41,17 @@ class ControlCenterAccessibilityService : AccessibilityService() {
         )
     }
 
+    /**
+     * Opens or closes the overlay from the launcher/activity entry. Using this instead of a
+     * separate activity means the app underneath is not paused, and live glass can sample it.
+     * Returns false when the service has no controller yet, so the caller can use its fallback.
+     */
+    fun togglePanel(): Boolean {
+        val c = controller ?: return false
+        if (c.isShowing) c.hide() else c.show()
+        return true
+    }
+
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode !in TRIGGER_KEYS) return false
         // While the panel is open it owns the keyboard, so leave its keys alone.

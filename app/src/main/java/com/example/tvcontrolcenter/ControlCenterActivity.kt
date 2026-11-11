@@ -20,6 +20,7 @@ import com.example.tvcontrolcenter.system.applyBlurFallback
 import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.system.openCapabilitySettings
+import com.example.tvcontrolcenter.system.trigger.ControlCenterAccessibilityService
 import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
 import com.example.tvcontrolcenter.ui.theme.ControlCenterTheme
@@ -63,6 +64,14 @@ class ControlCenterActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // With the key trigger on, use its overlay even when this entry point was launched from
+        // the launcher or a remote shortcut: an activity would pause the app underneath, so the
+        // live picture would stop moving. The activity stays the fallback without the service.
+        val trigger = ControlCenterAccessibilityService.instance
+        if (savedInstanceState == null && trigger != null && trigger.togglePanel()) {
+            finish()
+            return
+        }
         configureWindow()
         setContent {
             ControlCenterTheme {
