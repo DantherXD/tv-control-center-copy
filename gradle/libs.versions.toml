@@ -1,9 +1,10 @@
 [versions]
-agp = "8.7.3"
-kotlin = "2.0.21"
-ksp = "2.0.21-1.0.28"
-hilt = "2.52"
-composeBom = "2024.10.01"
+agp = "8.13.0"
+kotlin = "2.2.21"
+ksp = "2.2.21-2.0.5"
+hilt = "2.57.2"
+composeBom = "2025.11.00"
+backdrop = "1.0.0"
 tvMaterial = "1.0.0"
 coreKtx = "1.15.0"
 activityCompose = "1.9.3"
@@ -29,6 +30,7 @@ compose-material-icons = { module = "androidx.compose.material:material-icons-ex
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 tv-material = { module = "androidx.tv:tv-material", version.ref = "tvMaterial" }
+backdrop = { module = "io.github.kyant0:backdrop", version.ref = "backdrop" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt" }
 coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }

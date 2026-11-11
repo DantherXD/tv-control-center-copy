@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.example.tvcontrolcenter"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.tvcontrolcenter"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -68,6 +68,7 @@ dependencies {
     implementation(libs.compose.animation)
     implementation(libs.compose.material.icons)
     implementation(libs.tv.material)
+    implementation(libs.backdrop)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

@@ -79,6 +79,7 @@ import com.example.tvcontrolcenter.R
 import com.example.tvcontrolcenter.domain.model.NowPlaying
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
+import com.example.tvcontrolcenter.ui.glass.LocalGlassBlur
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
@@ -128,6 +129,8 @@ internal fun cardGlass(backdrop: Backdrop?, origin: Offset, sheet: Boolean): Mod
             overBlur = LocalOverBlur.current || backdrop != null,
             lite = LocalLiteGlass.current,
             edge = LocalEdgeWidth.current,
+            liquidBackdrop = backdrop?.layer,
+            blurRadius = LocalGlassBlur.current,
         )
     }
 }

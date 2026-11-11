@@ -2,6 +2,7 @@ package com.example.tvcontrolcenter.ui.panel
 
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -27,6 +28,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -45,6 +47,7 @@ import com.example.tvcontrolcenter.domain.model.TileSize
 import androidx.compose.ui.graphics.FilterQuality
 import kotlin.math.roundToInt
 import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
+import com.example.tvcontrolcenter.ui.glass.LocalGlassBlur
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
 import com.example.tvcontrolcenter.ui.glass.Backdrop
@@ -56,6 +59,8 @@ import com.example.tvcontrolcenter.ui.theme.Motion
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
 import com.example.tvcontrolcenter.ui.theme.ProvideUiScale
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -142,6 +147,8 @@ private fun HostBody(
     val density = LocalDensity.current
     val topOffset = state.settings.topOffset.dp
     var hostSize by remember { mutableStateOf(IntSize.Zero) }
+    // Records the sharp screenshot once; every tile samples it through the real lens.
+    val glassLayer = rememberLayerBackdrop()
     val progress = remember { Animatable(0f) }
     val rowProgress = remember { List(ROW_SLOTS) { Animatable(0f) } }
     val requesters = remember { TileId.entries.associateWith { FocusRequester() } }
@@ -240,12 +247,18 @@ private fun HostBody(
             (topOffset + PanelDimens.sheetPadding).toPx(),
         )
     }
-    val mapped = remember(backdrop, hostSize) {
-        if (backdrop != null && hostSize.width > 0) backdrop.copy(width = hostSize.width, height = hostSize.height) else null
-    }
     // Whole screen: the blurred picture covers everything behind the panel and the controls are
     // plain glass on top of it. No frosted box is drawn around them.
     val wholeScreen = state.settings.blurMethod == BlurMethod.WINDOW
+    val mapped = remember(backdrop, hostSize, glassLayer, wholeScreen) {
+        if (backdrop != null && hostSize.width > 0) {
+            backdrop.copy(
+                width = hostSize.width,
+                height = hostSize.height,
+                layer = if (wholeScreen) null else glassLayer,
+            )
+        } else null
+    }
     val fullBackdrop = if (wholeScreen) backdrop else null
     val tileBackdrop = if (wholeScreen) null else mapped
     // Nothing can blur this screen: no screenshot, and the system will not blur behind the
@@ -414,6 +427,21 @@ private fun HostBody(
             },
         contentAlignment = Alignment.TopEnd,
     ) {
+        // The layer must exist for the shader to sample, but the live app should stay visible
+        // around the glass. Alpha 0.001 keeps the image effectively invisible while its content
+        // is still recorded at full opacity by layerBackdrop.
+        val liquidSource = backdrop?.sharp ?: backdrop?.image
+        if (!wholeScreen && liquidSource != null) {
+            Image(
+                bitmap = liquidSource,
+                contentDescription = null,
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer { alpha = 0.001f }
+                    .layerBackdrop(glassLayer),
+            )
+        }
         Box(
             modifier = Modifier
                 .padding(top = topOffset, end = PanelDimens.edgeInset)
@@ -431,6 +459,7 @@ private fun HostBody(
                 LocalFrostStyle provides state.settings.frost,
                 LocalInvertFocus provides state.settings.invertFocus,
                 LocalOverBlur provides (backdrop != null),
+                LocalGlassBlur provides (state.settings.effectiveBlur * 3).dp,
                 LocalEdgeWidth provides state.settings.edgeWidth.dp,
                 LocalIconStyle provides state.settings.iconStyle,
                 LocalIconPack provides state.settings.iconPack,

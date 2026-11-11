@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.example.tvcontrolcenter.ui.glass.Backdrop
 import com.example.tvcontrolcenter.ui.glass.LocalEdgeWidth
 import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
+import com.example.tvcontrolcenter.ui.glass.LocalGlassBlur
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
@@ -191,6 +192,8 @@ fun GlassTile(
                 lite = lite,
                 edge = edge,
                 flat = flat,
+                liquidBackdrop = backdrop?.layer,
+                blurRadius = LocalGlassBlur.current,
             ),
     ) {
         CompositionLocalProvider(LocalTileInk provides inkColor) { content() }

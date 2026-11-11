@@ -7,7 +7,7 @@ checked against the repo at `fd383b4` plus the uncommitted work described in "Ju
 ## What this is
 
 An Android TV app that recreates the tvOS Control Center: Kotlin, Compose for TV, MVVM + StateFlow,
-Hilt, one activity, D-pad only, minSdk 26 (compileSdk/targetSdk 35). It must stay smooth on a weak
+Hilt, one activity, D-pad only, minSdk 26 (compileSdk/targetSdk 36). It must stay smooth on a weak
 2 GB box and scale to 4K. Package `com.example.tvcontrolcenter`.
 
 The owner is GitHub user **DantherXD**, repo **`DantherXD/tv-control-center-copy`**, branch **`main`**.
@@ -184,9 +184,13 @@ page opens on play, coming back from it lands on that same top-left control, and
 window hands focus back to the control that opened it.
 
 **Glass and blur.** Ten `FrostStyle`s (Smoke, Milky, Clear, Lens, Ocean, Amethyst, Ember, Forest,
-Rose, Midnight). Blur method AUTO (screenshot, window blur fallback), SCREENSHOT (blur only inside the
-glass), WINDOW (whole screen). Patient capture (1.2 s, 3 tries) for video. Whole-screen mode draws the
-blurred screenshot full screen with no box. Fallback when nothing can blur: frosted sheet/card.
+Rose, Midnight). Real liquid glass via `io.github.kyant0:backdrop` 1.0.0: `BackdropCapture` keeps a sharp
+960 px screenshot, `ControlCenterPanel` records it as a layer, and `frostedTile` samples it per control
+with vibrancy, blur and a RuntimeShader lens (refraction, depth, chromatic aberration) on Android 12+
+(lens on Android 13+). Blur method AUTO (screenshot, window blur fallback), SCREENSHOT (glass only),
+WINDOW (whole screen). Patient capture (1.2 s, 3 tries) for video. Whole-screen mode draws the blurred
+screenshot full screen with no box. Fallback on older Android or when nothing can blur: the 480 px
+pre-blurred copy, frosted sheet/card.
 Customisable: blur strength, frost style, edge width, invert focus, card on/off, text scale, panel
 size, position, header gap, icon style and pack, music style, wallpapers (eight, app pages only),
 profile photo/colour, automatic icon colour, icon pack and its six weights, the Bluetooth icon

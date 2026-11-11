@@ -1,6 +1,8 @@
 package com.example.tvcontrolcenter.ui.glass
 
 import android.graphics.Bitmap
+import android.os.Build
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
@@ -26,6 +28,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.compositionLocalOf
 import com.example.tvcontrolcenter.domain.model.FrostStyle
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
+import com.kyant.backdrop.Backdrop as KyantBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -142,9 +149,9 @@ fun Modifier.frostedSheet(
  * only and never recomposes anything. [active] brightens the glass for "on" controls, in
  * place of a coloured icon.
  *
- * With a [backdrop], the glass is a real blurred copy of the screen behind it: [origin] is
- * the tile's top-left corner in the backdrop's coordinates. Without one, a dark base and a
- * white veil stand in, which still reads as frosted but not as transparent.
+ * With a [liquidBackdrop], the tile samples the real screenshot through the Backdrop
+ * library: real blur, vibrancy and a refracting lens around the rim. [backdrop] and [origin]
+ * remain the pre-blurred fallback for older Android versions and for the no-screenshot case.
  */
 fun Modifier.frostedTile(
     cornerRadius: Dp,
@@ -164,6 +171,70 @@ fun Modifier.frostedTile(
     /** Thickness of the glass edge line. */
     edge: Dp = 0.8.dp,
     /** Borderless: no glass at rest, only the white focus or page fill. */
+    flat: Boolean = false,
+    liquidBackdrop: KyantBackdrop? = null,
+    blurRadius: Dp = 0.dp,
+): Modifier {
+    // RenderEffect needs Android 12; the lens shader needs Android 13 and simply no-ops below
+    // it. Older devices, the editor's lite path and borderless/solid tiles keep the fallback.
+    if (liquidBackdrop != null && blurRadius > 0.dp && !lite && !flat && !solid &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    ) {
+        val tint = style.tileTint(overBlur = true)
+        val shape = RoundedCornerShape(cornerRadius)
+        return this.drawBackdrop(
+            backdrop = liquidBackdrop,
+            shape = { shape },
+            effects = {
+                vibrancy()
+                blur(blurRadius.toPx(), TileMode.Clamp)
+                val radius = cornerRadius.toPx()
+                lens(
+                    refractionHeight = radius * 0.45f,
+                    refractionAmount = (size.minDimension * 0.12f).coerceIn(0f, size.minDimension),
+                    depthEffect = true,
+                    chromaticAberration = true,
+                )
+            },
+            // The app owns the rim and tint, so the library only supplies the refracted image.
+            highlight = null,
+            shadow = null,
+            innerShadow = null,
+            onDrawSurface = {
+                drawLiquidGlass(tint, cornerRadius, focus, active, invert, solid, selected, edge)
+            },
+        )
+    }
+    return frostedTileFallback(
+        cornerRadius = cornerRadius,
+        active = active,
+        focus = focus,
+        selected = selected,
+        backdrop = backdrop,
+        origin = origin,
+        style = style,
+        overBlur = overBlur,
+        invert = invert,
+        solid = solid,
+        lite = lite,
+        edge = edge,
+        flat = flat,
+    )
+}
+
+private fun Modifier.frostedTileFallback(
+    cornerRadius: Dp,
+    active: Boolean,
+    focus: () -> Float,
+    selected: Boolean = false,
+    backdrop: Backdrop? = null,
+    origin: Offset = Offset.Zero,
+    style: FrostStyle = FrostStyle.SMOKE,
+    overBlur: Boolean = backdrop != null,
+    invert: Boolean = false,
+    solid: Boolean = false,
+    lite: Boolean = false,
+    edge: Dp = 0.8.dp,
     flat: Boolean = false,
 ): Modifier = drawWithCache {
     val tint = style.tileTint(overBlur = overBlur)
@@ -259,6 +330,64 @@ fun Modifier.frostedTile(
                 style = Stroke(width = w),
             )
         }
+    }
+}
+
+/**
+ * The tint, grain, glint and rim drawn over the library's refracted image. Keeping these in
+ * the app is what preserves the existing glass styles while the lens does the optical work.
+ */
+private fun DrawScope.drawLiquidGlass(
+    tint: Tint,
+    cornerRadius: Dp,
+    focus: () -> Float,
+    active: Boolean,
+    invert: Boolean,
+    solid: Boolean,
+    selected: Boolean,
+    edge: Dp,
+) {
+    val r = CornerRadius(cornerRadius.toPx())
+    val f = focus()
+    val boost = (if (active) GlassTokens.tileActiveBoost else 0f) + GlassTokens.tileFocusBoost * f
+    // Lens is the style that dims the picture so its rim reads instead of the screen.
+    if (tint.cropDim > 0f) drawRect(tint.base.copy(alpha = tint.cropDim))
+    drawRoundRect(tint.base.copy(alpha = tint.dark * (1f - 0.5f * f)), cornerRadius = r)
+    drawRoundRect(
+        Brush.verticalGradient(
+            listOf(
+                tint.veil.copy(alpha = (tint.veilTop + boost).coerceAtMost(0.7f)),
+                tint.veil.copy(alpha = (tint.veilBottom + boost * 0.6f).coerceAtMost(0.7f)),
+            ),
+        ),
+        cornerRadius = r,
+    )
+    drawRoundRect(Grain, cornerRadius = r, alpha = GlassTokens.grainAlpha)
+
+    val white = if (solid) 1f else if (invert) f else 0f
+    if (white > 0.01f) drawRoundRect(Color.White.copy(alpha = 0.97f * white), cornerRadius = r)
+
+    if (f > 0.01f && !invert && !solid) {
+        drawRoundRect(
+            Brush.radialGradient(
+                colors = listOf(Color.White.copy(alpha = 0.34f * f), Color.Transparent),
+                center = Offset(size.width * 0.22f, size.height * 0.12f),
+                radius = size.minDimension * 0.9f,
+            ),
+            cornerRadius = r,
+        )
+    }
+    if (edge > 0.dp) drawRim(r, edge.toPx(), tint.rim)
+
+    if (selected) {
+        val w = 2.5.dp.toPx()
+        drawRoundRect(
+            Color.White,
+            topLeft = Offset(w / 2f, w / 2f),
+            size = Size(size.width - w, size.height - w),
+            cornerRadius = CornerRadius((r.x - w / 2f).coerceAtLeast(0f), (r.y - w / 2f).coerceAtLeast(0f)),
+            style = Stroke(width = w),
+        )
     }
 }
 
@@ -358,3 +487,6 @@ val LocalOverBlur = compositionLocalOf { false }
 
 /** Colour of icons and text inside a control: white, or dark while the control is white. */
 val LocalTileInk = compositionLocalOf { Color.White }
+
+/** Blur radius for the real liquid glass; zero keeps the flat fallback. */
+val LocalGlassBlur = compositionLocalOf { 0.dp }

@@ -12,7 +12,7 @@ and the wallpaper (a static wall of colourful boxes) is drawn in code. Drop `wal
 ## Setup
 
 1. Android Studio Ladybug or newer, JDK 17.
-2. Open this folder. Gradle sync downloads everything (AGP 8.7.3, Kotlin 2.0.21, Compose BOM 2024.10.01, `androidx.tv:tv-material` 1.0.0).
+2. Open this folder. Gradle sync downloads everything (AGP 8.13.0, Kotlin 2.2.21, Compose BOM 2025.11.00, `androidx.tv:tv-material` 1.0.0, `io.github.kyant0:backdrop` 1.0.0).
 3. Run the `app` configuration on an Android TV emulator or device (API 26+, best on API 33+).
 4. Unit tests: `./gradlew testDebugUnitTest`. Compose D-pad tests (need a device or emulator): `./gradlew connectedDebugAndroidTest`.
 
@@ -95,21 +95,25 @@ buttons on the left set its size, move it earlier or later, or hide it. "Add con
 
 Changes save immediately and every open panel follows.
 
-Glass is now plain drawing, so it costs almost nothing per frame:
+Glass is real optics now, with a cheap fallback:
 
 * **Sheet.** One rounded card behind all controls: a dark base for contrast on bright apps, a white veil that fades downwards,
-  faint grain. It is drawn only when there is no blurred picture, and only behind the grid.
-* **Tiles.** Same recipe per control, in a smaller dose. "On" controls get brighter glass instead of a coloured icon. Focus scales
+  faint grain. It is drawn only when there is no sharp picture to refract, and only behind the grid.
+* **Tiles.** Same tint recipe per control, in a smaller dose. "On" controls get brighter glass instead of a coloured icon. Focus scales
   the tile to 1.06 (no lift), brightens it and adds a top-left glint. Edges are a faint hairline, and the card has no border.
-* **Real blur of the app behind (Android 11+).** When the accessibility service is on (inside this app no service is needed: it copies its own window), the panel takes a screenshot of the app
-  just before it opens (`BackdropCapture`), shrinks it to about 480 px, box-blurs it on a background thread (a few tens of ms), and
-  draws the matching piece inside each control. The app stays sharp around the glass and is blurred only inside it, as in tvOS. The
-  panel waits for the picture for at most 350 ms. Protected video (DRM) cannot be captured and falls back to the frosted look below.
-  After updating, switch the accessibility service off and on once so Android grants the new screenshot permission.
-* **Fallback.** Without a screenshot (older Android, service off, protected content) the panel draws a frosted sheet and darker tiles.
-  On Android 12+ with cross-window blur it also asks the system to blur the whole screen behind it (blur method **Whole screen**, or Auto when no screenshot is possible).
-* **Performance.** Focus and open progress are read in draw/graphicsLayer lambdas, so moving focus recomposes nothing. Open/close
-  animates per grid row (not per tile) on stiff springs and settles in about a quarter of a second. Nothing animates while idle.
+* **Real liquid glass (Android 12+, lens Android 13+).** When a screenshot is available, `BackdropCapture` keeps a sharp 960 px copy,
+  records it as a backdrop layer, and each control samples its own piece through
+  [`io.github.kyant0:backdrop`](https://github.com/Kyant0/AndroidLiquidGlass). The shader applies vibrancy, a Gaussian blur, and a
+  `RuntimeShader` lens with refraction, depth and chromatic aberration around the rim. The app stays sharp around the glass, and the
+  controls are not just a pre-blurred crop any more. The 480 px blurred copy is still built for the brightness map and for the fallback.
+  Protected video (DRM) cannot be captured and uses the fallback below. After updating, switch the accessibility service off and on
+  once so Android grants the new screenshot permission.
+* **Fallback.** Without a screenshot (Android 10 and below, service off, protected content), or below Android 12 where `RenderEffect`
+  is unavailable, the panel draws a frosted sheet and darker tiles with the pre-blurred copy. On Android 12+ with cross-window blur it
+  can also ask the system to blur the whole screen behind it (blur method **Whole screen**, or Auto when no screenshot is possible).
+* **Performance.** Focus and open progress are read in draw/graphicsLayer lambdas, so moving focus recomposes nothing. The sharp
+  screenshot is captured and recorded once, and the lens is GPU work inside the existing tile layer. Open/close animates per grid row
+  (not per tile) on stiff springs and settles in about a quarter of a second. Nothing animates while idle.
 * **Wallpaper.** Eight painted styles for the app's own pages (Boxes, Aurora, Sunset, Forest, Waves, Nebula, Grid, Charcoal),
   drawn once per screen size. Nothing animates.
   screen size and scaled up by the GPU, so a 4K screen costs about as much as 640 x 360, and the position updates 25 times a second.
@@ -131,7 +135,7 @@ Glass is now plain drawing, so it costs almost nothing per frame:
 * **Not device-tested.** The 2 GB-RAM, 60 fps requirement is designed for but unmeasured. Profile with Perfetto on a real box; if the
   blur is costly, set Blur strength to Off or Light.
 * **Blur over other apps needs Android 11+ and the accessibility service.** The service is the only thing that may screenshot other
-  apps. Without it the glass is the frosted fallback. There is no refraction, only blur.
+  apps. Without it the glass is the frosted fallback. The real lens needs Android 13+; Android 12 gets the blur and colour effects only.
 * **The activity pauses the app underneath.** `ControlCenterActivity` is a transparent window on top of the running app, so the app gets `onPause`
   and some players stop. The accessibility overlay (long-press Menu with the service enabled) pauses nothing, but needs that service.
 * **Long-press Menu is not guaranteed.** Many Android TV remotes never deliver Menu, and Home is never delivered. Use
@@ -149,7 +153,7 @@ Glass is now plain drawing, so it costs almost nothing per frame:
 
 ## tvOS behaviours Android cannot replicate
 
-1. Reading and refracting **live content behind the panel** from other apps (system compositor access only).
+1. Reading and refracting **live content behind the panel** from other apps (system compositor access only; this app refracts a snapshot).
 2. A **system-level Control Center key** (Apple's Home long-press) and system-owned panel placement above every app.
 3. **Real power-off**, **AirPods/Apple device switching**, Home/HomeKit controls and Apple ID user-profile switching.
 4. **Per-user** Control Center from the profile avatar and the tvOS status bar integration.

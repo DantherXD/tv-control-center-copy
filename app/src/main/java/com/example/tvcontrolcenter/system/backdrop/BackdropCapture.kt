@@ -31,11 +31,15 @@ import kotlin.coroutines.resume
  * panel then falls back to its own frosted look. The whole thing is capped at
  * [TIMEOUT_MS] so opening never waits long.
  *
- * Cost: one screenshot, a copy, three halvings to ~480 px, and a three-pass box blur (radius from the blur level) on that
- * small image: a few tens of milliseconds, off the main thread.
+ * Cost: one screenshot, a sharp 960 px copy for the real lens, a 480 px copy, and a three-pass box blur
+ * (radius from the blur level) on the small copy: a few tens of milliseconds, off the main thread.
  */
 object BackdropCapture {
-    private const val TARGET_WIDTH = 480
+    /** Sharp enough for the real lens, small enough to stay cheap on a TV. */
+    private const val SHARP_WIDTH = 960
+
+    /** The blurred copy the fallback drawing and the brightness map use. */
+    private const val BLUR_WIDTH = 480
     private const val TIMEOUT_MS = 350L
     private const val PATIENT_TIMEOUT_MS = 1_200L
     private const val PATIENT_TRIES = 3
@@ -96,8 +100,8 @@ object BackdropCapture {
                 cont.resume(null)
                 return@suspendCancellableCoroutine
             }
-            val targetH = (TARGET_WIDTH.toLong() * h / w).toInt().coerceAtLeast(1)
-            val bitmap = Bitmap.createBitmap(TARGET_WIDTH, targetH, Bitmap.Config.ARGB_8888)
+            val targetH = (SHARP_WIDTH.toLong() * h / w).toInt().coerceAtLeast(1)
+            val bitmap = Bitmap.createBitmap(SHARP_WIDTH, targetH, Bitmap.Config.ARGB_8888)
             try {
                 PixelCopy.request(window, bitmap, { code ->
                     if (cont.isActive) cont.resume(if (code == PixelCopy.SUCCESS) bitmap else null)
@@ -149,25 +153,34 @@ object BackdropCapture {
     private fun blurred(source: Bitmap, level: Int, fullWidth: Int, fullHeight: Int): Backdrop? {
         if (fullWidth < 2 || fullHeight < 2) return null
 
-        // Halve until near the target: cheaper and smoother than one big jump.
-        var current = source
-        while (current.width / 2 >= TARGET_WIDTH) {
-            val next = Bitmap.createScaledBitmap(current, current.width / 2, current.height / 2, true)
-            if (current !== source) current.recycle()
-            current = next
+        // Keep a sharp copy for the lens. PixelCopy and the screenshot path already aim at
+        // SHARP_WIDTH, but a smaller window can arrive at its own size.
+        val targetHeight = (SHARP_WIDTH.toLong() * fullHeight / fullWidth).toInt().coerceAtLeast(1)
+        val sharp = if (source.width > SHARP_WIDTH || source.height > targetHeight) {
+            Bitmap.createScaledBitmap(source, SHARP_WIDTH, targetHeight, true).also {
+                if (it !== source) source.recycle()
+            }
+        } else {
+            source
         }
-        val targetHeight = (TARGET_WIDTH.toLong() * fullHeight / fullWidth).toInt().coerceAtLeast(1)
-        val small = Bitmap.createScaledBitmap(current, TARGET_WIDTH, targetHeight, true)
-        if (current !== source && current !== small) current.recycle()
-        if (source !== small) source.recycle()
 
+        // The fallback and its brightness map only need the small blurred copy.
+        val blurHeight = (BLUR_WIDTH.toLong() * sharp.height / sharp.width).toInt().coerceAtLeast(1)
+        val small = Bitmap.createScaledBitmap(sharp, BLUR_WIDTH, blurHeight, true)
         val w = small.width
         val h = small.height
         val pixels = IntArray(w * h)
         small.getPixels(pixels, 0, w, 0, 0, w, h)
+        if (small !== sharp) small.recycle()
         boxBlur(pixels, w, h, BlurLevels.boxRadius(level))
         val result = Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888)
         // The brightness map comes from the blurred pixels, so it matches what the glass shows.
-        return Backdrop(result.asImageBitmap(), fullWidth, fullHeight, lumaMapOf(pixels, w, h))
+        return Backdrop(
+            image = result.asImageBitmap(),
+            width = fullWidth,
+            height = fullHeight,
+            luma = lumaMapOf(pixels, w, h),
+            sharp = sharp.asImageBitmap(),
+        )
     }
 }
