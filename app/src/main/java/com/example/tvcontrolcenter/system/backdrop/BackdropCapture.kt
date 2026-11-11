@@ -102,7 +102,7 @@ object BackdropCapture {
         val service = ControlCenterAccessibilityService.instance ?: return null
         val target = liveWindow(service) ?: return null
         val shot = withTimeoutOrNull(1_100L) { screenshotWindow(service, target.id) } ?: return null
-        return withContext(Dispatchers.Default) { windowBackdrop(service, shot, target.boundsInScreen, level) }
+        return withContext(Dispatchers.Default) { windowBackdrop(service, shot, screenBounds(target), level) }
     }
 
     /** Blurred picture of whatever app is on screen, [level] 1..4. Null if off or not possible. */
@@ -215,9 +215,15 @@ object BackdropCapture {
             // application-overlay path from sampling the panel.
             .filter { it.root?.packageName != null && it.root?.packageName != ownPackage }
             .filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION || it.type == AccessibilityWindowInfo.TYPE_SYSTEM }
-            .filter { it.boundsInScreen.width() > 0 && it.boundsInScreen.height() > 0 }
-            .maxByOrNull { it.boundsInScreen.width().toLong() * it.boundsInScreen.height() }
+            .map { it to screenBounds(it) }
+            .filter { (_, bounds) -> bounds.width() > 0 && bounds.height() > 0 }
+            .maxByOrNull { (_, bounds) -> bounds.width().toLong() * bounds.height() }
+            ?.first
     }.getOrNull()
+
+    /** `AccessibilityWindowInfo` exposes its bounds through out-parameters only. */
+    private fun screenBounds(window: AccessibilityWindowInfo): Rect =
+        Rect().also { window.getBoundsInScreen(it) }
 
     /**
      * A window screenshot only contains that window, while the panel samples in screen
