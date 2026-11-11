@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import com.example.tvcontrolcenter.di.ControlCenterEntryPoint
 import com.example.tvcontrolcenter.domain.model.BlurLevels
 import com.example.tvcontrolcenter.domain.model.BlurMethod
+import com.example.tvcontrolcenter.domain.model.PanelSettings
 import com.example.tvcontrolcenter.system.applyBlurFallback
 import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
 import com.example.tvcontrolcenter.ui.glass.Backdrop
@@ -22,6 +23,7 @@ import com.example.tvcontrolcenter.system.openCapabilitySettings
 import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
 import com.example.tvcontrolcenter.ui.theme.ControlCenterTheme
+import kotlinx.coroutines.delay
 
 /**
  * Opens the Control Center on top of whatever app is in front.
@@ -52,6 +54,9 @@ class ControlCenterActivity : ComponentActivity() {
     /** The system is blurring what is behind the window (no screenshot was possible). */
     private var windowBlur by mutableStateOf(false)
 
+    /** Frames of the app underneath are refreshing the glass. */
+    private var liveFrames by mutableStateOf(false)
+
     /** The panel opens once the screenshot is ready. A second launch before that cancels it. */
     private var openWhenReady = true
     private var everOpened = false
@@ -64,25 +69,42 @@ class ControlCenterActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     val settings = ControlCenterEntryPoint.from(this@ControlCenterActivity).layoutRepository().settings.value
                     val level = settings.effectiveBlur
-                    // Live glass asks the system to blur the real window content, with no snapshot.
-                    if (settings.liveGlass) {
-                        val p = window.attributes
-                        windowBlur = p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))
-                        if (windowBlur) window.attributes = p
-                    }
-                    if (!windowBlur) {
+                    val live = settings.liveGlass && level > 0 && BackdropCapture.isLiveWindowSupported
+                    if (live) {
+                        liveFrames = true
+                        // Clean frame before the panel is on screen: the fallback if the window
+                        // capture is refused, without photographing our own panel.
                         backdrop = BackdropCapture.capture(level, settings.patientCapture)
-                        // No screenshot (older Android, service off, protected video): ask the system
-                        // to blur when this is not the live path.
-                        if (backdrop == null && !settings.liveGlass && settings.blurMethod != BlurMethod.SCREENSHOT) {
-                            val p = window.attributes
-                            windowBlur = p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))
-                            if (windowBlur) window.attributes = p
+                        if (openWhenReady) {
+                            everOpened = true
+                            panelOpen = true
                         }
-                    }
-                    if (openWhenReady) {
-                        everOpened = true
-                        panelOpen = true
+                        var misses = 0
+                        // Refresh at the accessibility screenshot limit; the panel itself is not
+                        // in these frames, so the lens can sample the app underneath. The delay
+                        // also spaces the first window shot after the clean picture.
+                        while (panelOpen && liveFrames && misses < LIVE_MISSES_BEFORE_FALLBACK) {
+                            delay(LIVE_FRAME_DELAY_MS)
+                            if (!panelOpen) break
+                            val frame = BackdropCapture.captureLiveWindow(level)
+                            if (frame != null) {
+                                backdrop = frame
+                                misses = 0
+                            } else {
+                                misses++
+                            }
+                        }
+                        if (panelOpen && liveFrames && misses >= LIVE_MISSES_BEFORE_FALLBACK) {
+                            liveFrames = false
+                            // Keep the clean pre-open picture and ask for live system blur.
+                            if (settings.blurMethod != BlurMethod.SCREENSHOT) applySystemBlur(level)
+                        }
+                    } else {
+                        applyFallback(settings, level)
+                        if (openWhenReady) {
+                            everOpened = true
+                            panelOpen = true
+                        }
                     }
                 }
                 ControlCenterHost(
@@ -123,7 +145,28 @@ class ControlCenterActivity : ComponentActivity() {
         if (!isChangingConfigurations) finish()
     }
 
+    private suspend fun applyFallback(settings: PanelSettings, level: Int) {
+        backdrop = BackdropCapture.capture(level, settings.patientCapture)
+        if (backdrop == null && settings.blurMethod != BlurMethod.SCREENSHOT) applySystemBlur(level)
+    }
+
+    /** True when the system accepted a live blur request for this window. */
+    private fun applySystemBlur(level: Int): Boolean {
+        val p = window.attributes
+        val accepted = p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))
+        if (accepted) {
+            windowBlur = true
+            window.attributes = p
+        }
+        return accepted
+    }
+
     private fun configureWindow() {
         window.setBackgroundDrawableResource(android.R.color.transparent)
+    }
+
+    private companion object {
+        const val LIVE_FRAME_DELAY_MS = 380L
+        const val LIVE_MISSES_BEFORE_FALLBACK = 3
     }
 }

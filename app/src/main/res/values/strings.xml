@@ -75,7 +75,10 @@
     <string name="blur_max">Max</string>
     <string name="edit_blur_method">Blur method</string>
     <string name="edit_live_glass">Live glass</string>
-    <string name="live_glass_note">Uses the TV\'s own live window blur when the panel is over another app, so moving video stays live. Needs Android 12+ cross-window blur; otherwise the screenshot is used. The lens is skipped in this mode.</string>
+    <string name="live_glass_note">Samples the app underneath while the panel is open, so moving video stays live inside the glass. Android 14+ captures only that app, never the panel, at about three frames a second. Older versions use the TV\'s window blur when available, then a screenshot.</string>
+    <string name="live_status_ready">Real live glass is ready: the panel samples the app underneath.</string>
+    <string name="live_status_service">Real live glass needs the accessibility service. Switch it off and on in Android settings.</string>
+    <string name="live_status_old">Real live glass needs Android 14 or newer. This TV falls back to window blur or a screenshot.</string>
     <string name="edit_tile_grain">Tile grain</string>
     <string name="group_liquid_glass">Liquid glass</string>
     <string name="edit_liquid_glass">Liquid glass</string>

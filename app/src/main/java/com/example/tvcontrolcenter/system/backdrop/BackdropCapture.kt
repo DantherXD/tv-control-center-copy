@@ -2,12 +2,16 @@ package com.example.tvcontrolcenter.system.backdrop
 
 import android.accessibilityservice.AccessibilityService
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Rect
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.Display
 import android.view.PixelCopy
 import android.view.Window
+import android.view.accessibility.AccessibilityWindowInfo
 import com.example.tvcontrolcenter.domain.model.BlurLevels
 import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.asImageBitmap
@@ -21,6 +25,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.Executors
 import kotlin.coroutines.resume
+import kotlin.math.roundToInt
 
 /**
  * Takes a picture of whatever is on screen and blurs it, so the panel can show real frosted
@@ -59,11 +64,45 @@ object BackdropCapture {
         else -> Status.READY
     }
 
+    /**
+     * True when the panel can sample only the app underneath, repeatedly, without catching the
+     * panel itself. Android 14 added `takeScreenshotOfWindow`; earlier versions can only take a
+     * whole-display picture, which would include the panel.
+     */
+    val isLiveWindowSupported: Boolean
+        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+            ControlCenterAccessibilityService.instance != null
+
+    enum class LiveStatus { READY, NEEDS_SERVICE, NEEDS_ANDROID_14 }
+
+    /** Why real live glass would or would not work right now. Shown in the editor. */
+    fun liveStatus(): LiveStatus = when {
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> LiveStatus.NEEDS_ANDROID_14
+        ControlCenterAccessibilityService.instance == null -> LiveStatus.NEEDS_SERVICE
+        else -> LiveStatus.READY
+    }
+
     /** Full-size picture of the screen for saving. Null if not possible (no service, Android 10-, protected video). */
     suspend fun screenshotFull(): Bitmap? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
         val service = ControlCenterAccessibilityService.instance ?: return null
         return withTimeoutOrNull(2_000L) { screenshot(service) }
+    }
+
+    /**
+     * A fresh frame of the app underneath the panel, for real live glass.
+     *
+     * Uses `takeScreenshotOfWindow` (Android 14+) on the largest non-overlay window, so the
+     * panel is never part of the picture. Android rate-limits these screenshots to about three
+     * per second; the caller refreshes the glass at that pace. Null when there is no app window,
+     * the app is protected, or the platform refused the picture.
+     */
+    suspend fun captureLiveWindow(level: Int): Backdrop? {
+        if (level <= 0 || Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return null
+        val service = ControlCenterAccessibilityService.instance ?: return null
+        val target = liveWindow(service) ?: return null
+        val shot = withTimeoutOrNull(1_100L) { screenshotWindow(service, target.id) } ?: return null
+        return withContext(Dispatchers.Default) { windowBackdrop(service, shot, target.boundsInScreen, level) }
     }
 
     /** Blurred picture of whatever app is on screen, [level] 1..4. Null if off or not possible. */
@@ -120,35 +159,105 @@ object BackdropCapture {
 
     @RequiresApi(Build.VERSION_CODES.R)
     private suspend fun screenshot(service: AccessibilityService): Bitmap? =
-        suspendCancellableCoroutine { cont ->
-            try {
-                service.takeScreenshot(
-                    Display.DEFAULT_DISPLAY,
-                    executor,
-                    object : AccessibilityService.TakeScreenshotCallback {
-                        override fun onSuccess(result: AccessibilityService.ScreenshotResult) {
-                            val buffer = result.hardwareBuffer
-                            val bitmap = try {
-                                // A hardware bitmap cannot be read; copy it to ordinary memory.
-                                Bitmap.wrapHardwareBuffer(buffer, result.colorSpace)
-                                    ?.copy(Bitmap.Config.ARGB_8888, false)
-                            } catch (_: RuntimeException) {
-                                null
-                            } finally {
-                                buffer.close()
-                            }
-                            if (cont.isActive) cont.resume(bitmap) else bitmap?.recycle()
-                        }
-
-                        override fun onFailure(errorCode: Int) {
-                            if (cont.isActive) cont.resume(null)
-                        }
-                    },
-                )
-            } catch (_: RuntimeException) {
-                if (cont.isActive) cont.resume(null)
-            }
+        screenshotResult { callback ->
+            service.takeScreenshot(Display.DEFAULT_DISPLAY, executor, callback)
         }
+
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private suspend fun screenshotWindow(service: AccessibilityService, windowId: Int): Bitmap? =
+        screenshotResult { callback ->
+            service.takeScreenshotOfWindow(windowId, executor, callback)
+        }
+
+    /** Shared callback plumbing for the display and single-window screenshot APIs. */
+    private suspend fun screenshotResult(
+        request: (AccessibilityService.TakeScreenshotCallback) -> Unit,
+    ): Bitmap? = suspendCancellableCoroutine { cont ->
+        try {
+            request(
+                object : AccessibilityService.TakeScreenshotCallback {
+                    override fun onSuccess(result: AccessibilityService.ScreenshotResult) {
+                        val buffer = result.hardwareBuffer
+                        val bitmap = try {
+                            // A hardware bitmap cannot be read; copy it to ordinary memory.
+                            Bitmap.wrapHardwareBuffer(buffer, result.colorSpace)
+                                ?.copy(Bitmap.Config.ARGB_8888, false)
+                        } catch (_: RuntimeException) {
+                            null
+                        } finally {
+                            buffer.close()
+                        }
+                        if (cont.isActive) cont.resume(bitmap) else bitmap?.recycle()
+                    }
+
+                    override fun onFailure(errorCode: Int) {
+                        if (cont.isActive) cont.resume(null)
+                    }
+                },
+            )
+        } catch (_: RuntimeException) {
+            if (cont.isActive) cont.resume(null)
+        }
+    }
+
+    /**
+     * The app window the panel is covering. The panel is our own accessibility overlay, so it is
+     * skipped; the largest other application or system window is the one underneath. Android
+     * returns several small system windows too (navigation, status), so size is the useful test.
+     */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private fun liveWindow(service: AccessibilityService): AccessibilityWindowInfo? = runCatching {
+        val ownPackage = service.packageName
+        service.windows
+            .asSequence()
+            .filter { it.type != AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY }
+            // A null root is not a window we can read; skipping it also keeps our own
+            // application-overlay path from sampling the panel.
+            .filter { it.root?.packageName != null && it.root?.packageName != ownPackage }
+            .filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION || it.type == AccessibilityWindowInfo.TYPE_SYSTEM }
+            .filter { it.boundsInScreen.width() > 0 && it.boundsInScreen.height() > 0 }
+            .maxByOrNull { it.boundsInScreen.width().toLong() * it.boundsInScreen.height() }
+    }.getOrNull()
+
+    /**
+     * A window screenshot only contains that window, while the panel samples in screen
+     * coordinates. Put it back on a full-screen transparent canvas at its real position, then
+     * blur that like any other backdrop. A full-screen window is used as-is, which is the normal
+     * TV case and avoids an 8 MB copy every frame.
+     */
+    private fun windowBackdrop(
+        service: AccessibilityService,
+        shot: Bitmap,
+        bounds: Rect,
+        level: Int,
+    ): Backdrop? {
+        val metrics = service.resources.displayMetrics
+        val fullWidth = metrics.widthPixels.coerceAtLeast(1)
+        val fullHeight = metrics.heightPixels.coerceAtLeast(1)
+        if (shot.width <= 0 || shot.height <= 0) return null
+        if (bounds.left == 0 && bounds.top == 0 && shot.width == fullWidth && shot.height == fullHeight) {
+            return blurred(shot, level, fullWidth, fullHeight)
+        }
+        // Frame it at the sharp copy's size, not at 4K: a 4K canvas every frame would cost
+        // 33 MB and provoke GC on the boxes this app targets.
+        val scale = SHARP_WIDTH.toFloat() / fullWidth
+        val frameW = SHARP_WIDTH
+        val frameH = (fullHeight * scale).roundToInt().coerceAtLeast(1)
+        val framed = Bitmap.createBitmap(frameW, frameH, Bitmap.Config.ARGB_8888)
+        Canvas(framed).drawBitmap(
+            shot,
+            null,
+            Rect(
+                (bounds.left * scale).roundToInt(),
+                (bounds.top * scale).roundToInt(),
+                ((bounds.left + bounds.width()) * scale).roundToInt(),
+                ((bounds.top + bounds.height()) * scale).roundToInt(),
+            ),
+            Paint(Paint.FILTER_BITMAP_FLAG),
+        )
+        shot.recycle()
+        return blurred(framed, level, fullWidth, fullHeight)
+    }
 
     private fun blurred(source: Bitmap, level: Int, fullWidth: Int, fullHeight: Int): Backdrop? {
         if (fullWidth < 2 || fullHeight < 2) return null

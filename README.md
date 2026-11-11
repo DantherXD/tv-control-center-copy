@@ -89,7 +89,7 @@ buttons on the left set its size, move it earlier or later, or hide it. "Add con
 * **Blur strength** Off, Light, Medium, Strong, Max.
 * **Blur method** Auto, Screenshot (blur only inside the glass) or Whole screen (the whole picture behind the panel is blurred from a screenshot, with no box around the controls; the system window blur is the fallback).
   A line under it says whether screenshot blur is ready.
-* **Live glass** uses the TV's own real-time window blur instead of a screenshot, so video behind the panel keeps moving. It needs Android 12+ cross-window blur and skips the screenshot-only lens; unsupported devices fall back to the screenshot.
+* **Live glass** refreshes the glass from the app underneath while the panel is open, so video keeps moving. Android 14+ captures only the app window (never the panel) at about three frames a second and keeps the real lens; older versions use the TV's window blur when available, then a screenshot.
 * **Tile grain** adds or removes the faint noise texture on the control glass.
 * **Liquid glass** turns the real refraction on or off. On is the Backdrop shader with vibrancy, blur and a lens rim (Android 12+, lens depth and chromatic aberration on Android 13+).
   The group below it tunes every shader parameter: **Glass blur**, **Lens height**, **Lens bend**, **Vibrancy**, **Lens depth** and **Chromatic aberration**.
@@ -115,7 +115,7 @@ Glass is real optics now, with a cheap fallback:
   screenshot directly, so the effect also works in the editor preview. The 480 px blurred copy is still built for the brightness
   map and for the fallback. Protected video (DRM) cannot be captured and uses the fallback below. After updating, switch the
   accessibility service off and on once so Android grants the new screenshot permission.
-* **Live glass.** On Android 12+ with cross-window blur, the window itself is blurred by the system, so the background is genuinely live; the app draws translucent tint, rim and optional grain over it. There is no screenshot to refract, so the lens is skipped. Without system blur support this option falls back to the screenshot path.
+* **Live glass.** Android 14+ takes single-window screenshots of the app underneath (`AccessibilityService.takeScreenshotOfWindow`) while the panel is open. The panel is a separate overlay window, so it is never in the picture; each control's crop refreshes at roughly three frames a second and the normal lens keeps working. Android rate-limits accessibility screenshots to about one every 333 ms, which is why it is not 60 fps. If the app is protected or the capture is refused, the clean pre-open screenshot stays; when cross-window blur is available the window blur takes over instead.
 * **Grain.** The faint noise on the control glass can be turned off with **Tile grain**; it is on by default. The sheet keeps its own grain.
 * **Fallback.** With **Liquid glass** off, without a screenshot (Android 10 and below, service off, protected content), or below
   Android 12 where `RenderEffect` is unavailable, the panel draws a frosted sheet and darker tiles with the pre-blurred copy. On
@@ -144,9 +144,8 @@ Glass is real optics now, with a cheap fallback:
 ## Known limitations
 
 * **Not device-tested.** The 2 GB-RAM, 60 fps requirement is designed for but unmeasured. Profile with Perfetto on a real box; if the
-  blur is costly, set Blur strength to Off or Light.
-* **Blur over other apps needs Android 11+ and the accessibility service.** The service is the only thing that may screenshot other
-  apps. Without it the glass is the frosted fallback. The real lens needs Android 13+; Android 12 gets the blur and colour effects only.
+  blur is costly, set Blur strength to Off or Light.* **Blur over other apps needs Android 11+ and the accessibility service.** The service is the only thing that may screenshot other apps. Without it the glass is the frosted fallback. Real live glass needs Android 14+; Android 11–13 use the system window blur or a once-captured screenshot. The real lens needs Android 13+; Android 12 gets the blur and colour effects only.
+* **Live glass is about 3 fps.** Android limits accessibility screenshots to one every 333 ms. It is live enough to see video move, not a 60 fps mirror; the static screenshot or system blur remains smoother when the content is not moving.
 * **The activity pauses the app underneath.** `ControlCenterActivity` is a transparent window on top of the running app, so the app gets `onPause`
   and some players stop. The accessibility overlay (long-press Menu with the service enabled) pauses nothing, but needs that service.
 * **Long-press Menu is not guaranteed.** Many Android TV remotes never deliver Menu, and Home is never delivered. Use
@@ -164,7 +163,7 @@ Glass is real optics now, with a cheap fallback:
 
 ## tvOS behaviours Android cannot replicate
 
-1. Reading and refracting **live content behind the panel** from other apps (system compositor access only; this app refracts a snapshot).
+1. Reading and refracting **full-rate live content behind the panel** from other apps. Android 14+ can sample the app underneath about three times a second through the accessibility API; Apple's compositor does it every frame.
 2. A **system-level Control Center key** (Apple's Home long-press) and system-owned panel placement above every app.
 3. **Real power-off**, **AirPods/Apple device switching**, Home/HomeKit controls and Apple ID user-profile switching.
 4. **Per-user** Control Center from the profile avatar and the tvOS status bar integration.

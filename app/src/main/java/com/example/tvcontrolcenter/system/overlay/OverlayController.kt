@@ -28,6 +28,7 @@ import com.example.tvcontrolcenter.MainActivity
 import com.example.tvcontrolcenter.di.ControlCenterEntryPoint
 import com.example.tvcontrolcenter.domain.model.BlurLevels
 import com.example.tvcontrolcenter.domain.model.BlurMethod
+import com.example.tvcontrolcenter.domain.model.PanelSettings
 import com.example.tvcontrolcenter.system.applyBlurFallback
 import com.example.tvcontrolcenter.system.backdrop.BackdropCapture
 import com.example.tvcontrolcenter.ui.glass.Backdrop
@@ -35,6 +36,7 @@ import com.example.tvcontrolcenter.system.openCapabilitySettings
 import com.example.tvcontrolcenter.ui.panel.ControlCenterHost
 import com.example.tvcontrolcenter.ui.panel.ControlCenterViewModel
 import com.example.tvcontrolcenter.ui.theme.ControlCenterTheme
+import kotlinx.coroutines.delay
 
 /**
  * Lifecycle, saved-state and ViewModel owner for a ComposeView that lives in a
@@ -68,10 +70,9 @@ internal class OverlayHost : LifecycleOwner, SavedStateRegistryOwner, ViewModelS
  * [windowType] is TYPE_ACCESSIBILITY_OVERLAY from the accessibility service (no extra
  * permission) or TYPE_APPLICATION_OVERLAY from [OverlayService] (needs SYSTEM_ALERT_WINDOW).
  *
- * On Android 12+ the window asks for blur-behind (the "Blur behind" setting). Devices with
- * cross-window blur enabled then show a real blurred view of the running app behind the
- * frosted panel; others get a stronger dim. Android does not let an overlay read the pixels
- * behind it, so refraction of the running app is not possible. See README.
+ * Live glass on Android 14+ takes repeated single-window screenshots of the app underneath, so
+ * the panel is never captured and the real lens stays live. Older versions use the system's
+ * blur-behind when it is enabled, then a screenshot. See README.
  */
 class OverlayController(
     private val context: Context,
@@ -85,6 +86,7 @@ class OverlayController(
     private var backdrop by mutableStateOf<Backdrop?>(null)
     private var windowParams: WindowManager.LayoutParams? = null
     private var windowBlurOn by mutableStateOf(false)
+    private var liveFrames by mutableStateOf(false)
 
     /** False once [hide] was called, so a screenshot that arrives late cannot reopen the panel. */
     private var wanted = false
@@ -98,6 +100,7 @@ class OverlayController(
         everVisible = false
         backdrop = null
         windowBlurOn = false
+        liveFrames = false
         val newHost = OverlayHost().also { it.resume() }
         val viewModel = ViewModelProvider(
             newHost,
@@ -112,27 +115,51 @@ class OverlayController(
             isFocusable = true
             setContent {
                 ControlCenterTheme {
-                    // The window is on screen but draws nothing yet, so the screenshot shows the
-                    // app alone. The panel opens as soon as the picture is ready (or has failed).
+                    // The window is on screen but draws nothing yet, so the first capture sees
+                    // the app alone. The panel opens once there is a picture, or at once when
+                    // live window capture is available (it never includes this overlay).
                     LaunchedEffect(Unit) {
                         val settings = ControlCenterEntryPoint.from(context).layoutRepository().settings.value
                         val level = settings.effectiveBlur
-                        if (!windowBlurOn) {
+                        val live = settings.liveGlass && level > 0 && BackdropCapture.isLiveWindowSupported
+                        if (live) {
+                            liveFrames = true
+                            // One clean picture before the panel is on screen. It is the fallback
+                            // if live capture is refused, and a whole-display capture now would
+                            // include the panel.
                             backdrop = BackdropCapture.capture(level, settings.patientCapture)
-                            // No picture (old Android, DRM video, slow device) -> ask the system to
-                            // blur the screen, unless Live glass already asked for it.
-                            if (backdrop == null && !settings.liveGlass && settings.blurMethod != BlurMethod.SCREENSHOT) {
-                                val p = windowParams
-                                val v = view
-                                if (p != null && v != null && p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))) {
-                                    windowBlurOn = true
-                                    runCatching { windowManager.updateViewLayout(v, p) }
+                            if (wanted) {
+                                everVisible = true
+                                visible = true
+                            }
+                            var misses = 0
+                            // Android limits single-window screenshots to roughly three a second.
+                            // Keep refreshing at that pace while the panel is open, and fall back
+                            // after a few misses (protected video, window gone, service revoked).
+                            // The delay also spaces the first window shot after the clean picture.
+                            while (wanted && liveFrames && misses < LIVE_MISSES_BEFORE_FALLBACK) {
+                                delay(LIVE_FRAME_DELAY_MS)
+                                if (!wanted) break
+                                val frame = BackdropCapture.captureLiveWindow(level)
+                                if (frame != null) {
+                                    backdrop = frame
+                                    misses = 0
+                                } else {
+                                    misses++
                                 }
                             }
-                        }
-                        if (wanted) {
-                            everVisible = true
-                            visible = true
+                            if (wanted && liveFrames && misses >= LIVE_MISSES_BEFORE_FALLBACK) {
+                                liveFrames = false
+                                // Keep the clean pre-open picture and ask for live system blur. A
+                                // display screenshot now would photograph the open panel.
+                                if (settings.blurMethod != BlurMethod.SCREENSHOT) applySystemBlur(level)
+                            }
+                        } else {
+                            applyFallback(settings, level)
+                            if (wanted) {
+                                everVisible = true
+                                visible = true
+                            }
                         }
                     }
                     ControlCenterHost(
@@ -166,9 +193,15 @@ class OverlayController(
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             val s = ControlCenterEntryPoint.from(context).layoutRepository().settings.value
-            // Live glass always asks for the system's real-time blur. The old fallback asks only
-            // when there is no screenshot to blur ourselves.
-            val wantsWindow = s.liveGlass || (s.blurMethod != BlurMethod.SCREENSHOT && !BackdropCapture.isSupported)
+            // Real live glass uses window screenshots; system blur is the fallback when this
+            // Android version cannot capture a single window. Without Live glass, a missing
+            // screenshot also asks the system to blur.
+            val liveCapture = s.liveGlass && BackdropCapture.isLiveWindowSupported
+            val wantsWindow = if (s.liveGlass) {
+                !liveCapture
+            } else {
+                s.blurMethod != BlurMethod.SCREENSHOT && !BackdropCapture.isSupported
+            }
             if (wantsWindow && applyBlurFallback(windowManager, BlurLevels.windowRadius(s.effectiveBlur))) windowBlurOn = true
         }
         windowParams = params
@@ -188,6 +221,22 @@ class OverlayController(
         composeView.requestFocus()
     }
 
+    /** Screenshot, then system blur if there is none. Used when live capture is unavailable. */
+    private suspend fun applyFallback(settings: PanelSettings, level: Int) {
+        backdrop = BackdropCapture.capture(level, settings.patientCapture)
+        if (backdrop == null && settings.blurMethod != BlurMethod.SCREENSHOT) applySystemBlur(level)
+    }
+
+    /** True when the system accepted a live blur request for this overlay window. */
+    private fun applySystemBlur(level: Int): Boolean {
+        val p = windowParams ?: return false
+        val v = view ?: return false
+        if (!p.applyBlurFallback(windowManager, BlurLevels.windowRadius(level))) return false
+        windowBlurOn = true
+        runCatching { windowManager.updateViewLayout(v, p) }
+        return true
+    }
+
     /** Starts the close animation; the window is removed when it finishes. */
     fun hide() {
         wanted = false
@@ -198,6 +247,10 @@ class OverlayController(
     private companion object {
         const val SCRIM_WITH_BACKDROP = 0.22f
         const val SCRIM_WITHOUT_BACKDROP = 0.32f
+
+        /** Android refuses accessibility screenshots closer together than about 333 ms. */
+        const val LIVE_FRAME_DELAY_MS = 380L
+        const val LIVE_MISSES_BEFORE_FALLBACK = 3
     }
 
     private fun remove() {

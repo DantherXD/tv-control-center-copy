@@ -246,18 +246,19 @@ private fun HostBody(
     // Whole screen: the blurred picture covers everything behind the panel and the controls are
     // plain glass on top of it. No frosted box is drawn around them.
     val wholeScreen = state.settings.blurMethod == BlurMethod.WINDOW
-    // Live glass uses the system's real-time window blur, so there is no screenshot to sample.
-    val live = state.settings.liveGlass && windowBlur
+    // Two live paths: the system blurs the window (no pixels to sample), or fresh frames of the
+    // app underneath feed the normal per-tile glass.
+    val liveWindowBlur = state.settings.liveGlass && windowBlur
     val mapped = remember(backdrop, hostSize) {
         if (backdrop != null && hostSize.width > 0) {
             backdrop.copy(width = hostSize.width, height = hostSize.height)
         } else null
     }
-    val fullBackdrop = if (wholeScreen && !live) backdrop else null
-    val tileBackdrop = if (wholeScreen || live) null else mapped
+    val fullBackdrop = if (wholeScreen && !liveWindowBlur) backdrop else null
+    val tileBackdrop = if (wholeScreen || liveWindowBlur) null else mapped
     // Nothing can blur this screen: no screenshot, and the system will not blur behind the
     // window. Draw the card then, so the controls never float on a sharp picture.
-    val glassCard = if (live) state.settings.card else mapped == null && (state.settings.card || !windowBlur)
+    val glassCard = if (liveWindowBlur) state.settings.card else mapped == null && (state.settings.card || !windowBlur)
 
     val menuIsHome = state.settings.menuIsHome
     val profileShown = pinned.any { it.id == TileId.PROFILE }
@@ -437,7 +438,7 @@ private fun HostBody(
             CompositionLocalProvider(
                 LocalFrostStyle provides state.settings.frost,
                 LocalInvertFocus provides state.settings.invertFocus,
-                LocalOverBlur provides (backdrop != null || live),
+                LocalOverBlur provides (backdrop != null || liveWindowBlur),
                 LocalTileGrain provides state.settings.tileGrain,
                 LocalLiquidGlass provides (
                     if (state.settings.liquidGlass) {

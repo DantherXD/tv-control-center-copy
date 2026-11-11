@@ -196,9 +196,12 @@ tunable: `liquidBlur` (dp, independent of the screenshot's blur strength), `liqu
 corner radius), `liquidLensBend` (percent of the control's smallest side), `liquidVibrancy`,
 `liquidLensDepth` and `liquidChromatic`. `LiquidGlassParams` carries those values to `frostedTile`
 through `LocalLiquidGlass`; null means the fallback. `PanelSettings.liveGlass` ("Live glass" in the Blur
-page) asks `WindowManager.LayoutParams.FLAG_BLUR_BEHIND` for the system's real-time window blur and skips
-the screenshot; it also skips the lens, since there is no snapshot to refract. If cross-window blur is
-unavailable it falls back to the screenshot path. `PanelSettings.tileGrain` ("Tile grain", on by
+page) refreshes that snapshot from the app underneath: on Android 14+ `BackdropCapture.captureLiveWindow`
+uses `AccessibilityService.takeScreenshotOfWindow` on the largest non-overlay window, so the panel is never
+in the picture and the real lens stays live at the platform's ~3 fps screenshot limit. On older Android it
+asks `WindowManager.LayoutParams.FLAG_BLUR_BEHIND` for the system window blur, then falls back to the
+pre-open screenshot (never a display capture after the panel is visible, which would photograph the panel).
+`PanelSettings.tileGrain` ("Tile grain", on by
 default) controls the noise on control glass through `LocalTileGrain`; the sheet keeps its grain.
 Blur method AUTO (screenshot, window blur fallback), SCREENSHOT (glass only), WINDOW (whole screen).
 Patient capture (1.2 s, 3 tries) for video. Whole-screen mode draws the blurred screenshot full screen
