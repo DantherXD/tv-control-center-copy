@@ -153,6 +153,8 @@ private fun HostBody(
     // Tile to give focus back to when a small window closes.
     var returnTo by remember { mutableStateOf<TileId?>(null) }
     var focusedTile by remember { mutableStateOf<TileId?>(null) }
+    // The notification currently open full-window, if any.
+    val subPageState = remember { SubPageState() }
     // The close animation already handed focus back; the page change must not do it again.
     var restoreHandled by remember { mutableStateOf(false) }
     var page by remember { mutableStateOf(PanelPage.GRID) }
@@ -193,6 +195,7 @@ private fun HostBody(
             closingMusic = false
             returnTo = null
             focusedTile = null
+            subPageState.selectedNotice = null
             restoreHandled = false
             viewModel.onOpened()
             launch {
@@ -279,6 +282,7 @@ private fun HostBody(
     }
     val openSub: (PanelPage, TileId) -> Unit = { target, from ->
         returnTo = from
+        subPageState.selectedNotice = null
         closingSub = false
         closingMusic = false
         page = target
@@ -286,6 +290,7 @@ private fun HostBody(
     // The window has shrunk back onto its control: the grid takes over from here.
     val closeSub: () -> Unit = {
         closingSub = false
+        subPageState.selectedNotice = null
         page = PanelPage.GRID
     }
     // The music card has shrunk back into its button; the grid starts at its top-left control.
@@ -299,6 +304,7 @@ private fun HostBody(
             wifiEnabled = viewModel::wifiEnabled,
             bluetoothEnabled = viewModel::bluetoothEnabled,
             wifiName = viewModel::wifiName,
+            wifiIpAddress = viewModel::wifiIpAddress,
             setWifi = viewModel::onSetWifi,
             openWifiSettings = viewModel::onOpenWifiSettings,
             setBluetooth = viewModel::onSetBluetooth,
@@ -307,6 +313,7 @@ private fun HostBody(
             inputs = viewModel::tvInputs,
             switchInput = viewModel::onSwitchInput,
             openNotification = viewModel::onNotificationOpened,
+            dismissNotification = viewModel::onDismissNotification,
             clearNotifications = viewModel::onClearNotifications,
             openNotificationAccess = viewModel::onOpenNotificationAccess,
         )
@@ -421,6 +428,9 @@ private fun HostBody(
                             when {
                                 // A card is already on its way home: Back closes the panel, as before.
                                 closingSub || closingMusic -> dismiss()
+                                // Inside a notification, Back closes the detail before the window.
+                                page == PanelPage.NOTIFICATIONS && subPageState.selectedNotice != null ->
+                                    subPageState.selectedNotice = null
                                 // First Back shrinks the card back into the control it came from.
                                 page.isSub -> closingSub = true
                                 page == PanelPage.MUSIC -> closingMusic = true
@@ -434,7 +444,10 @@ private fun HostBody(
                         if (event.type == KeyEventType.KeyUp && !closingSub && !closingMusic) {
                             when {
                                 // A window is open: Menu goes back to the grid.
-                                page.isSub -> closingSub = true
+                                page.isSub -> {
+                                    subPageState.selectedNotice = null
+                                    closingSub = true
+                                }
                                 page == PanelPage.MUSIC -> closingMusic = true
                                 page == PanelPage.GRID && musicOnTop -> {
                                     if (viewModel.onMusicPageRequested()) page = PanelPage.MUSIC
@@ -511,6 +524,7 @@ private fun HostBody(
                     },
                     subFocus = subFocus,
                     subActions = subActions,
+                    subState = subPageState,
                     actions = TileActions(
                         onVolumeStep = viewModel::onVolumeStep,
                         onSkipNext = viewModel::onSkipNext,

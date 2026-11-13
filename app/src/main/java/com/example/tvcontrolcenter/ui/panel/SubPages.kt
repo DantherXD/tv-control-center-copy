@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +54,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
 import com.example.tvcontrolcenter.R
+import com.example.tvcontrolcenter.domain.model.AppNotification
 import com.example.tvcontrolcenter.domain.model.NetworkKind
 import com.example.tvcontrolcenter.domain.model.Placed
 import com.example.tvcontrolcenter.domain.model.TileId
@@ -62,15 +65,22 @@ import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalTileInk
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
 import com.example.tvcontrolcenter.ui.theme.LocalNoticeScale
+import com.example.tvcontrolcenter.ui.theme.PanelType
 import com.example.tvcontrolcenter.ui.theme.ProvideTextScale
 import com.example.tvcontrolcenter.ui.theme.PanelDimens
 import kotlinx.coroutines.delay
+
+/** Detail state shared with the host so Back can close a notice before the window. */
+internal class SubPageState {
+    var selectedNotice by mutableStateOf<AppNotification?>(null)
+}
 
 /** What the Wi-Fi, Bluetooth and Input pages can ask of the system. */
 internal class SubPageActions(
     val wifiEnabled: () -> Boolean,
     val bluetoothEnabled: () -> Boolean,
     val wifiName: () -> String?,
+    val wifiIpAddress: () -> String?,
     val setWifi: (Boolean) -> Unit,
     val openWifiSettings: () -> Unit,
     val setBluetooth: (Boolean) -> Unit,
@@ -79,6 +89,7 @@ internal class SubPageActions(
     val inputs: () -> List<TvInputItem>,
     val switchInput: (String) -> Unit,
     val openNotification: (String) -> Unit,
+    val dismissNotification: (String) -> Unit,
     val clearNotifications: () -> Unit,
     val openNotificationAccess: () -> Unit,
 )
@@ -109,6 +120,7 @@ private sealed interface SubRow {
         val title: String,
         val text: String?,
         val activate: () -> Unit,
+        val longPress: (() -> Unit)? = null,
     ) : SubRow {
         override val label: String get() = title
         override val height: Dp get() = NOTICE_ROW
@@ -143,6 +155,7 @@ internal fun SubPageCard(
     page: PanelPage,
     state: ControlCenterUiState,
     actions: SubPageActions,
+    subState: SubPageState,
     first: FocusRequester,
     backdrop: Backdrop?,
     origin: Offset,
@@ -164,6 +177,7 @@ internal fun SubPageCard(
     var wifiOn by remember(page) { mutableStateOf(actions.wifiEnabled()) }
     var bluetoothOn by remember(page) { mutableStateOf(state.status.bluetoothEnabled) }
     var settles by remember(page) { mutableStateOf(0) }
+    val detailFocus = remember { FocusRequester() }
     LaunchedEffect(page, state.status.network, state.status.bluetoothEnabled) {
         wifiOn = actions.wifiEnabled()
         bluetoothOn = state.status.bluetoothEnabled
@@ -173,6 +187,16 @@ internal fun SubPageCard(
         delay(RADIO_SETTLE_MILLIS)
         wifiOn = actions.wifiEnabled()
         bluetoothOn = actions.bluetoothEnabled()
+    }
+    // A notification that disappears while open leaves the detail view too.
+    LaunchedEffect(state.notifications) {
+        val open = subState.selectedNotice
+        if (open != null && state.notifications.none { it.key == open.key }) subState.selectedNotice = null
+    }
+    LaunchedEffect(subState.selectedNotice, page) {
+        if (page != PanelPage.NOTIFICATIONS) return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { (if (subState.selectedNotice != null) detailFocus else first).requestFocus() }
     }
     val rows = when (page) {
         PanelPage.WIFI -> WifiRows(state, wifiOn, actions) { next ->
@@ -185,7 +209,7 @@ internal fun SubPageCard(
             actions.setBluetooth(next)
             settles++
         }
-        PanelPage.NOTIFICATIONS -> NotificationRows(state, actions)
+        PanelPage.NOTIFICATIONS -> NotificationRows(state, actions) { subState.selectedNotice = it }
         else -> InputRows(inputs, actions)
     }
     // A window with nothing to list says so in its middle instead of with a row.
@@ -197,7 +221,9 @@ internal fun SubPageCard(
     // window is allowed to grow further than the others, since there is more of them than inputs.
     val tallest = if (page == PanelPage.NOTIFICATIONS) PanelDimens.notificationsMaxHeight
         else PanelDimens.subPageMaxHeight
-    val height = (CHROME + rowsHeight).coerceIn(PanelDimens.subPageHeight, tallest)
+    // One notice gets the whole window; the list still grows to fit its rows.
+    val height = if (subState.selectedNotice != null) tallest
+        else (CHROME + rowsHeight).coerceIn(PanelDimens.subPageHeight, tallest)
     val firstRow = rows.indexOfFirst { it is SubRow.Action || it is SubRow.Notice }
     Column(
         modifier
@@ -217,7 +243,17 @@ internal fun SubPageCard(
             TileIcon(lookOf(tile).icon, 20.dp, Color.White)
             Label(stringResource(lookOf(tile).label), maxLines = 1)
         }
-        if (emptyNotice) {
+        val open = subState.selectedNotice
+        if (open != null) {
+            NotificationDetail(
+                notice = open,
+                actions = actions,
+                first = detailFocus,
+                closing = closing,
+                onBack = { subState.selectedNotice = null },
+                modifier = Modifier.weight(1f),
+            )
+        } else if (emptyNotice) {
             EmptyNotice(Modifier.weight(1f))
         } else Column(
             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
@@ -241,6 +277,7 @@ internal fun SubPageCard(
                         requester = if (index == firstRow) first else null,
                         focusable = !closing,
                         activate = if (closing) NoActivate else row.activate,
+                        onLongPress = if (closing) null else row.longPress,
                     )
                 }
             }
@@ -325,6 +362,9 @@ private const val MID_AIR_SCALE = 0.94f
 /** How long a radio switch shows its press before asking the system what really happened. */
 private const val RADIO_SETTLE_MILLIS = 1_200L
 
+/** Hold OK this long on a notification to open its full-window view. */
+private const val LONG_PRESS_MILLIS = 600L
+
 /** Where the window starts: the opened control's top-left corner and the scale that fits it. */
 private class Start(val x: Float, val y: Float, val scaleX: Float, val scaleY: Float)
 
@@ -346,6 +386,10 @@ private fun WifiRows(
     return listOf(
         SubRow.Action(stringResource(R.string.tile_wifi), onOffText(on)) { toggle(!on) },
         SubRow.Info(stringResource(R.string.sub_network), network),
+        SubRow.Info(
+            stringResource(R.string.sub_ip_address),
+            actions.wifiIpAddress() ?: stringResource(R.string.sub_not_connected),
+        ),
         SubRow.Action(stringResource(R.string.sub_open_wifi)) { actions.openWifiSettings() },
     )
 }
@@ -383,7 +427,11 @@ private fun InputRows(inputs: List<TvInputItem>, actions: SubPageActions): List<
  * Without the listener grant the window still opens, with the one row that leads to the grant.
  */
 @Composable
-private fun NotificationRows(state: ControlCenterUiState, actions: SubPageActions): List<SubRow> {
+private fun NotificationRows(
+    state: ControlCenterUiState,
+    actions: SubPageActions,
+    onLongPress: (AppNotification) -> Unit,
+): List<SubRow> {
     if (!state.notificationAccess) {
         return listOf(
             SubRow.Action(stringResource(R.string.sub_notif_access)) { actions.openNotificationAccess() },
@@ -399,6 +447,7 @@ private fun NotificationRows(state: ControlCenterUiState, actions: SubPageAction
                     title = notice.title,
                     text = notice.text,
                     activate = { actions.openNotification(notice.key) },
+                    longPress = { onLongPress(notice) },
                 ),
             )
         }
@@ -485,6 +534,7 @@ private fun SheetNoticeRow(
     requester: FocusRequester?,
     focusable: Boolean = true,
     activate: () -> Unit,
+    onLongPress: (() -> Unit)? = null,
 ) {
     var focused by remember { mutableStateOf(false) }
     val invert = LocalInvertFocus.current
@@ -492,6 +542,8 @@ private fun SheetNoticeRow(
     val r = requester ?: remember { FocusRequester() }
     // Same press rule as the other rows: only an OK that started on this row counts.
     val pressed = remember { booleanArrayOf(false) }
+    val downAt = remember { longArrayOf(0L) }
+    val longFired = remember { booleanArrayOf(false) }
     // A notification titled with the app's own name would otherwise say it twice on one line.
     val showApp = appLabel != title
     Box(
@@ -503,12 +555,23 @@ private fun SheetNoticeRow(
             .onKeyEvent { e ->
                 when {
                     e.key.isOk() && e.type == KeyEventType.KeyDown -> {
-                        if (e.nativeKeyEvent.repeatCount == 0) pressed[0] = true
+                        if (e.nativeKeyEvent.repeatCount == 0) {
+                            pressed[0] = true
+                            downAt[0] = e.nativeKeyEvent.eventTime
+                            longFired[0] = false
+                        } else if (
+                            onLongPress != null && pressed[0] && !longFired[0] &&
+                            e.nativeKeyEvent.eventTime - downAt[0] >= LONG_PRESS_MILLIS
+                        ) {
+                            longFired[0] = true
+                            onLongPress()
+                        }
                         true
                     }
                     e.key.isOk() && e.type == KeyEventType.KeyUp -> {
-                        if (pressed[0]) activate()
+                        if (pressed[0] && !longFired[0]) activate()
                         pressed[0] = false
+                        longFired[0] = false
                         true
                     }
                     else -> false
@@ -551,6 +614,53 @@ private fun SheetNoticeRow(
                 }
             }
         }
+    }
+}
+
+/** One notification fills the window: its full text, then Open and Close. */
+@Composable
+private fun NotificationDetail(
+    notice: AppNotification,
+    actions: SubPageActions,
+    first: FocusRequester,
+    closing: Boolean,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(ROW_GAP),
+    ) {
+        Detail(notice.appLabel)
+        Label(notice.title, maxLines = 2)
+        if (!notice.text.isNullOrBlank()) {
+            BasicText(
+                notice.text.orEmpty(),
+                modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                style = PanelType.detail.copy(color = LocalTileInk.current.copy(alpha = 0.9f)),
+            )
+        } else {
+            Column(Modifier.weight(1f)) {}
+        }
+        SheetRow(
+            label = stringResource(R.string.sub_notif_open),
+            value = null,
+            requester = first,
+            focusable = !closing,
+            activate = { if (!closing) actions.openNotification(notice.key) },
+        )
+        SheetRow(
+            label = stringResource(R.string.sub_notif_close),
+            value = null,
+            requester = null,
+            focusable = !closing && notice.clearable,
+            activate = {
+                if (!closing) {
+                    actions.dismissNotification(notice.key)
+                    onBack()
+                }
+            },
+        )
     }
 }
 

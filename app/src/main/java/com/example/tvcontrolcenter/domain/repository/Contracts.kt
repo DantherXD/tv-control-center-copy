@@ -55,6 +55,7 @@ interface SystemActions {
     fun wifiEnabled(): Boolean = false
     fun bluetoothEnabled(): Boolean = false
     fun wifiNetworkName(): String? = null
+    fun wifiIpAddress(): String? = null
     fun setWifiEnabled(enabled: Boolean): ActionResult = ActionResult.Unavailable
     fun setBluetoothEnabled(enabled: Boolean): ActionResult = ActionResult.Unavailable
     fun pairedBluetoothDevices(): List<String> = emptyList()

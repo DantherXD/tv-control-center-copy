@@ -17,6 +17,8 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothManager
 import android.media.tv.TvContract
 import android.media.tv.TvInputManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.widget.Toast
 import com.example.tvcontrolcenter.domain.model.LauncherApp
@@ -33,6 +35,7 @@ import com.example.tvcontrolcenter.domain.model.Capability
 import com.example.tvcontrolcenter.domain.repository.SystemActions
 import com.example.tvcontrolcenter.system.trigger.ControlCenterAccessibilityService
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.net.Inet4Address
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -228,6 +231,8 @@ class AndroidSystemActions @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val wifi get() = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+    private val connectivity get() =
+        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val bluetoothAdapter get() =
         (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
 
@@ -241,6 +246,17 @@ class AndroidSystemActions @Inject constructor(
     @Suppress("DEPRECATION")
     override fun wifiNetworkName(): String? = runCatching {
         wifi.connectionInfo?.ssid?.trim('"')?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
+    }.getOrNull()
+
+    /** The Wi-Fi link's IPv4 address, or its first usable address when it is IPv6-only. */
+    override fun wifiIpAddress(): String? = runCatching {
+        val network = connectivity.activeNetwork ?: return@runCatching null
+        val caps = connectivity.getNetworkCapabilities(network) ?: return@runCatching null
+        if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return@runCatching null
+        val addresses = connectivity.getLinkProperties(network)?.linkAddresses.orEmpty()
+            .map { it.address }
+            .filter { !it.isLoopbackAddress && !it.isLinkLocalAddress }
+        (addresses.firstOrNull { it is Inet4Address } ?: addresses.firstOrNull())?.hostAddress
     }.getOrNull()
 
     @Suppress("DEPRECATION")
