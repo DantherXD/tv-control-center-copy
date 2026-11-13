@@ -32,7 +32,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -642,12 +641,13 @@ private fun NotificationDetail(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
-    // The compact notice is a 56 dp pill; use the same corner radius on the longer card.
+    // The compact notice is a 56 dp pill; use the same corner radius on the longer card. The
+    // card is a translucent fill, not an elevation shadow: a real shadow stretched down the
+    // height of a long notice and looked wrong.
     val shape = RoundedCornerShape(28.dp)
     Column(
         modifier
             .fillMaxWidth()
-            .shadow(10.dp, shape)
             .clip(shape)
             .background(Color.Black.copy(alpha = 0.30f))
             .padding(horizontal = 14.dp, vertical = 12.dp),
