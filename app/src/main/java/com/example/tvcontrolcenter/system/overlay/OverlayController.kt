@@ -3,6 +3,7 @@ package com.example.tvcontrolcenter.system.overlay
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -124,6 +125,7 @@ class OverlayController(
                         val live = settings.liveGlass && level > 0 && BackdropCapture.isLiveWindowSupported
                         if (live) {
                             liveFrames = true
+                            Log.i(TAG, "live glass: on (level=$level)")
                             // One clean picture before the panel is on screen. It is the fallback
                             // if live capture is refused, and a whole-display capture now would
                             // include the panel.
@@ -133,6 +135,7 @@ class OverlayController(
                                 visible = true
                             }
                             var misses = 0
+                            var announced = false
                             // Android limits single-window screenshots to roughly three a second.
                             // Keep refreshing at that pace while the panel is open, and fall back
                             // after a few misses (protected video, window gone, service revoked).
@@ -142,6 +145,10 @@ class OverlayController(
                                 if (!wanted) break
                                 val frame = BackdropCapture.captureLiveWindow(level)
                                 if (frame != null) {
+                                    if (!announced) {
+                                        Log.i(TAG, "live glass: first frame received")
+                                        announced = true
+                                    }
                                     backdrop = frame
                                     misses = 0
                                 } else {
@@ -150,11 +157,17 @@ class OverlayController(
                             }
                             if (wanted && liveFrames && misses >= LIVE_MISSES_BEFORE_FALLBACK) {
                                 liveFrames = false
+                                Log.w(TAG, "live glass: fallback after $misses missed frames")
                                 // Keep the clean pre-open picture and ask for live system blur. A
                                 // display screenshot now would photograph the open panel.
                                 if (settings.blurMethod != BlurMethod.SCREENSHOT) applySystemBlur(level)
                             }
                         } else {
+                            Log.i(
+                                TAG,
+                                "live glass: off (enabled=${settings.liveGlass}, level=$level, " +
+                                    "supported=${BackdropCapture.isLiveWindowSupported})",
+                            )
                             applyFallback(settings, level)
                             if (wanted) {
                                 everVisible = true
@@ -245,6 +258,7 @@ class OverlayController(
     }
 
     private companion object {
+        const val TAG = "TCC"
         const val SCRIM_WITH_BACKDROP = 0.22f
         const val SCRIM_WITHOUT_BACKDROP = 0.32f
 

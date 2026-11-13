@@ -76,10 +76,12 @@ object BackdropCapture {
         get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
             ControlCenterAccessibilityService.instance != null
 
-    enum class LiveStatus { READY, NEEDS_SERVICE, NEEDS_ANDROID_14 }
+    enum class LiveStatus { READY, OFF, NEEDS_BLUR, NEEDS_SERVICE, NEEDS_ANDROID_14 }
 
     /** Why real live glass would or would not work right now. Shown in the editor. */
-    fun liveStatus(): LiveStatus {
+    fun liveStatus(liveGlass: Boolean, level: Int): LiveStatus {
+        if (!liveGlass) return LiveStatus.OFF
+        if (level <= 0) return LiveStatus.NEEDS_BLUR
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return LiveStatus.NEEDS_ANDROID_14
         val service = ControlCenterAccessibilityService.instance ?: return LiveStatus.NEEDS_SERVICE
         // An update does not rebuild a running service's AccessibilityServiceInfo. Until the
@@ -104,8 +106,19 @@ object BackdropCapture {
      * the app is protected, or the platform refused the picture.
      */
     suspend fun captureLiveWindow(level: Int): Backdrop? {
-        if (level <= 0 || Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return null
-        val service = ControlCenterAccessibilityService.instance ?: return null
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            Log.w(TAG, "live glass: Android 14 is required")
+            return null
+        }
+        if (level <= 0) {
+            Log.w(TAG, "live glass: blur is off")
+            return null
+        }
+        val service = ControlCenterAccessibilityService.instance
+        if (service == null) {
+            Log.w(TAG, "live glass: accessibility service is not connected")
+            return null
+        }
         val target = liveWindow(service)
         if (target == null) {
             Log.w(TAG, "live glass: no app window (${service.windows.size} windows)")

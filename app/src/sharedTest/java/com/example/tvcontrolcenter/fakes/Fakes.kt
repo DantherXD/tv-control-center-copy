@@ -48,7 +48,7 @@ class FakeActions : SystemActions {
     override fun openDisplaySettings() = record("display")
     override fun openSoundSettings() = record("sound")
     override fun openCaptionSettings() = record("captions")
-    override fun openScreensaverSettings() = record("screensaver")
+    override fun startScreensaver() = record("screensaver")
     override fun openAppsSettings() = record("apps")
     override fun goHome() = record("home")
     override fun showRecents() = record("recents")

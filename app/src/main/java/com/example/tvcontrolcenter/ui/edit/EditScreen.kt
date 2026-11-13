@@ -743,11 +743,16 @@ private fun EditBody(
                                     value = onOff(settings.liveGlass),
                                 ) { vm.updateSettings { it.copy(liveGlass = !it.liveGlass) } }
                                 AppNote(stringResource(R.string.live_glass_note))
-                                val liveStatus = BackdropCapture.liveStatus()
+                                val liveStatus = BackdropCapture.liveStatus(
+                                    settings.liveGlass,
+                                    settings.effectiveBlur,
+                                )
                                 AppNote(
                                     stringResource(
                                         when (liveStatus) {
                                             BackdropCapture.LiveStatus.READY -> R.string.live_status_ready
+                                            BackdropCapture.LiveStatus.OFF -> R.string.live_status_off
+                                            BackdropCapture.LiveStatus.NEEDS_BLUR -> R.string.live_status_blur
                                             BackdropCapture.LiveStatus.NEEDS_SERVICE -> R.string.live_status_service
                                             BackdropCapture.LiveStatus.NEEDS_ANDROID_14 -> R.string.live_status_old
                                         },

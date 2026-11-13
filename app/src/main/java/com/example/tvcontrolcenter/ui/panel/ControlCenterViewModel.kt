@@ -157,7 +157,7 @@ class ControlCenterViewModel @Inject constructor(
             TileId.DISPLAY -> handle(actions.openDisplaySettings(), dismissOnDone = true, tile = id)
             TileId.SOUND -> handle(actions.openSoundSettings(), dismissOnDone = true, tile = id)
             TileId.CAPTIONS -> handle(actions.openCaptionSettings(), dismissOnDone = true, tile = id)
-            TileId.SCREENSAVER -> handle(actions.openScreensaverSettings(), dismissOnDone = true, tile = id)
+            TileId.SCREENSAVER -> handle(actions.startScreensaver(), dismissOnDone = true, tile = id)
             TileId.APPS -> handle(actions.openAppsSettings(), dismissOnDone = true, tile = id)
             TileId.HOME -> handle(actions.goHome(), dismissOnDone = true, tile = id)
             TileId.RECENTS -> handle(actions.showRecents(), dismissOnDone = true, tile = id)

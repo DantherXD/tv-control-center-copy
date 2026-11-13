@@ -80,7 +80,30 @@ class AndroidSystemActions @Inject constructor(
 
     override fun openCaptionSettings() = launchSettings(Settings.ACTION_CAPTIONING_SETTINGS)
 
-    override fun openScreensaverSettings() = launchSettings(Settings.ACTION_DREAM_SETTINGS)
+    /**
+     * Starts the TV's own screen saver. SystemUI's Somnambulator is the AOSP trigger and the
+     * one most TV builds expose; the TV settings dream activity is the next best fallback.
+     * Opening the dream settings remains the last resort when no trigger exists.
+     */
+    override fun startScreensaver(): ActionResult {
+        val enabled = runCatching {
+            Settings.Secure.getInt(context.contentResolver, "screensaver_enabled", 1) != 0
+        }.getOrDefault(true)
+        if (!enabled) return launchSettings(Settings.ACTION_DREAM_SETTINGS)
+        return launchFirst(
+            Intent().setClassName("com.android.systemui", "com.android.systemui.Somnambulator"),
+            Intent().setClassName("com.google.android.systemui", "com.google.android.systemui.Somnambulator"),
+            Intent().setClassName(
+                "com.android.tv.settings",
+                "com.android.tv.settings.device.display.daydream.DaydreamActivity",
+            ),
+            Intent().setClassName(
+                "com.google.android.tv.settings",
+                "com.google.android.tv.settings.device.display.daydream.DaydreamActivity",
+            ),
+            Intent(Settings.ACTION_DREAM_SETTINGS),
+        )
+    }
 
     override fun openAppsSettings() = launchSettings(Settings.ACTION_APPLICATION_SETTINGS)
 

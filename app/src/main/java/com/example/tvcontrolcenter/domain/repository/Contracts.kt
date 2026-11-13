@@ -36,7 +36,8 @@ interface SystemActions {
     fun openDisplaySettings(): ActionResult
     fun openSoundSettings(): ActionResult
     fun openCaptionSettings(): ActionResult
-    fun openScreensaverSettings(): ActionResult
+    /** Starts the TV's screen saver, falling back to its settings when it cannot start. */
+    fun startScreensaver(): ActionResult
     fun openAppsSettings(): ActionResult
 
     /**

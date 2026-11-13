@@ -2,6 +2,7 @@ package com.example.tvcontrolcenter
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -81,6 +82,7 @@ class ControlCenterActivity : ComponentActivity() {
                     val live = settings.liveGlass && level > 0 && BackdropCapture.isLiveWindowSupported
                     if (live) {
                         liveFrames = true
+                        Log.i(TAG, "live glass: on (activity, level=$level)")
                         // Clean frame before the panel is on screen: the fallback if the window
                         // capture is refused, without photographing our own panel.
                         backdrop = BackdropCapture.capture(level, settings.patientCapture)
@@ -89,6 +91,7 @@ class ControlCenterActivity : ComponentActivity() {
                             panelOpen = true
                         }
                         var misses = 0
+                        var announced = false
                         // Refresh at the accessibility screenshot limit; the panel itself is not
                         // in these frames, so the lens can sample the app underneath. The delay
                         // also spaces the first window shot after the clean picture.
@@ -97,6 +100,10 @@ class ControlCenterActivity : ComponentActivity() {
                             if (!panelOpen) break
                             val frame = BackdropCapture.captureLiveWindow(level)
                             if (frame != null) {
+                                if (!announced) {
+                                    Log.i(TAG, "live glass: first frame received")
+                                    announced = true
+                                }
                                 backdrop = frame
                                 misses = 0
                             } else {
@@ -105,10 +112,16 @@ class ControlCenterActivity : ComponentActivity() {
                         }
                         if (panelOpen && liveFrames && misses >= LIVE_MISSES_BEFORE_FALLBACK) {
                             liveFrames = false
+                            Log.w(TAG, "live glass: fallback after $misses missed frames")
                             // Keep the clean pre-open picture and ask for live system blur.
                             if (settings.blurMethod != BlurMethod.SCREENSHOT) applySystemBlur(level)
                         }
                     } else {
+                        Log.i(
+                            TAG,
+                            "live glass: off (enabled=${settings.liveGlass}, level=$level, " +
+                                "supported=${BackdropCapture.isLiveWindowSupported})",
+                        )
                         applyFallback(settings, level)
                         if (openWhenReady) {
                             everOpened = true
@@ -175,6 +188,7 @@ class ControlCenterActivity : ComponentActivity() {
     }
 
     private companion object {
+        const val TAG = "TCC"
         const val LIVE_FRAME_DELAY_MS = 380L
         const val LIVE_MISSES_BEFORE_FALLBACK = 3
     }
