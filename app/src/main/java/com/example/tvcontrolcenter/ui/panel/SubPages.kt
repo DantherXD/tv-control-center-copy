@@ -198,10 +198,6 @@ internal fun SubPageCard(
         val open = subState.selectedNotice
         if (open != null && state.notifications.none { it.key == open.key }) subState.selectedNotice = null
     }
-    LaunchedEffect(subState.selectedNotice) {
-        // Measure the new notice's text from scratch; the card grows from the list height.
-        detailTextHeight = 0.dp
-    }
     LaunchedEffect(subState.selectedNotice, page) {
         if (page != PanelPage.NOTIFICATIONS) return@LaunchedEffect
         withFrameNanos { }
