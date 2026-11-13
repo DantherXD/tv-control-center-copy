@@ -25,8 +25,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.draw.drawWithContent
 import com.example.tvcontrolcenter.domain.model.FrostStyle
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
 import com.kyant.backdrop.Backdrop as KyantBackdrop
@@ -240,6 +243,23 @@ fun Modifier.frostedTile(
         edge = edge,
         flat = flat,
     )
+}
+
+/**
+ * The Backdrop library updates its node's [Backdrop] without invalidating the recorded draw
+ * layer. A new live frame therefore only appeared under the focused tile, whose focus animation
+ * happened to redraw it. Reading the current frame in the draw phase makes every tile re-record
+ * the new picture as soon as it arrives.
+ */
+@Composable
+internal fun Modifier.redrawOnBackdrop(backdrop: Backdrop?): Modifier {
+    val current = rememberUpdatedState(backdrop)
+    return drawWithContent {
+        val frame = current.value
+        drawContent()
+        // Reading the state above is what re-records the layer for the new frame.
+        if (frame == null) return@drawWithContent
+    }
 }
 
 private fun Modifier.frostedTileFallback(

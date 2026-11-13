@@ -82,6 +82,7 @@ import com.example.tvcontrolcenter.ui.glass.LocalFrostStyle
 import com.example.tvcontrolcenter.ui.glass.LocalInvertFocus
 import com.example.tvcontrolcenter.ui.glass.LocalLiquidGlass
 import com.example.tvcontrolcenter.ui.glass.LocalTileGrain
+import com.example.tvcontrolcenter.ui.glass.redrawOnBackdrop
 import com.example.tvcontrolcenter.ui.glass.rememberLiquidBackdrop
 import com.example.tvcontrolcenter.ui.glass.LocalLiteGlass
 import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
@@ -136,7 +137,7 @@ internal fun cardGlass(backdrop: Backdrop?, origin: Offset, sheet: Boolean): Mod
             grain = LocalTileGrain.current,
             liquidBackdrop = liquidBackdrop,
             liquidGlass = liquidGlass,
-        )
+        ).redrawOnBackdrop(backdrop)
     }
 }
 

@@ -121,6 +121,11 @@ internal fun PanelContent(
     val gridOrigin = origin + with(density) {
         Offset(0f, (header + gap).toPx())
     }
+    // Down from the Menu button always lands on the first control of the grid, even when the
+    // button sits above a different column.
+    val firstGridId = remember(grid) {
+        grid.minWithOrNull(compareBy({ it.row }, { it.col }))?.id
+    }
     // The button a closing music card shrinks into, as its top-left and size from the card's own.
     val musicButtonIndex = pinned.indexOfFirst { it.id == TileId.NOW_PLAYING }
     val musicFrom = if (musicButtonIndex < 0) null else MusicOrigin(
@@ -194,6 +199,7 @@ internal fun PanelContent(
                             downTarget = when {
                                 music -> musicFocus?.play
                                 sub -> subFocus
+                                p.id == TileId.EDIT -> firstGridId?.let { requesters[it] }
                                 else -> null
                             },
                             // The open page's button is white and the other one stays grey.

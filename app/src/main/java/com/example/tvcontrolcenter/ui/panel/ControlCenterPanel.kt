@@ -152,6 +152,9 @@ private fun HostBody(
     val subFocus = remember { FocusRequester() }
     // Tile to give focus back to when a small window closes.
     var returnTo by remember { mutableStateOf<TileId?>(null) }
+    var focusedTile by remember { mutableStateOf<TileId?>(null) }
+    // The close animation already handed focus back; the page change must not do it again.
+    var restoreHandled by remember { mutableStateOf(false) }
     var page by remember { mutableStateOf(PanelPage.GRID) }
     // A small window is shrinking back into its control; the page follows when it has landed.
     var closingSub by remember { mutableStateOf(false) }
@@ -160,6 +163,7 @@ private fun HostBody(
     val musicOnTop = pinned.any { it.id == TileId.NOW_PLAYING }
 
     val currentPlaced by rememberUpdatedState(placed)
+    val currentPinned by rememberUpdatedState(pinned)
     val currentVisible by rememberUpdatedState(visible)
     val dismiss by rememberUpdatedState(onDismissRequest)
     val capability by rememberUpdatedState(onCapability)
@@ -172,6 +176,7 @@ private fun HostBody(
             .minWithOrNull(compareBy({ it.row }, { it.col }))
             ?.id
     }
+    val firstMenu: () -> TileId? = { currentPinned.firstOrNull { it.id == TileId.EDIT }?.id }
 
     // Closing before the first open (the owner is still preparing a backdrop) is not a close.
     val hasOpened = remember { booleanArrayOf(false) }
@@ -186,6 +191,9 @@ private fun HostBody(
             page = if (onNotices) PanelPage.NOTIFICATIONS else PanelPage.GRID
             closingSub = false
             closingMusic = false
+            returnTo = null
+            focusedTile = null
+            restoreHandled = false
             viewModel.onOpened()
             launch {
                 for (row in 0 until ROW_SLOTS) {
@@ -225,14 +233,14 @@ private fun HostBody(
 
     if (!shown) return
 
-    // Wait for the first status emission, then start on the grid's top-left control. The bar is
-    // composed first, so without this the panel opens with a button up there highlighted.
+    // Wait for the first status emission, then start on Menu. Down from it lands on the grid's
+    // first control; without this the panel opened with a grid tile already highlighted.
     LaunchedEffect(Unit) {
         viewModel.uiState.first { it.tiles.isNotEmpty() }
         withFrameNanos { }
         // The grid is not always what opens: a window that is already open keeps its first row.
         if (page != PanelPage.GRID) return@LaunchedEffect
-        val target = firstGridTile()
+        val target = firstMenu() ?: firstGridTile()
         if (target != null) runCatching { requesters.getValue(target).requestFocus() }
     }
 
@@ -303,20 +311,25 @@ private fun HostBody(
             openNotificationAccess = viewModel::onOpenNotificationAccess,
         )
     }
-    // A card on its way home hands focus back at once, so it lands on its control in one move
-    // instead of wandering over the grid while the card disappears.
+    // The window starts shrinking at Back: hand focus back at once. The page effect below must
+    // then leave focus alone, or a D-pad press made during the close gets yanked back.
     LaunchedEffect(closingSub, closingMusic) {
         val target = when {
             closingSub -> returnTo
-            // The music page opened from a button in the bar, but focus comes back into the grid:
-            // the bar is not where a page starts.
             closingMusic -> firstGridTile()
             else -> null
         } ?: return@LaunchedEffect
+        val restoringSub = closingSub
+        returnTo = null
+        restoreHandled = true
         withFrameNanos { }
         withFrameNanos { }
+        // A fast D-pad press during the shrink may already have moved focus into the grid.
+        // Do not pull it back to the tile that opened the window.
+        if (restoringSub && focusedTile != null && focusedTile != target) return@LaunchedEffect
         runCatching { requesters.getValue(target).requestFocus() }
     }
+
     // A window opened: its first row. The grid came back: the tile that opened the window that
     // just closed, else the grid's top-left control. The music page: its play button, so the bar
     // never holds focus just because it happens to be composed first.
@@ -333,12 +346,25 @@ private fun HostBody(
                 runCatching { musicFocus.play.requestFocus() }
             }
             else -> {
-                val target = returnTo ?: firstGridTile()
+                if (restoreHandled) {
+                    restoreHandled = false
+                    return@LaunchedEffect
+                }
+                // The initial open starts on Menu; later returns go to the control that opened
+                // the window, or the grid's first control after the music page. If the user
+                // already moved focus while the window was closing, leave it where it is.
+                val wasSub = returnTo
+                val target = wasSub ?: if (focusedTile == null) firstMenu() else firstGridTile()
+                val restore = if (wasSub != null && focusedTile != null && focusedTile != wasSub) {
+                    null
+                } else {
+                    target
+                }
                 returnTo = null
-                if (target != null) {
+                if (restore != null) {
                     withFrameNanos { }
                     withFrameNanos { }
-                    runCatching { requesters.getValue(target).requestFocus() }
+                    runCatching { requesters.getValue(restore).requestFocus() }
                 }
             }
         }
@@ -471,7 +497,10 @@ private fun HostBody(
                     trapEdges = true,
                     selected = null,
                     appear = { p -> { rowProgress[(p.row + 1).coerceIn(0, ROW_SLOTS - 1)].value } },
-                    onFocused = viewModel::onFocused,
+                    onFocused = { id ->
+                        focusedTile = id
+                        viewModel.onFocused(id)
+                    },
                     onActivate = onActivate,
                     onLongPress = { id ->
                         when (id) {

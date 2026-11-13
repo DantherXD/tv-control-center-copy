@@ -4,6 +4,7 @@ import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.app.NotificationManager
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -81,28 +82,56 @@ class AndroidSystemActions @Inject constructor(
     override fun openCaptionSettings() = launchSettings(Settings.ACTION_CAPTIONING_SETTINGS)
 
     /**
-     * Starts the TV's own screen saver. SystemUI's Somnambulator is the AOSP trigger and the
-     * one most TV builds expose; the TV settings dream activity is the next best fallback.
-     * Opening the dream settings remains the last resort when no trigger exists.
+     * Starts the configured screen saver. Android 14 no longer lets an ordinary app trigger
+     * the system dream (SystemUI's Somnambulator is a no-op there), so use the public preview
+     * activity some screensaver apps export. AerialViews is the established one; the selected
+     * screensaver is checked first so its own test activity wins. Settings remains the fallback.
      */
     override fun startScreensaver(): ActionResult {
-        val enabled = runCatching {
-            Settings.Secure.getInt(context.contentResolver, "screensaver_enabled", 1) != 0
-        }.getOrDefault(true)
-        if (!enabled) return launchSettings(Settings.ACTION_DREAM_SETTINGS)
-        return launchFirst(
-            Intent().setClassName("com.android.systemui", "com.android.systemui.Somnambulator"),
-            Intent().setClassName("com.google.android.systemui", "com.google.android.systemui.Somnambulator"),
-            Intent().setClassName(
-                "com.android.tv.settings",
-                "com.android.tv.settings.device.display.daydream.DaydreamActivity",
-            ),
-            Intent().setClassName(
-                "com.google.android.tv.settings",
-                "com.google.android.tv.settings.device.display.daydream.DaydreamActivity",
-            ),
-            Intent(Settings.ACTION_DREAM_SETTINGS),
+        if (launchSelectedDreamPreview()) return ActionResult.Done
+        if (startComponent(AERIAL_VIEWS, AERIAL_VIEWS_TEST)) return ActionResult.Done
+        // Older TV builds still honour this trigger; Android 14 builds only finish it.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+            startComponent("com.android.systemui", "com.android.systemui.Somnambulator")
+        ) {
+            return ActionResult.Done
+        }
+        Toast.makeText(context, R.string.screensaver_no_trigger, Toast.LENGTH_LONG).show()
+        return launchSettings(Settings.ACTION_DREAM_SETTINGS)
+    }
+
+    /** Launches a screensaver app's exported test/preview activity, if it has one. */
+    private fun launchSelectedDreamPreview(): Boolean {
+        val raw = Settings.Secure.getString(context.contentResolver, SCREENSAVER_COMPONENTS) ?: return false
+        return raw.split(',').any { part ->
+            val component = ComponentName.unflattenFromString(part.trim()) ?: return@any false
+            val info = runCatching {
+                context.packageManager.getPackageInfo(component.packageName, PackageManager.GET_ACTIVITIES)
+            }.getOrNull() ?: return@any false
+            val activities = info.activities ?: return@any false
+            val candidates = activities
+                .asSequence()
+                .filter { it.exported }
+                .filter { activity ->
+                    val name = activity.name.lowercase()
+                    (name.contains("test") || name.contains("preview")) &&
+                        !name.contains("settings") && !name.contains("preference")
+                }
+                .sortedBy { if (it.name.contains("test", ignoreCase = true)) 0 else 1 }
+                .toList()
+            candidates.any { startComponent(component.packageName, it.name) }
+        }
+    }
+
+    private fun startComponent(packageName: String, className: String): Boolean = try {
+        context.startActivity(
+            Intent()
+                .setClassName(packageName, className)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
+        true
+    } catch (_: Exception) {
+        false
     }
 
     override fun openAppsSettings() = launchSettings(Settings.ACTION_APPLICATION_SETTINGS)
@@ -395,6 +424,13 @@ class AndroidSystemActions @Inject constructor(
         /** Settings.Panel actions, spelled out for the same reason. */
         const val WIFI_PANEL = "android.settings.panel.action.WIFI"
         const val INTERNET_PANEL = "android.settings.panel.action.INTERNET_CONNECTIVITY"
+
+        /** The screensaver component list is readable without a special permission. */
+        const val SCREENSAVER_COMPONENTS = "screensaver_components"
+
+        /** AerialViews exports this activity specifically so other apps can start its screensaver. */
+        const val AERIAL_VIEWS = "com.neilturner.aerialviews"
+        const val AERIAL_VIEWS_TEST = "com.neilturner.aerialviews.ui.screensaver.TestActivity"
     }
 }
 

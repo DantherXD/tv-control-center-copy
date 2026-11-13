@@ -30,6 +30,7 @@
     <string name="tile_sound">Sound</string>
     <string name="tile_captions">Captions</string>
     <string name="tile_screensaver">Screen saver</string>
+    <string name="screensaver_no_trigger">Android 14 only lets a screensaver app start itself. Install AerialViews, or choose a screensaver in settings.</string>
     <string name="tile_apps">Apps</string>
     <string name="tile_home">Home</string>
     <string name="tile_recents">Recent apps</string>

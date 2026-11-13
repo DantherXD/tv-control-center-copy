@@ -48,6 +48,7 @@ import com.example.tvcontrolcenter.ui.glass.LocalOverBlur
 import com.example.tvcontrolcenter.ui.glass.LocalSoundCues
 import com.example.tvcontrolcenter.ui.glass.LocalTileInk
 import com.example.tvcontrolcenter.ui.glass.frostedTile
+import com.example.tvcontrolcenter.ui.glass.redrawOnBackdrop
 import com.example.tvcontrolcenter.ui.glass.rememberLiquidBackdrop
 import com.example.tvcontrolcenter.ui.theme.GlassTokens
 import com.example.tvcontrolcenter.ui.theme.Motion
@@ -204,7 +205,8 @@ fun GlassTile(
                 flat = flat,
                 liquidBackdrop = liquidBackdrop,
                 liquidGlass = liquidGlass,
-            ),
+            )
+            .redrawOnBackdrop(backdrop),
     ) {
         CompositionLocalProvider(LocalTileInk provides inkColor) { content() }
     }
