@@ -87,6 +87,10 @@ class PanelNotificationsSource @Inject constructor(
         val sbn = posted[key] ?: return
         if (!sbn.isClearable) return
         runCatching { listener?.cancelNotification(sbn.key) }
+        // Remove only this one from the list straight away. The listener's removal callback may
+        // follow, or may not on some TVs; re-reading activeNotifications here is not safe because
+        // that call can briefly come back empty while the shade is changing.
+        if (posted.remove(key) != null) publish()
     }
 
     override fun clearAll() {

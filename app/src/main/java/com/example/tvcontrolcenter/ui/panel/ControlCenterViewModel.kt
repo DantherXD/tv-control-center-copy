@@ -266,10 +266,7 @@ class ControlCenterViewModel @Inject constructor(
     fun installedApps(): List<LauncherApp> = actions.installedApps()
     fun onSetWifi(on: Boolean) = handle(actions.setWifiEnabled(on), tile = TileId.WIFI)
     fun onSetBluetooth(on: Boolean) = handle(actions.setBluetoothEnabled(on), tile = TileId.BLUETOOTH)
-    fun onDismissNotification(key: String) {
-        notificationSource.dismiss(key)
-        notificationSource.refresh()
-    }
+    fun onDismissNotification(key: String) = notificationSource.dismiss(key)
     fun onOpenWifiSettings() = handle(actions.openWifiSettings(), dismissOnDone = true, tile = TileId.WIFI)
     fun onOpenBluetoothSettings() = handle(actions.openBluetoothSettings(), dismissOnDone = true, tile = TileId.BLUETOOTH)
     fun onSwitchInput(id: String) = handle(actions.switchInput(id), dismissOnDone = true, tile = TileId.INPUT)

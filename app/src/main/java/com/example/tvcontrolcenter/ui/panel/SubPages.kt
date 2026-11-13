@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -31,6 +32,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -135,6 +137,8 @@ private val ROW_GAP = 6.dp
 private val WINDOW_PADDING = 10.dp
 /** Everything that is not a row: the title line, the gap under it and the window's padding. */
 private val CHROME = TITLE_ROW + ROW_GAP + WINDOW_PADDING * 2
+/** Everything inside an opened notice: its rounded card, title, text and the two actions. */
+private val DETAIL_CHROME = CHROME + 24.dp + 14.dp + 36.dp + ACTION_ROW * 2 + ROW_GAP * 4 + 2.dp
 
 /** The control a small window belongs to; the window grows out of it. */
 internal fun subTileOf(page: PanelPage): TileId = when (page) {
@@ -177,6 +181,7 @@ internal fun SubPageCard(
     var wifiOn by remember(page) { mutableStateOf(actions.wifiEnabled()) }
     var bluetoothOn by remember(page) { mutableStateOf(state.status.bluetoothEnabled) }
     var settles by remember(page) { mutableStateOf(0) }
+    var detailTextHeight by remember(page) { mutableStateOf(0.dp) }
     val detailFocus = remember { FocusRequester() }
     LaunchedEffect(page, state.status.network, state.status.bluetoothEnabled) {
         wifiOn = actions.wifiEnabled()
@@ -192,6 +197,10 @@ internal fun SubPageCard(
     LaunchedEffect(state.notifications) {
         val open = subState.selectedNotice
         if (open != null && state.notifications.none { it.key == open.key }) subState.selectedNotice = null
+    }
+    LaunchedEffect(subState.selectedNotice) {
+        // Measure the new notice's text from scratch; the card grows from the list height.
+        detailTextHeight = 0.dp
     }
     LaunchedEffect(subState.selectedNotice, page) {
         if (page != PanelPage.NOTIFICATIONS) return@LaunchedEffect
@@ -221,9 +230,16 @@ internal fun SubPageCard(
     // window is allowed to grow further than the others, since there is more of them than inputs.
     val tallest = if (page == PanelPage.NOTIFICATIONS) PanelDimens.notificationsMaxHeight
         else PanelDimens.subPageMaxHeight
-    // One notice gets the whole window; the list still grows to fit its rows.
-    val height = if (subState.selectedNotice != null) tallest
-        else (CHROME + rowsHeight).coerceIn(PanelDimens.subPageHeight, tallest)
+    // One notice gets a rounded card as long as its message needs, up to the detail cap. The
+    // list still grows to fit its rows.
+    val height = if (subState.selectedNotice != null) {
+        (DETAIL_CHROME + detailTextHeight).coerceIn(
+            PanelDimens.notificationsMaxHeight,
+            PanelDimens.notificationDetailMaxHeight,
+        )
+    } else {
+        (CHROME + rowsHeight).coerceIn(PanelDimens.subPageHeight, tallest)
+    }
     val firstRow = rows.indexOfFirst { it is SubRow.Action || it is SubRow.Notice }
     Column(
         modifier
@@ -251,6 +267,7 @@ internal fun SubPageCard(
                 first = detailFocus,
                 closing = closing,
                 onBack = { subState.selectedNotice = null },
+                onTextHeight = { detailTextHeight = it },
                 modifier = Modifier.weight(1f),
             )
         } else if (emptyNotice) {
@@ -625,10 +642,19 @@ private fun NotificationDetail(
     first: FocusRequester,
     closing: Boolean,
     onBack: () -> Unit,
+    onTextHeight: (Dp) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val density = LocalDensity.current
+    // The compact notice is a 56 dp pill; use the same corner radius on the longer card.
+    val shape = RoundedCornerShape(28.dp)
     Column(
-        modifier.fillMaxWidth(),
+        modifier
+            .fillMaxWidth()
+            .shadow(10.dp, shape)
+            .clip(shape)
+            .background(Color.Black.copy(alpha = 0.30f))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(ROW_GAP),
     ) {
         Detail(notice.appLabel)
@@ -638,6 +664,9 @@ private fun NotificationDetail(
                 notice.text.orEmpty(),
                 modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
                 style = PanelType.detail.copy(color = LocalTileInk.current.copy(alpha = 0.9f)),
+                onTextLayout = { result ->
+                    onTextHeight(with(density) { result.size.height.toDp() })
+                },
             )
         } else {
             Column(Modifier.weight(1f)) {}

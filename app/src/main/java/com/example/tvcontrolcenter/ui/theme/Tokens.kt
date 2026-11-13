@@ -47,6 +47,8 @@ object PanelDimens {
     /** The Notifications page: two lines a row, and a little more room than the other windows. */
     val notificationRow = 56.dp
     val notificationsMaxHeight = 400.dp
+    /** An opened notification may grow past the list height to show its whole message. */
+    val notificationDetailMaxHeight = 440.dp
 
     fun musicHeightFor(big: Boolean): Dp = if (big) musicCardBigHeight else musicCardHeight
     val topButton = 40.dp
